@@ -1,0 +1,249 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{D4582B5A-DFEB-4507-A8CA-23866D01092A}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>VisionFrameWork</RootNamespace>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>e:\Work\Libraries\CPP\opencv\sources\include;e:\Work\Libraries\CPP\opencv\sources\include\opencv;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\myOpencvInstall245\install\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opencv_calib3d245.lib;opencv_contrib245.lib;opencv_core245.lib;opencv_features2d245.lib;opencv_flann245.lib;opencv_gpu245.lib;opencv_highgui245.lib;opencv_imgproc245.lib;opencv_legacy245.lib;opencv_ml245.lib;opencv_nonfree245.lib;opencv_objdetect245.lib;opencv_photo245.lib;opencv_stitching245.lib;opencv_ts245.lib;opencv_video245.lib;opencv_videostab245.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>C:\myOpencvInstall245\install\include;C:\myOpencvInstall245\install\include\opencv;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\myOpencvInstall245\install\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opencv_calib3d249.lib;opencv_contrib249.lib;opencv_core249.lib;opencv_features2d249.lib;opencv_flann249.lib;opencv_gpu249.lib;opencv_highgui249.lib;opencv_imgproc249.lib;opencv_legacy249.lib;opencv_ml249.lib;opencv_nonfree249.lib;opencv_objdetect249.lib;opencv_photo249.lib;opencv_stitching249.lib;opencv_ts249.lib;opencv_video249.lib;opencv_videostab249.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;..\lib\Debug\ceres-debug.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>f:\Download\opencv\build\include\;f:\Download\opencv\build\include\opencv\;f:/SDKs/ceres/ceres-src/include;f:/SDKs/ceres/ceres-src/internal;f:/SDKs/ceres/ceres-src/internal/ceres;f:/SDKs/ceres/glog-master/src/windows;f:\SDKs\ceres\eigen-eigen-c58038c56923;f:/SDKs/ceres/ceres-bin/config;f:\Dani\Kutatás\Projektek\VisionLibrary\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories>f:\Download\opencv\build\x86\vc12\lib\</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opencv_calib3d2412.lib;opencv_contrib2412.lib;opencv_core2412.lib;opencv_features2d2412.lib;opencv_flann2412.lib;opencv_gpu2412.lib;opencv_highgui2412.lib;opencv_imgproc2412.lib;opencv_legacy2412.lib;opencv_ml2412.lib;opencv_nonfree2412.lib;opencv_objdetect2412.lib;opencv_photo2412.lib;opencv_stitching2412.lib;opencv_ts2412.lib;opencv_video2412.lib;opencv_videostab2412.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;EIGEN_MPL2_ONLY;_VARIADIC_MAX=10;_CRT_SECURE_NO_WARNINGS;MAX_LOG_LEVEL=-100;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>e:\Download\opencv-3.0\final_build\include\;e:\Download\opencv-3.0\final_build\include\opencv\;E:/SDKs/ceres/ceres-src/include;e:/SDKs/ceres/ceres-src/internal;e:/SDKs/ceres/ceres-src/internal/ceres;e:/SDKs/ceres/glog-master/src/windows;e:\SDKs\ceres\eigen-eigen-c58038c56923;e:/SDKs/ceres/ceres-bin/config;e:\Dani\Kutatás\Projektek\VisionLibrary\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/MP4 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories>e:\Download\opencv-3.0\final_build\lib\Release\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opencv_calib3d310.lib;opencv_core310.lib;opencv_features2d310.lib;opencv_flann310.lib;opencv_highgui310.lib;opencv_imgproc310.lib;opencv_ml310.lib;opencv_objdetect310.lib;opencv_photo310.lib;opencv_stitching310.lib;opencv_ts310.lib;opencv_video310.lib;opencv_videostab310.lib;opencv_xfeatures2d310.lib;opencv_imgcodecs310.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;e:\SDKs\ceres\glog-master\Release\libglog.lib;e:\SDKs\ceres\ceres-bin\lib\Release\ceres.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <Text Include="ReadMe.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\FundamentalMatrixFromTwoPoints\Cpp\AffineQuality\VisionFrameWork\six_point_algorithm\hidden6.h" />
+    <ClInclude Include="5point.h" />
+    <ClInclude Include="AsiftDetector.h" />
+    <ClInclude Include="block.h" />
+    <ClInclude Include="EllipticASiftDetector.h" />
+    <ClInclude Include="EllipticKeyPoint.h" />
+    <ClInclude Include="energy.h" />
+    <ClInclude Include="evsac.h" />
+    <ClInclude Include="evsac_sampler.h" />
+    <ClInclude Include="GCoptimization.h" />
+    <ClInclude Include="GCRANSAC.h" />
+    <ClInclude Include="gc_ransac.h" />
+    <ClInclude Include="graph.h" />
+    <ClInclude Include="LinkedBlockList.h" />
+    <ClInclude Include="Mblock.h" />
+    <ClInclude Include="Polynomial.h" />
+    <ClInclude Include="prosac.h" />
+    <ClInclude Include="prosac_sampler.h" />
+    <ClInclude Include="quality_measurement.h" />
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="Rpoly.h" />
+    <ClInclude Include="sampler.h" />
+    <ClInclude Include="sample_consensus_estimator.h" />
+    <ClInclude Include="Utilities.hpp" />
+    <ClInclude Include="objective_function.hpp" />
+    <ClInclude Include="pso.h" />
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="targetver.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\FundamentalMatrixFromTwoPoints\Cpp\AffineQuality\VisionFrameWork\six_point_algorithm\Ematrix_6pt.cc">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\FundamentalMatrixFromTwoPoints\Cpp\AffineQuality\VisionFrameWork\six_point_algorithm\polydet.cc">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\FundamentalMatrixFromTwoPoints\Cpp\AffineQuality\VisionFrameWork\six_point_algorithm\polyquotient.cc">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\FundamentalMatrixFromTwoPoints\Cpp\AffineQuality\VisionFrameWork\six_point_algorithm\sturm.cc">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="5point.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="AsiftDetector.cpp" />
+    <ClCompile Include="EllipticASiftDetector.cpp" />
+    <ClCompile Include="EllipticKeyPoint.cpp" />
+    <ClCompile Include="essential_estimator.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="fundamental_estimator.cpp" />
+    <ClCompile Include="gc_ransac.cpp" />
+    <ClCompile Include="homography_estimator.cpp" />
+    <ClCompile Include="line_estimator.cpp" />
+    <ClCompile Include="GCoptimization.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="GCRANSAC.cpp" />
+    <ClCompile Include="graph.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="LinkedBlockList.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="maxflow.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="pso.cpp" />
+    <ClCompile Include="Rpoly.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="stdafx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="VisionFrameWork.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="VisionFrameWork.rc" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

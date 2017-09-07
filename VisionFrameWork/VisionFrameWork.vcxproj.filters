@@ -1,0 +1,188 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Ivan">
+      <UniqueIdentifier>{abd80234-7556-40ce-bcef-cbd1792ebfe0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Ivan\Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="six_point">
+      <UniqueIdentifier>{3303daf8-0c28-4c0b-9df2-7d5653fe9e7a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="five_point">
+      <UniqueIdentifier>{67307213-2276-4d45-88a7-37557b5a33b8}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="ReadMe.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="stdafx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Utilities.hpp">
+      <Filter>Ivan</Filter>
+    </ClInclude>
+    <ClInclude Include="pso.h">
+      <Filter>Ivan</Filter>
+    </ClInclude>
+    <ClInclude Include="objective_function.hpp">
+      <Filter>Ivan</Filter>
+    </ClInclude>
+    <ClInclude Include="AsiftDetector.h">
+      <Filter>Ivan</Filter>
+    </ClInclude>
+    <ClInclude Include="EllipticASiftDetector.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="EllipticKeyPoint.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GCoptimization.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="block.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="energy.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="graph.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="LinkedBlockList.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\FundamentalMatrixFromTwoPoints\Cpp\AffineQuality\VisionFrameWork\six_point_algorithm\hidden6.h">
+      <Filter>six_point</Filter>
+    </ClInclude>
+    <ClInclude Include="GCRANSAC.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="prosac.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="prosac_sampler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="quality_measurement.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="sample_consensus_estimator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="sampler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gc_ransac.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="evsac.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="evsac_sampler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="5point.h">
+      <Filter>five_point</Filter>
+    </ClInclude>
+    <ClInclude Include="Mblock.h">
+      <Filter>five_point</Filter>
+    </ClInclude>
+    <ClInclude Include="Polynomial.h">
+      <Filter>five_point</Filter>
+    </ClInclude>
+    <ClInclude Include="Rpoly.h">
+      <Filter>five_point</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="stdafx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="VisionFrameWork.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pso.cpp">
+      <Filter>Ivan</Filter>
+    </ClCompile>
+    <ClCompile Include="AsiftDetector.cpp">
+      <Filter>Ivan</Filter>
+    </ClCompile>
+    <ClCompile Include="EllipticASiftDetector.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="EllipticKeyPoint.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GCoptimization.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="graph.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="maxflow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="LinkedBlockList.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\FundamentalMatrixFromTwoPoints\Cpp\AffineQuality\VisionFrameWork\six_point_algorithm\Ematrix_6pt.cc">
+      <Filter>six_point</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\FundamentalMatrixFromTwoPoints\Cpp\AffineQuality\VisionFrameWork\six_point_algorithm\polydet.cc">
+      <Filter>six_point</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\FundamentalMatrixFromTwoPoints\Cpp\AffineQuality\VisionFrameWork\six_point_algorithm\polyquotient.cc">
+      <Filter>six_point</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\FundamentalMatrixFromTwoPoints\Cpp\AffineQuality\VisionFrameWork\six_point_algorithm\sturm.cc">
+      <Filter>six_point</Filter>
+    </ClCompile>
+    <ClCompile Include="GCRANSAC.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="line_estimator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="gc_ransac.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="fundamental_estimator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="homography_estimator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="essential_estimator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="5point.cpp">
+      <Filter>five_point</Filter>
+    </ClCompile>
+    <ClCompile Include="Rpoly.cpp">
+      <Filter>five_point</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="VisionFrameWork.rc">
+      <Filter>Ivan\Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+</Project>
