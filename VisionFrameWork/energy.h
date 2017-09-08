@@ -325,6 +325,6 @@ inline typename Energy<captype,tcaptype,flowtype>::TotalValue Energy<captype,tca
 return Econst + GraphT::maxflow(); }
 
 template <typename captype, typename tcaptype, typename flowtype> 
-inline int Energy<captype,tcaptype,flowtype>::get_var(Var x) { return (int) this->what_segment(x); }
+inline int Energy<captype,tcaptype,flowtype>::get_var(Var x) { return static_cast<int>(this->what_segment(x)); }
 
 #endif

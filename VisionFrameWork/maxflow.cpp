@@ -12,7 +12,7 @@
 #define ORPHAN   ( (arc *) 2 )		/* orphan */
 
 
-#define INFINITE_D ((int)(((unsigned)-1)/2))		/* infinite distance to the terminal */
+#define INFINITE_D (static_cast<int>(((unsigned)-1)/2))		/* infinite distance to the terminal */
 
 /***********************************************************************/
 

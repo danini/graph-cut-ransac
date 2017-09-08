@@ -10,14 +10,12 @@
 #include "estimator.h"
 #include "prosac.h"
 
-using namespace std;
 using namespace theia;
-using namespace cv;
 
 struct FundamentalMatrix
 {
-	Mat descriptor;
-	vector<int> mss;
+	cv::Mat descriptor;
+	std::vector<int> mss;
 
 	FundamentalMatrix() {}
 	FundamentalMatrix(const FundamentalMatrix& other)
@@ -28,7 +26,7 @@ struct FundamentalMatrix
 };
 
 // This is the estimator class for estimating a homography matrix between two images. A model estimation method and error calculation method are implemented
-class FundamentalMatrixEstimator : public Estimator < Mat, FundamentalMatrix >
+class FundamentalMatrixEstimator : public Estimator < cv::Mat, FundamentalMatrix >
 {
 protected:
 
@@ -44,9 +42,9 @@ public:
 		return 49;
 	}
 
-	bool EstimateModel(const Mat& data,
+	bool EstimateModel(const cv::Mat& data,
 		const int *sample,
-		vector<FundamentalMatrix>* models) const
+		std::vector<FundamentalMatrix>* models) const
 	{
 		// model calculation 
 		int M = SampleSize();
@@ -57,10 +55,10 @@ public:
 		return true;
 	}
 
-	bool EstimateModelNonminimal(const Mat& data,
+	bool EstimateModelNonminimal(const cv::Mat& data,
 		const int *sample,
 		int sample_number,
-		vector<FundamentalMatrix>* models) const
+		std::vector<FundamentalMatrix>* models) const
 	{
 
 		// model calculation 
@@ -70,38 +68,16 @@ public:
 			return false;
 
 		Algorithm_8_point(data, sample, sample_number, models);
-
 		return true;
-		/*vector<Point2d> pts1(M);
-		vector<Point2d> pts2(M);
-
-		for (int i = 0; i < M; ++i)
-		{
-			pts1[i].x = (double)data.at<float>(sample[i], 0);
-			pts1[i].y = (double)data.at<float>(sample[i], 1);
-			pts2[i].x = (double)data.at<float>(sample[i], 3);
-			pts2[i].y = (double)data.at<float>(sample[i], 4);
-		}
-
-		Mat F = findFundamentalMat(pts1, pts2, CV_FM_8POINT);
-		F.convertTo(F, CV_32F);
-
-		if (F.cols == 0)
-			return false;
-
-		FundamentalMatrix model;
-		model.descriptor = F;
-		models->push_back(model);
-		return true;*/
 	}
 
-	double Error(const Mat& point, const FundamentalMatrix& model) const
+	double Error(const cv::Mat& point, const FundamentalMatrix& model) const
 	{
 		const float* s = (float *)point.data;
 		const float x1 = *s;
 		const float y1 = *(s + 1);
-		const float x2 = *(s + 3);
-		const float y2 = *(s + 4);
+		const float x2 = *(s + 2);
+		const float y2 = *(s + 3);
 
 		const float* p = (float *)model.descriptor.data;
 		
@@ -126,13 +102,13 @@ public:
 		return (double)abs(0.5 * (d1 + d2));
 	}
 
-	float Error(const Mat& point, const Mat& descriptor) const
+	float Error(const cv::Mat& point, const cv::Mat& descriptor) const
 	{
 		const float* s = (float *)point.data;
 		const float x1 = *s;
 		const float y1 = *(s + 1);
-		const float x2 = *(s + 3);
-		const float y2 = *(s + 4);
+		const float x2 = *(s + 2);
+		const float y2 = *(s + 3);
 
 		const float* p = (float *)descriptor.data;
 
@@ -156,15 +132,15 @@ public:
 		return (double)abs(0.5 * (d1 + d2));
 	}
 
-	bool Algorithm_8_point(const Mat& data,
+	bool Algorithm_8_point(const cv::Mat& data,
 		const int *sample,
 		int sample_number,
-		vector<FundamentalMatrix>* models) const
+		std::vector<FundamentalMatrix>* models) const
 	{
 		float f[9];
-		Mat evals(1, 9, CV_32F), evecs(9, 9, CV_32F);
-		Mat A(sample_number, 9, CV_32F);
-		Mat F(3, 3, CV_32F, f);
+		cv::Mat evals(1, 9, CV_32F), evecs(9, 9, CV_32F);
+		cv::Mat A(sample_number, 9, CV_32F);
+		cv::Mat F(3, 3, CV_32F, f);
 		int i;
 
 		// form a linear system: i-th row of A(=a) represents
@@ -172,7 +148,7 @@ public:
 		for (i = 0; i < sample_number; i++)
 		{
 			float x0 = data.at<float>(sample[i], 0), y0 = data.at<float>(sample[i], 1);
-			float x1 = data.at<float>(sample[i], 3), y1 = data.at<float>(sample[i], 4);
+			float x1 = data.at<float>(sample[i], 2), y1 = data.at<float>(sample[i], 3);
 
 			A.at<float>(i, 0) = x1*x0;
 			A.at<float>(i, 1) = x1*y0;
@@ -187,16 +163,16 @@ public:
 
 		// A*(f11 f12 ... f33)' = 0 is singular (7 equations for 9 variables), so
 		// the solution is linear subspace of dimensionality 2.
-		// => use the last two singular vectors as a basis of the space
+		// => use the last two singular std::vectors as a basis of the space
 		// (according to SVD properties)
-		Mat cov = A.t() * A;
+		cv::Mat cov = A.t() * A;
 		eigen(cov, evals, evecs);
 
 		for (i = 0; i < 9; ++i)
 			f[i] = evecs.at<float>(8, i);
 		//f[8] = 1.0;
 
-		//cout << F << endl;
+		//std::cout << F << endl;
 
 		Model model;
 		model.descriptor = F;
@@ -204,19 +180,19 @@ public:
 		return true;
 	}
 
-	bool Algorithm_7_point(const Mat& data,
+	bool Algorithm_7_point(const cv::Mat& data,
 		const int *sample,
 		int sample_number,
-		vector<FundamentalMatrix>* models) const
+		std::vector<FundamentalMatrix>* models) const
 	{
 
 		float a[7 * 9], w[7], u[9 * 9], v[9 * 9], c[4], r[3];
 		float *f1, *f2;
 		float t0, t1, t2;
-		Mat evals, evecs(9, 9, CV_32F, v);
-		Mat A(7, 9, CV_32F, a);
-		Mat coeffs(1, 4, CV_32F, c);
-		Mat roots(1, 3, CV_32F, r);
+		cv::Mat evals, evecs(9, 9, CV_32F, v);
+		cv::Mat A(7, 9, CV_32F, a);
+		cv::Mat coeffs(1, 4, CV_32F, c);
+		cv::Mat roots(1, 3, CV_32F, r);
 		int i, k, n;
 
 		// form a linear system: i-th row of A(=a) represents
@@ -224,7 +200,7 @@ public:
 		for (i = 0; i < 7; i++)
 		{
 			float x0 = data.at<float>(sample[i], 0), y0 = data.at<float>(sample[i], 1);
-			float x1 = data.at<float>(sample[i], 3), y1 = data.at<float>(sample[i], 4);
+			float x1 = data.at<float>(sample[i], 2), y1 = data.at<float>(sample[i], 3);
 
 			a[i * 9 + 0] = x1*x0;
 			a[i * 9 + 1] = x1*y0;
@@ -239,9 +215,9 @@ public:
 
 		// A*(f11 f12 ... f33)' = 0 is singular (7 equations for 9 variables), so
 		// the solution is linear subspace of dimensionality 2.
-		// => use the last two singular vectors as a basis of the space
+		// => use the last two singular std::vectors as a basis of the space
 		// (according to SVD properties)
-		Mat cov = A.t() * A;
+		cv::Mat cov = A.t() * A;
 		eigen(cov, evals, evecs);
 		f1 = v + 7 * 9;
 		f2 = v + 8 * 9;
@@ -292,7 +268,7 @@ public:
 		for (k = 0; k < n; k++)
 		{
 			float f[9];
-			Mat F(3, 3, CV_32F, f);
+			cv::Mat F(3, 3, CV_32F, f);
 
 			// for each root form the fundamental matrix
 			float lambda = r[k], mu = 1.;
@@ -327,7 +303,7 @@ public:
 	}
 
 	/************** oriented constraints ******************/
-	void epipole(Mat &ec, const Mat *F) const
+	void epipole(cv::Mat &ec, const cv::Mat *F) const
 	{
 		ec = F->row(0).cross(F->row(2));
 
@@ -336,7 +312,7 @@ public:
 		ec = F->row(1).cross(F->row(2));
 	}
 
-	float getorisig(const Mat *F, const Mat *ec, const Mat &u) const
+	float getorisig(const cv::Mat *F, const cv::Mat *ec, const cv::Mat &u) const
 	{
 		float s1, s2;
 
@@ -345,9 +321,9 @@ public:
 		return(s1 * s2);
 	}
 
-	int all_ori_valid(const Mat *F, const Mat &data, const int *sample, int N) const
+	int all_ori_valid(const cv::Mat *F, const cv::Mat &data, const int *sample, int N) const
 	{
-		Mat ec;
+		cv::Mat ec;
 		float sig, sig1, *u;
 		int i;
 		epipole(ec, F);

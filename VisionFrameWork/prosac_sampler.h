@@ -51,8 +51,8 @@ namespace theia
 		std::default_random_engine util_generator;
 	}  // namespace
 
-	// Prosac sampler used for PROSAC implemented according to "Matching with PROSAC
-	// - Progressive Sampling Consensus" by Chum and Matas.
+	// Prosac sampler used for PROSAC implemented according to "cv::Matching with PROSAC
+	// - Progressive Sampling Consensus" by Chum and cv::Matas.
 	template <class Datum> class ProsacSampler : public Sampler < Datum >
 	{
 	public:
@@ -97,7 +97,7 @@ namespace theia
 			kth_sample_number_ = k;
 		}
 
-		// Samples the input variable data and fills the vector subset with the prosac
+		// Samples the input variable data and fills the std::vector subset with the prosac
 		// samples.
 		// NOTE: This assumes that data is in sorted order by quality where data[i] is
 		// of higher quality than data[j] for all i < j.
@@ -173,7 +173,7 @@ namespace theia
 			return true;
 		}
 
-		bool Sample(const Mat& data, std::vector<int>& subset)
+		bool Sample(const cv::Mat& data, std::vector<int>& subset)
 		{
 			// Set t_n according to the PROSAC paper's recommendation.
 			double t_n = ransac_convergence_iterations_;

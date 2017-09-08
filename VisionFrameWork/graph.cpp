@@ -61,7 +61,7 @@ template <typename captype, typename tcaptype, typename flowtype>
 template <typename captype, typename tcaptype, typename flowtype> 
 	void Graph<captype,tcaptype,flowtype>::reallocate_nodes(int num)
 {
-	int node_num_max = (int)(node_max - nodes);
+	int node_num_max = static_cast<int>(node_max - nodes);
 	node* nodes_old = nodes;
 
 	node_num_max += node_num_max / 2;
@@ -85,8 +85,8 @@ template <typename captype, typename tcaptype, typename flowtype>
 template <typename captype, typename tcaptype, typename flowtype> 
 	void Graph<captype,tcaptype,flowtype>::reallocate_arcs()
 {
-	int arc_num_max = (int)(arc_max - arcs);
-	int arc_num = (int)(arc_last - arcs);
+	int arc_num_max = static_cast<int>(arc_max - arcs);
+	int arc_num = static_cast<int>(arc_last - arcs);
 	arc* arcs_old = arcs;
 
 	arc_num_max += arc_num_max / 2; if (arc_num_max & 1) arc_num_max ++;

@@ -11,15 +11,13 @@
 #include "estimator.h"
 #include "prosac.h"
 
-using namespace std;
 using namespace theia;
-using namespace cv;
 
 struct EssentialMatrix
 {
-	Mat descriptor;
-	Mat F;
-	vector<int> mss;
+	cv::Mat descriptor;
+	cv::Mat F;
+	std::vector<int> mss;
 
 	EssentialMatrix() {}
 	EssentialMatrix(const EssentialMatrix& other)
@@ -31,12 +29,12 @@ struct EssentialMatrix
 };
 
 // This is the estimator class for estimating a homography matrix between two images. A model estimation method and error calculation method are implemented
-class EssentialMatrixEstimator : public Estimator < Mat, EssentialMatrix >
+class EssentialMatrixEstimator : public Estimator < cv::Mat, EssentialMatrix >
 {
 protected:
 
 public:
-	Mat K1i, K2ti;
+	cv::Mat K1i, K2ti;
 
 	EssentialMatrixEstimator() {}
 	~EssentialMatrixEstimator() {}
@@ -49,9 +47,9 @@ public:
 		return 7 * SampleSize();
 	}
 
-	bool EstimateModel(const Mat& data,
+	bool EstimateModel(const cv::Mat& data,
 		const int *sample,
-		vector<EssentialMatrix>* models) const
+		std::vector<EssentialMatrix>* models) const
 	{
 		// model calculation 
 		int M = SampleSize();
@@ -63,10 +61,10 @@ public:
 		return true;
 	}
 
-	bool EstimateModelNonminimal(const Mat& data,
+	bool EstimateModelNonminimal(const cv::Mat& data,
 		const int *sample,
 		int sample_number,
-		vector<EssentialMatrix>* models) const
+		std::vector<EssentialMatrix>* models) const
 	{
 
 		// model calculation 
@@ -90,7 +88,7 @@ public:
 		return true;
 	}
 
-	double Error(const Mat& point, const EssentialMatrix& model) const
+	double Error(const cv::Mat& point, const EssentialMatrix& model) const
 	{
 		const float* s = (float *)point.data;
 		const float x1 = *(s + 6);
@@ -121,9 +119,8 @@ public:
 		return (double)abs(0.5 * (d1 + d2));
 	}
 
-	float Error(const Mat& point, const Mat& descriptor) const
+	float Error(const cv::Mat& point, const cv::Mat& descriptor) const
 	{
-		cout << "ERROR!!!" << endl;
 		const float* s = (float *)point.data;
 		const float x1 = *(s + 6 - 6);
 		const float y1 = *(s + 7 - 6);
@@ -152,13 +149,13 @@ public:
 		return (double)abs(0.5 * (d1 + d2));
 	}
 
-	bool Algorithm_5_point(const Mat& data,
+	bool Algorithm_5_point(const cv::Mat& data,
 		const int *sample,
 		int sample_number,
-		vector<EssentialMatrix>* models) const
+		std::vector<EssentialMatrix>* models) const
 	{
-		Mat E, P;
-		vector<Point2d> pts1(5), pts2(5);
+		cv::Mat E, P;
+		std::vector<cv::Point2d> pts1(5), pts2(5);
 
 		for (int i = 0; i < 5; i++)
 		{
@@ -185,15 +182,15 @@ public:
 		return true;
 	}
 
-	bool Algorithm_8_point(const Mat& data,
+	bool Algorithm_8_point(const cv::Mat& data,
 		const int *sample,
 		int sample_number,
-		vector<EssentialMatrix>* models) const
+		std::vector<EssentialMatrix>* models) const
 	{
 		float f[9];
-		Mat evals(1, 9, CV_32F), evecs(9, 9, CV_32F);
-		Mat A(sample_number, 9, CV_32F);
-		Mat E(3, 3, CV_32F, f);
+		cv::Mat evals(1, 9, CV_32F), evecs(9, 9, CV_32F);
+		cv::Mat A(sample_number, 9, CV_32F);
+		cv::Mat E(3, 3, CV_32F, f);
 		int i;
 
 
@@ -207,7 +204,7 @@ public:
 			//float x0 = data.at<float>(sample[i], 0), y0 = data.at<float>(sample[i], 1);
 			//float x1 = data.at<float>(sample[i], 3), y1 = data.at<float>(sample[i], 4);
 
-			//cout << sample[i] << endl;
+			//std::cout << sample[i] << endl;
 			int idx = sample[i] * 12;
 			const float *data_ptr = ((float *)data.data + idx);
 			float x0 = *(data_ptr), y0 = *(data_ptr + 1);
@@ -226,16 +223,16 @@ public:
 
 		// A*(f11 f12 ... f33)' = 0 is singular (7 equations for 9 variables), so
 		// the solution is linear subspace of dimensionality 2.
-		// => use the last two singular vectors as a basis of the space
+		// => use the last two singular std::vectors as a basis of the space
 		// (according to SVD properties)
-		Mat cov = A.t() * A;
+		cv::Mat cov = A.t() * A;
 		eigen(cov, evals, evecs);
 
 		for (i = 0; i < 9; ++i)
 			f[i] = evecs.at<float>(8, i);
 		//f[8] = 1.0;
 
-		//cout << F << endl;
+		//std::cout << F << endl;
 
 		Model model;
 		model.descriptor = E;
@@ -244,19 +241,19 @@ public:
 		return true;
 	}
 
-	bool Algorithm_7_point(const Mat& data,
+	bool Algorithm_7_point(const cv::Mat& data,
 		const int *sample,
 		int sample_number,
-		vector<EssentialMatrix>* models) const
+		std::vector<EssentialMatrix>* models) const
 	{
 
 		float a[7 * 9], w[7], u[9 * 9], v[9 * 9], c[4], r[3];
 		float *f1, *f2;
 		float t0, t1, t2;
-		Mat evals, evecs(9, 9, CV_32F, v);
-		Mat A(7, 9, CV_32F, a);
-		Mat coeffs(1, 4, CV_32F, c);
-		Mat roots(1, 3, CV_32F, r);
+		cv::Mat evals, evecs(9, 9, CV_32F, v);
+		cv::Mat A(7, 9, CV_32F, a);
+		cv::Mat coeffs(1, 4, CV_32F, c);
+		cv::Mat roots(1, 3, CV_32F, r);
 		int i, k, n;
 
 		// form a linear system: i-th row of A(=a) represents
@@ -279,9 +276,9 @@ public:
 
 		// A*(f11 f12 ... f33)' = 0 is singular (7 equations for 9 variables), so
 		// the solution is linear subspace of dimensionality 2.
-		// => use the last two singular vectors as a basis of the space
+		// => use the last two singular std::vectors as a basis of the space
 		// (according to SVD properties)
-		Mat cov = A.t() * A;
+		cv::Mat cov = A.t() * A;
 		eigen(cov, evals, evecs);
 		f1 = v + 7 * 9;
 		f2 = v + 8 * 9;
@@ -332,7 +329,7 @@ public:
 		for (k = 0; k < n; k++)
 		{
 			float f[9];
-			Mat E(3, 3, CV_32F, f);
+			cv::Mat E(3, 3, CV_32F, f);
 
 			// for each root form the fundamental matrix
 			float lambda = r[k], mu = 1.;
@@ -368,7 +365,7 @@ public:
 	}
 
 	/************** oriented constraints ******************/
-	void epipole(Mat &ec, const Mat *F) const
+	void epipole(cv::Mat &ec, const cv::Mat *F) const
 	{
 		ec = F->row(0).cross(F->row(2));
 
@@ -377,7 +374,7 @@ public:
 		ec = F->row(1).cross(F->row(2));
 	}
 
-	float getorisig(const Mat *F, const Mat *ec, const Mat &u) const
+	float getorisig(const cv::Mat *F, const cv::Mat *ec, const cv::Mat &u) const
 	{
 		float s1, s2;
 
@@ -386,9 +383,9 @@ public:
 		return(s1 * s2);
 	}
 
-	int all_ori_valid(const Mat *F, const Mat &data, const int *sample, int N) const
+	int all_ori_valid(const cv::Mat *F, const cv::Mat &data, const int *sample, int N) const
 	{
-		Mat ec;
+		cv::Mat ec;
 		float sig, sig1, *u;
 		int i;
 		epipole(ec, F);

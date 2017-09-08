@@ -159,7 +159,7 @@ public:
 
 	// other functions for reading graph structure
 	int get_node_num() { return node_num; }
-	int get_arc_num() { return (int)(arc_last - arcs); }
+	int get_arc_num() { return static_cast<int>(arc_last - arcs); }
 	void get_arc_ends(arc_id a, node_id& i, node_id& j); // returns i,j to that a = i->j
 
 	///////////////////////////////////////////////////

@@ -1,0 +1,198 @@
+﻿  Ematrix_6pt.cc
+  5point.cpp
+  GCoptimization.cpp
+  Rpoly.cpp
+  graph.cpp
+  maxflow.cpp
+..\..\..\FundamentalMatrixFromTwoPoints\Cpp\AffineQuality\VisionFrameWork\six_point_algorithm\Ematrix_6pt.cc(787): warning C4141: 'inline': used more than once (compiling source file ..\..\..\FundamentalMatrixFromTwoPoints\Cpp\AffineQuality\VisionFrameWork\six_point_algorithm\Ematrix_6pt.cc)
+..\..\..\FundamentalMatrixFromTwoPoints\Cpp\AffineQuality\VisionFrameWork\six_point_algorithm\Ematrix_6pt.cc(1609): warning C4244: 'return': conversion from '__int64' to 'int', possible loss of data (compiling source file ..\..\..\FundamentalMatrixFromTwoPoints\Cpp\AffineQuality\VisionFrameWork\six_point_algorithm\Ematrix_6pt.cc)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\Polynomial.h(46): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data (compiling source file 5point.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\Polynomial.h(65): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data (compiling source file 5point.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\Polynomial.h(84): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data (compiling source file 5point.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\Polynomial.h(89): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data (compiling source file 5point.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\Polynomial.h(108): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data (compiling source file 5point.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\Polynomial.h(113): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data (compiling source file 5point.cpp)
+5point.cpp(11): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data (compiling source file 5point.cpp)
+5point.cpp(23): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data (compiling source file 5point.cpp)
+5point.cpp(24): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data (compiling source file 5point.cpp)
+5point.cpp(26): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data (compiling source file 5point.cpp)
+5point.cpp(27): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data (compiling source file 5point.cpp)
+5point.cpp(237): warning C4267: '=': conversion from 'size_t' to 'int', possible loss of data (compiling source file 5point.cpp)
+  GCRANSAC.cpp
+  VisionFrameWork.cpp
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\essential_estimator.cpp(149): warning C4244: 'return': conversion from 'double' to 'float', possible loss of data (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\essential_estimator.cpp(341): warning C4244: '=': conversion from 'double' to 'float', possible loss of data (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\essential_estimator.cpp(250): warning C4101: 'w': unreferenced local variable (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\essential_estimator.cpp(250): warning C4101: 'u': unreferenced local variable (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\essential_estimator.cpp(389): warning C4101: 'u': unreferenced local variable (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\fundamental_estimator.cpp(132): warning C4244: 'return': conversion from 'double' to 'float', possible loss of data (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\fundamental_estimator.cpp(280): warning C4244: '=': conversion from 'double' to 'float', possible loss of data (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\fundamental_estimator.cpp(189): warning C4101: 'w': unreferenced local variable (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\fundamental_estimator.cpp(189): warning C4101: 'u': unreferenced local variable (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\fundamental_estimator.cpp(327): warning C4101: 'u': unreferenced local variable (compiling source file VisionFrameWork.cpp)
+VisionFrameWork.cpp(52): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data (compiling source file VisionFrameWork.cpp)
+VisionFrameWork.cpp(73): warning C4305: 'initializing': truncation from 'double' to 'float' (compiling source file VisionFrameWork.cpp)
+VisionFrameWork.cpp(76): warning C4305: 'initializing': truncation from 'double' to 'float' (compiling source file VisionFrameWork.cpp)
+VisionFrameWork.cpp(203): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data (compiling source file VisionFrameWork.cpp)
+VisionFrameWork.cpp(233): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data (compiling source file VisionFrameWork.cpp)
+VisionFrameWork.cpp(271): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data (compiling source file VisionFrameWork.cpp)
+VisionFrameWork.cpp(272): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data (compiling source file VisionFrameWork.cpp)
+VisionFrameWork.cpp(296): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data (compiling source file VisionFrameWork.cpp)
+VisionFrameWork.cpp(297): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data (compiling source file VisionFrameWork.cpp)
+VisionFrameWork.cpp(343): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data (compiling source file VisionFrameWork.cpp)
+VisionFrameWork.cpp(321): warning C4477: 'printf' : format string '%d' requires an argument of type 'int', but variadic argument 1 has type 'unsigned __int64' (compiling source file VisionFrameWork.cpp)
+  VisionFrameWork.cpp(321): note: consider using '%zd' in the format string (compiling source file VisionFrameWork.cpp)
+VisionFrameWork.cpp(325): warning C4477: 'printf' : format string '%d' requires an argument of type 'int', but variadic argument 1 has type 'unsigned __int64' (compiling source file VisionFrameWork.cpp)
+  VisionFrameWork.cpp(325): note: consider using '%zd' in the format string (compiling source file VisionFrameWork.cpp)
+VisionFrameWork.cpp(355): warning C4477: 'printf' : format string '%d' requires an argument of type 'int', but variadic argument 1 has type 'unsigned __int64' (compiling source file VisionFrameWork.cpp)
+  VisionFrameWork.cpp(355): note: consider using '%zd' in the format string (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(195): warning C4244: '=': conversion from 'double' to 'int', possible loss of data (compiling source file VisionFrameWork.cpp)
+  e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(165): note: while compiling class template member function 'void GCRANSAC<FundamentalMatrixEstimator,FundamentalMatrix>::Run(const cv::Mat &,ModelEstimator,Model &,std::vector<int,std::allocator<_Ty>> &,int &,float,float,float,float,bool,bool,int,bool)'
+          with
+          [
+              ModelEstimator=FundamentalMatrixEstimator,
+              Model=FundamentalMatrix,
+              _Ty=int
+          ] (compiling source file VisionFrameWork.cpp)
+  VisionFrameWork.cpp(193): note: see reference to function template instantiation 'void GCRANSAC<FundamentalMatrixEstimator,FundamentalMatrix>::Run(const cv::Mat &,ModelEstimator,Model &,std::vector<int,std::allocator<_Ty>> &,int &,float,float,float,float,bool,bool,int,bool)' being compiled
+          with
+          [
+              ModelEstimator=FundamentalMatrixEstimator,
+              Model=FundamentalMatrix,
+              _Ty=int
+          ] (compiling source file VisionFrameWork.cpp)
+  VisionFrameWork.cpp(188): note: see reference to class template instantiation 'GCRANSAC<FundamentalMatrixEstimator,FundamentalMatrix>' being compiled (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(214): warning C4267: '+=': conversion from 'size_t' to 'int', possible loss of data (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(215): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(360): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data (compiling source file VisionFrameWork.cpp)
+  e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(356): note: while compiling class template member function 'bool GCRANSAC<FundamentalMatrixEstimator,FundamentalMatrix>::Sample(const cv::Mat &,std::vector<int,std::allocator<_Ty>> &,const std::vector<std::vector<cv::DMatch,std::allocator<cv::DMatch>>,std::allocator<std::vector<cv::DMatch,std::allocator<cv::DMatch>>>> &,int,int *)'
+          with
+          [
+              _Ty=int
+          ] (compiling source file VisionFrameWork.cpp)
+  e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(232): note: see reference to function template instantiation 'bool GCRANSAC<FundamentalMatrixEstimator,FundamentalMatrix>::Sample(const cv::Mat &,std::vector<int,std::allocator<_Ty>> &,const std::vector<std::vector<cv::DMatch,std::allocator<cv::DMatch>>,std::allocator<std::vector<cv::DMatch,std::allocator<cv::DMatch>>>> &,int,int *)' being compiled
+          with
+          [
+              _Ty=int
+          ] (compiling source file VisionFrameWork.cpp)
+  e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(165): note: while compiling class template member function 'void GCRANSAC<FundamentalMatrixEstimator,FundamentalMatrix>::Run(const cv::Mat &,ModelEstimator,Model &,std::vector<int,std::allocator<_Ty>> &,int &,float,float,float,float,bool,bool,int,bool)'
+          with
+          [
+              ModelEstimator=FundamentalMatrixEstimator,
+              Model=FundamentalMatrix,
+              _Ty=int
+          ] (compiling source file VisionFrameWork.cpp)
+  VisionFrameWork.cpp(193): note: see reference to function template instantiation 'void GCRANSAC<FundamentalMatrixEstimator,FundamentalMatrix>::Run(const cv::Mat &,ModelEstimator,Model &,std::vector<int,std::allocator<_Ty>> &,int &,float,float,float,float,bool,bool,int,bool)' being compiled
+          with
+          [
+              ModelEstimator=FundamentalMatrixEstimator,
+              Model=FundamentalMatrix,
+              _Ty=int
+          ] (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(639): warning C4244: '=': conversion from 'double' to 'float', possible loss of data (compiling source file VisionFrameWork.cpp)
+  e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(613): note: while compiling class template member function 'Score GCRANSAC<FundamentalMatrixEstimator,FundamentalMatrix>::GetScore(const cv::Mat &,const Model &,const ModelEstimator &,const float,std::vector<int,std::allocator<_Ty>> &,bool)'
+          with
+          [
+              Model=FundamentalMatrix,
+              ModelEstimator=FundamentalMatrixEstimator,
+              _Ty=int
+          ] (compiling source file VisionFrameWork.cpp)
+  e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(243): note: see reference to function template instantiation 'Score GCRANSAC<FundamentalMatrixEstimator,FundamentalMatrix>::GetScore(const cv::Mat &,const Model &,const ModelEstimator &,const float,std::vector<int,std::allocator<_Ty>> &,bool)' being compiled
+          with
+          [
+              Model=FundamentalMatrix,
+              ModelEstimator=FundamentalMatrixEstimator,
+              _Ty=int
+          ] (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(480): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data (compiling source file VisionFrameWork.cpp)
+  e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(469): note: while compiling class template member function 'bool GCRANSAC<FundamentalMatrixEstimator,FundamentalMatrix>::FullLocalOptimization(const cv::Mat &,std::vector<int,std::allocator<_Ty>> &,Model &,Score &,int &,const ModelEstimator &,const int,const float)'
+          with
+          [
+              _Ty=int,
+              Model=FundamentalMatrix,
+              ModelEstimator=FundamentalMatrixEstimator
+          ] (compiling source file VisionFrameWork.cpp)
+  e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(279): note: see reference to function template instantiation 'bool GCRANSAC<FundamentalMatrixEstimator,FundamentalMatrix>::FullLocalOptimization(const cv::Mat &,std::vector<int,std::allocator<_Ty>> &,Model &,Score &,int &,const ModelEstimator &,const int,const float)' being compiled
+          with
+          [
+              _Ty=int,
+              Model=FundamentalMatrix,
+              ModelEstimator=FundamentalMatrixEstimator
+          ] (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(518): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(554): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data (compiling source file VisionFrameWork.cpp)
+  e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(532): note: while compiling class template member function 'bool GCRANSAC<FundamentalMatrixEstimator,FundamentalMatrix>::LocalOptimizationWithGraphCut(const cv::Mat &,std::vector<int,std::allocator<_Ty>> &,Model &,Score &,int &,const ModelEstimator &,const int,const float)'
+          with
+          [
+              _Ty=int,
+              Model=FundamentalMatrix,
+              ModelEstimator=FundamentalMatrixEstimator
+          ] (compiling source file VisionFrameWork.cpp)
+  e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(270): note: see reference to function template instantiation 'bool GCRANSAC<FundamentalMatrixEstimator,FundamentalMatrix>::LocalOptimizationWithGraphCut(const cv::Mat &,std::vector<int,std::allocator<_Ty>> &,Model &,Score &,int &,const ModelEstimator &,const int,const float)' being compiled
+          with
+          [
+              _Ty=int,
+              Model=FundamentalMatrix,
+              ModelEstimator=FundamentalMatrixEstimator
+          ] (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(563): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(587): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(686): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data (compiling source file VisionFrameWork.cpp)
+  e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(675): note: while compiling class template member function 'void GCRANSAC<FundamentalMatrixEstimator,FundamentalMatrix>::Labeling(const cv::Mat &,int,const std::vector<std::vector<cv::DMatch,std::allocator<_Ty>>,std::allocator<std::vector<_Ty,std::allocator<_Ty>>>> &,Model &,ModelEstimator,float,float,std::vector<int,std::allocator<int>> &,float &)'
+          with
+          [
+              _Ty=cv::DMatch,
+              Model=FundamentalMatrix,
+              ModelEstimator=FundamentalMatrixEstimator
+          ] (compiling source file VisionFrameWork.cpp)
+  e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(550): note: see reference to function template instantiation 'void GCRANSAC<FundamentalMatrixEstimator,FundamentalMatrix>::Labeling(const cv::Mat &,int,const std::vector<std::vector<cv::DMatch,std::allocator<_Ty>>,std::allocator<std::vector<_Ty,std::allocator<_Ty>>>> &,Model &,ModelEstimator,float,float,std::vector<int,std::allocator<int>> &,float &)' being compiled
+          with
+          [
+              _Ty=cv::DMatch,
+              Model=FundamentalMatrix,
+              ModelEstimator=FundamentalMatrixEstimator
+          ] (compiling source file VisionFrameWork.cpp)
+  e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(356): note: while compiling class template member function 'bool GCRANSAC<FundamentalMatrixEstimator,FundamentalMatrix>::Sample(const cv::Mat &,std::vector<int,std::allocator<_Ty>> &,const std::vector<std::vector<cv::DMatch,std::allocator<cv::DMatch>>,std::allocator<std::vector<cv::DMatch,std::allocator<cv::DMatch>>>> &,int,int *)'
+          with
+          [
+              _Ty=int
+          ] (compiling source file VisionFrameWork.cpp)
+  e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(232): note: see reference to function template instantiation 'bool GCRANSAC<FundamentalMatrixEstimator,FundamentalMatrix>::Sample(const cv::Mat &,std::vector<int,std::allocator<_Ty>> &,const std::vector<std::vector<cv::DMatch,std::allocator<cv::DMatch>>,std::allocator<std::vector<cv::DMatch,std::allocator<cv::DMatch>>>> &,int,int *)' being compiled
+          with
+          [
+              _Ty=int
+          ] (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(696): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(703): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(706): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(706): warning C4244: 'initializing': conversion from 'double' to 'const float', possible loss of data (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(709): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(709): warning C4244: 'initializing': conversion from 'double' to 'const float', possible loss of data (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(390): warning C4018: '<': signed/unsigned mismatch (compiling source file VisionFrameWork.cpp)
+  e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(379): note: while compiling class template member function 'Score GCRANSAC<FundamentalMatrixEstimator,FundamentalMatrix>::OneStepLocalOptimization(const cv::Mat &,const float,float,const int,Model &,const ModelEstimator &,std::vector<int,std::allocator<_Ty>> &,int)'
+          with
+          [
+              Model=FundamentalMatrix,
+              ModelEstimator=FundamentalMatrixEstimator,
+              _Ty=int
+          ] (compiling source file VisionFrameWork.cpp)
+  e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(500): note: see reference to function template instantiation 'Score GCRANSAC<FundamentalMatrixEstimator,FundamentalMatrix>::OneStepLocalOptimization(const cv::Mat &,const float,float,const int,Model &,const ModelEstimator &,std::vector<int,std::allocator<_Ty>> &,int)' being compiled
+          with
+          [
+              Model=FundamentalMatrix,
+              ModelEstimator=FundamentalMatrixEstimator,
+              _Ty=int
+          ] (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(393): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(401): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(429): warning C4018: '<=': signed/unsigned mismatch (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(433): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data (compiling source file VisionFrameWork.cpp)
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\GCRANSAC.h(442): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data (compiling source file VisionFrameWork.cpp)
+  Generating code
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\gcransac.h(368): warning C4715: 'GCRANSAC<FundamentalMatrixEstimator,FundamentalMatrix>::Sample': not all control paths return a value
+e:\dani\kutatás\projektek\graphcutloransac\graph-cut-ransac-git\visionframework\gcransac.h(520): warning C4715: 'GCRANSAC<FundamentalMatrixEstimator,FundamentalMatrix>::FullLocalOptimization': not all control paths return a value
+  29 of 1262 functions ( 2.3%) were compiled, the rest were copied from previous compilation.
+    0 functions were new in current compilation
+    7 functions had inline decision re-evaluated but remain unchanged
+  Finished generating code
+  VisionFrameWork.vcxproj -> E:\Dani\Kutatás\Projektek\GraphCutLORANSAC\graph-cut-ransac-git\x64\Release\VisionFrameWork.exe

@@ -1,22 +1,13 @@
 #include "stdafx.h"
 
-#include <iostream>
-#include <math.h>
-#include <chrono>
-#include <random>
-#include <vector>
-#include <cv.h>
-
 #include "estimator.h"
 #include "prosac.h"
 
-using namespace std;
 using namespace theia;
-using namespace cv;
 
 struct Homography
 {
-	Mat descriptor;
+	cv::Mat descriptor;
 	Homography() {}
 	Homography(const Homography& other)
 	{
@@ -25,7 +16,7 @@ struct Homography
 };
 
 // This is the estimator class for estimating a homography matrix between two images. A model estimation method and error calculation method are implemented
-class RobustHomographyEstimator : public Estimator < Mat, Homography >
+class RobustHomographyEstimator : public Estimator < cv::Mat, Homography >
 {
 protected:
 
@@ -41,15 +32,15 @@ public:
 		return 28;
 	}
 
-	bool EstimateModel(const Mat& data,
+	bool EstimateModel(const cv::Mat& data,
 		const int *sample,
-		vector<Homography>* models) const
+		std::vector<Homography>* models) const
 	{
 		// model calculation 
 		int M = SampleSize();
 		
-		vector<Point2d> pts1(M);
-		vector<Point2d> pts2(M);
+		std::vector<cv::Point2d> pts1(M);
+		std::vector<cv::Point2d> pts2(M);
 
 		for (int i = 0; i < M; ++i)
 		{
@@ -59,7 +50,7 @@ public:
 			pts2[i].y = (double)data.at<float>(sample[i], 4);
 		}
 
-		Mat H = findHomography(pts1, pts2);
+		cv::Mat H = cv::findHomography(pts1, pts2);
 		H.convertTo(H, CV_32F);
 
 		if (H.cols == 0)
@@ -71,10 +62,10 @@ public:
 		return true;
 	}
 
-	bool EstimateModelNonminimal(const Mat& data,
+	bool EstimateModelNonminimal(const cv::Mat& data,
 		const int *sample,
 		int sample_number,
-		vector<Homography>* models) const
+		std::vector<Homography>* models) const
 	{
 
 		if (sample_number < SampleSize())
@@ -83,8 +74,8 @@ public:
 		// model calculation 
 		int M = sample_number;
 
-		vector<Point2d> pts1(M);
-		vector<Point2d> pts2(M);
+		std::vector<cv::Point2d> pts1(M);
+		std::vector<cv::Point2d> pts2(M);
 
 		for (int i = 0; i < M; ++i)
 		{
@@ -94,12 +85,12 @@ public:
 			pts2[i].y = (double)data.at<float>(sample[i], 4);
 		}
 
-		Mat H = findHomography(pts1, pts2, NULL, 0);
+		cv::Mat H = cv::findHomography(pts1, pts2, NULL, 0);
 		H.convertTo(H, CV_32F);
 
 		if (H.cols == 0)
 		{
-			H = findHomography(pts1, pts2, NULL, CV_LMEDS);
+			H = cv::findHomography(pts1, pts2, NULL, CV_LMEDS);
 			H.convertTo(H, CV_32F);
 
 			if (H.cols == 0)
@@ -112,7 +103,7 @@ public:
 		return true;
 	}
 
-	double Error(const Mat& point, const Homography& model) const
+	double Error(const cv::Mat& point, const Homography& model) const
 	{
 		const float* s = (float *)point.data;
 		const float* p = (float *)model.descriptor.data;
@@ -132,7 +123,7 @@ public:
 		return d1*d1 + d2*d2;
 	}
 
-	float Error(const Mat& point, const Mat& descriptor) const
+	float Error(const cv::Mat& point, const cv::Mat& descriptor) const
 	{
 		const float* s = (float *)point.data;
 		const float* p = (float *)descriptor.data;
@@ -152,13 +143,13 @@ public:
 		return d1*d1 + d2*d2;
 	}
 
-	bool Algorithm_4_point(const Mat& data,
+	bool Algorithm_4_point(const cv::Mat& data,
 		const int *sample,
 		int sample_number,
-		vector<Homography>* models) const
+		std::vector<Homography>* models) const
 	{
 		/*float a[8 * 9];
-		Mat A(8, 9, CV_32F, a);
+		cv::Mat A(8, 9, CV_32F, a);
 		
 		for (int i = 0; i < 4; ++i)
 		{

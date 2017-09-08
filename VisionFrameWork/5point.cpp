@@ -2,9 +2,6 @@
 #include "Polynomial.h"
 #include "Rpoly.h"
 
-using namespace std;
-using namespace cv;
-
 static void ProjectionsFromEssential(const cv::Mat &E, cv::Mat &P1, cv::Mat &P2, cv::Mat &P3, cv::Mat &P4);
 static cv::Mat TriangulatePoint(const cv::Point2d &pt1, const cv::Point2d &pt2, const cv::Mat &P1, const cv::Mat &P2);
 static double CalcDepth(const cv::Mat &X, const cv::Mat &P);
@@ -119,7 +116,7 @@ bool Solve5PointEssential(std::vector<cv::Point2d> &pts1, std::vector<cv::Point2
     int degrees = 10;
     double coeffs[11];
     double zeror[11], zeroi[11];
-    vector <double> solutions;
+    std::vector <double> solutions;
 
     // rpoly_ak1 expects highest power first
     for(int i=0; i < a.rows; i++) {
@@ -135,7 +132,7 @@ bool Solve5PointEssential(std::vector<cv::Point2d> &pts1, std::vector<cv::Point2
         }
     }
 
-    //cout << "Found " << solutions.size() << " solutions!" << endl;
+    //std::cout << "Found " << solutions.size() << " solutions!" << endl;
 
     if(solutions.empty()) {
         return false;

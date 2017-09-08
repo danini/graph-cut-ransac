@@ -1751,7 +1751,7 @@ void GCoptimization::printStatus1(int cycle, bool isSwap, gcoclock_t ticks0)
 	{
 		// Don't print time if time is already printed at finer scale, since printing
 		// itself takes time (esp in MATLAB) and makes time useless at this level
-		int ms = (int)(1000*(ticks1 - ticks0) / GCO_CLOCKS_PER_SEC);
+		int ms = static_cast<int>(1000*(ticks1 - ticks0) / GCO_CLOCKS_PER_SEC);
 		printf(" \t%d ms",ms);
 	}
 	printf("\n");
@@ -1762,7 +1762,7 @@ void GCoptimization::printStatus2(int alpha, int beta, int numVars, gcoclock_t t
 {
 	if ( m_verbosity < 2 )
 		return;
-	int microsec = (int)(1000000*(gcoclock() - ticks0) / GCO_CLOCKS_PER_SEC);
+	int microsec = static_cast<int>(1000000*(gcoclock() - ticks0) / GCO_CLOCKS_PER_SEC);
 	if ( beta >= 0 )
 		printf("gco>>   after swap(%d,%d):",alpha+INDEX0,beta+INDEX0);
 	else

@@ -3,7 +3,6 @@
 #include <cv.h>
 #include <opencv2\highgui\highgui.hpp>
 #include "GCoptimization.h"
-#include "Regression.h"
 #include "prosac_sampler.h"
 
 #define PRINT_TIMES 0
@@ -21,213 +20,229 @@ template <class ModelEstimator, class Model>
 class GCRANSAC
 {
 public:
-	enum ModelType { Line2d, Homography, FundamentalMatrix };
 
-	GCRANSAC(ModelType _type) { type = _type; time_limit = FLT_MAX; desired_fps = -1; }
+	GCRANSAC() { time_limit = FLT_MAX; desired_fps = -1; }
 	~GCRANSAC() { }
 
-	void Run(const Mat &points, ModelEstimator estimator, Model &obtained_model, vector<int> &obtained_inliers, float threshold, float lambda, float sphere_size, float probability, int &iteration_number, bool user_graph_cut, bool use_inlier_limit = true, bool only_one_lo = false, bool apply_local_optimization = true);
-	bool Sample(const Mat &points, vector<int> &pool, const vector<vector<DMatch>> &neighbors, int sample_number, int *sample);
-	float GetEnergy() { return obtained_energy; }
-	void SetFPS(int fps) { desired_fps = fps; time_limit = 1.0f / fps; }
+	// The main method applying Graph-Cut RANSAC to the input data points
+	void Run(const cv::Mat &points, // Data points
+		ModelEstimator estimator, // The model estimator
+		Model &obtained_model, // The output model
+		std::vector<int> &obtained_inliers, // The output inlier set
+		int &iteration_number,
+		float threshold, // The threshold for model estimation
+		float lambda, // The weight of the spatial coherence term
+		float sphere_size, // The sphere's radius for neighborhood computation 
+		float probability = 0.05, // The probability of finding an all inlier sample, default 
+		bool user_graph_cut = true, // True - GC-RANSAC; false - LO-RANSAC 
+		bool use_inlier_limit = true, // Use a subset of the inliers for the local optimization step or not
+		int local_optimization_limit = 20, // The iteration limit for the local optimization step
+		bool apply_local_optimization = true); // Apply local optimization or not (basically a simple RANSAC)
 
-	int GetLONumber() { return lo_number; }
-	int GetGCNumber() { return gc_number; }
+	bool Sample(const cv::Mat &points, 
+		std::vector<int> &pool, 
+		const std::vector<std::vector<cv::DMatch>> &neighbors, 
+		int sample_number, 
+		int *sample);
 
-	Score GetScore(const Mat &points, const Model &model, const ModelEstimator &estimator, const float threshold, vector<int> &inliers, bool store_inliers = true);
-	int ScoreLess(const Score &s1, const Score &s2, int type = 1) { return type == 1 ? (s1.I < s2.I || (s1.I == s2.I && s1.J < s2.J)) : s1.J < s2.J; }
+	float GetEnergy() { return obtained_energy; } // Return the energy of the obtained solution
+	void SetFPS(int fps) { desired_fps = fps; time_limit = 1.0f / fps; } // Set a desired FPS value
+
+	int GetLONumber() { return lo_number; } // Return the number of the applied local optimization steps
+	int GetGCNumber() { return gc_number; } // Return the number of the applied graph-cuts
+
+	// Return the score of a model w.r.t. the data points and the threshold
+	Score GetScore(const cv::Mat &points, // The data points
+		const Model &model, // The current model
+		const ModelEstimator &estimator, // The model estimator
+		const float threshold, // The threshold for model estimation
+		std::vector<int> &inliers, // The inlier set
+		bool store_inliers = true); // Store the inliers or not
+
+	// Decides whether score s2 is higher than s1
+	int ScoreLess(const Score &s1, // Input score
+		const Score &s2, // Input score
+		int type = 1) // Decision type: 1 -- RANSAC-like, 2 -- MSAC-like 
+	{ 
+		return type == 1 ? (s1.I < s2.I || (s1.I == s2.I && s1.J < s2.J)) : s1.J < s2.J; 
+	}
 
 protected:
-	int gc_number, lo_number;
-	float time_limit;
-	int desired_fps;
-	bool apply_local_optimization;
-	bool only_one_lo;
-	bool use_inlier_limit;
-	float lambda;
-	float threshold;
-	int knn;
-	ModelType type;
-	float obtained_energy;
-	vector<vector<DMatch>> neighbours;
-	int neighbor_number;
-	int iteration_limit;
-	int point_number;
+	int										gc_number, lo_number;		// The applied LO and GC steps
+	float									time_limit;					// The desired time limit
+	int										desired_fps;				// The desired fps
+	bool									apply_local_optimization;	// Apply LO or not
+	int										local_optimization_limit;	// The limit for the local optimization step
+	bool									use_inlier_limit;			// Use inlier limit for LO or not
+	float									lambda;						// The weight for the spatial coherence term
+	float									threshold;					// The threshold for the inlier decision
+	float									obtained_energy;			// The energy of the result
+	std::vector<std::vector<cv::DMatch>>	neighbours;					// The neighborhood structure
+	int										neighbor_number;			// The number of neighbors
+	int										iteration_limit;			// The iteration limit
+	int										point_number;				// The point number
 
-	Graph<float, float, float> *graph;
+	Graph<float, float, float>				*graph;						// The graph for graph-cut
 
-	int DesiredIterationNumber(int inlier_number, int point_number, int sample_size, float probability);
-	void Labeling(const Mat &points,
-		int neighbor_number,
-		const vector<vector<DMatch>> &neighbors,
-		Model &model,
-		ModelEstimator estimator,
-		float lambda,
-		float threshold,
-		vector<int> &inliers,
-		float &energy);
+	// Computes the desired iteration number for RANSAC w.r.t. to the current inlier number
+	int DesiredIterationNumber(int inlier_number, // The inlier number
+		int point_number, // The point number
+		int sample_size, // The sample size
+		float probability); // The desired probability
 
-	bool FullLocalOptimization(const Mat &points,
-		vector<int> &so_far_the_best_inliers,
-		Model &so_far_the_best_model,
-		Score &so_far_the_best_score,
-		int &max_iteration,
-		const ModelEstimator &estimator,
-		const int trial_number,
-		const float probability);
+	// Returns a labeling w.r.t. the current model and point set
+	void Labeling(const cv::Mat &points, // The input data points
+		int neighbor_number, // The neighbor number in the graph
+		const std::vector<std::vector<cv::DMatch>> &neighbors, // The neighborhood
+		Model &model, // The current model
+		ModelEstimator estimator, // The model estimator
+		float lambda, // The weight for the spatial coherence term
+		float threshold, // The threshold for the inlier-outlier decision
+		std::vector<int> &inliers, // The resulting inlier set
+		float &energy); // The resulting energy
 
-	Score OneStepLocalOptimization(const Mat &points,
-		const float threshold,
-		float inner_threshold,
-		const int inlier_limit,
-		Model &model,
-		const ModelEstimator &estimator,
-		vector<int> &inliers,
-		int lsq_number = 4);
+	// Apply the local optimization step of LO-RANSAC
+	bool FullLocalOptimization(const cv::Mat &points, // The input data points
+		std::vector<int> &so_far_the_best_inliers, // The input, than the resulting inlier set
+		Model &so_far_the_best_model, // The current model
+		Score &so_far_the_best_score, // The current score
+		int &max_iteration, // The iteration limit
+		const ModelEstimator &estimator, // The model estimator
+		const int trial_number, // The max trial number
+		const float probability); // The desired probability
 
-	bool LocalOptimizationWithGraphCut(const Mat &points,
-		vector<int> &so_far_the_best_inliers,
-		Model &so_far_the_best_model,
-		Score &so_far_the_best_score,
-		int &max_iteration,
-		const ModelEstimator &estimator,
-		const int trial_number,
-		const float probability);
+	// Apply one local optimization step of LO-RANSAC
+	Score OneStepLocalOptimization(const cv::Mat &points, // The input data points
+		const float threshold, // The threshold for the inlier-outlier decision
+		float inner_threshold, // The inner threshold for LO
+		const int inlier_limit, // The inlier limit
+		Model &model, // The resulting model
+		const ModelEstimator &estimator, // The model estimator
+		std::vector<int> &inliers, // The resulting inlier set
+		int lsq_number = 4); // The number of least-squares fitting
 
+	// Apply the graph-cut optimization for GC-RANSAC
+	bool LocalOptimizationWithGraphCut(const cv::Mat &points, // The input data points
+		std::vector<int> &so_far_the_best_inliers, // The input, than the resulting inlier set
+		Model &so_far_the_best_model, // The current model
+		Score &so_far_the_best_score, // The current score
+		int &max_iteration, // The iteration limit
+		const ModelEstimator &estimator, // The model estimator
+		const int trial_number, // The max trial number
+		const float probability); // The desired probability
+
+	// Calculate the weight for the spatial coherence term w.r.t. to the current inlier number
 	float CalculateLambda(int inlier_number);
 };
 
+// Computes the desired iteration number for RANSAC w.r.t. to the current inlier number
 template <class ModelEstimator, class Model>
 int GCRANSAC<ModelEstimator, Model>::DesiredIterationNumber(int inlier_number, int point_number, int sample_size,  float probability)
 {
-	float q = pow((float)inlier_number / point_number, sample_size);
+	float q = pow(static_cast<float>(inlier_number) / point_number, sample_size);
 
 	float iter = log(probability) / log(1 - q);
 	if (iter < 0)
 		return INT_MAX;
-	return (int)iter + 1;
+	return static_cast<int>(iter) + 1;
 }
 
+// The main method applying Graph-Cut RANSAC to the input data points
 template <class ModelEstimator, class Model>
-void GCRANSAC<ModelEstimator, Model>::Run(const Mat &points, 
+void GCRANSAC<ModelEstimator, Model>::Run(const cv::Mat &points, 
 	ModelEstimator estimator,
 	Model &obtained_model,
-	vector<int> &obtained_inliers,
+	std::vector<int> &obtained_inliers,
+	int &iteration_number,
 	float threshold, 
 	float lambda, 
 	float sphere_size,
 	float probability, 
-	int &iteration_number,
 	bool use_graph_cut, 
 	bool use_inlier_limit,
-	bool only_one_lo,
+	int local_optimization_limit,
 	bool apply_local_optimization)
 {
+	// Initialization
 	std::chrono::time_point<std::chrono::system_clock> start, end;
 	std::chrono::duration<double> elapsed_seconds;
-
-	this->apply_local_optimization = apply_local_optimization;
-	this->only_one_lo = only_one_lo;
-	this->use_inlier_limit = use_inlier_limit;
-	this->threshold = threshold;
-	this->lambda = lambda;
-	gc_number = 0;
-	lo_number = 0;
-	point_number = points.rows;
 
 	const int min_iteration = 0;
 	const int knn = 6;
 	const int iter_before_lo = 50;
 	const int sample_number = estimator.SampleSize();
-	iteration_limit = 5e3;
 	const float distance = sphere_size;
-	
-	// Determine neighborhood
-#if PRINT_TIMES
-	start = std::chrono::system_clock::now();
-#endif
-	FlannBasedMatcher flann(new cv::flann::KDTreeIndexParams(4), new cv::flann::SearchParams(6));
-	neighbours.resize(0);
-	if (lambda > 0.0)
-		flann.radiusMatch(points, points, neighbours, distance);
 
-	// Initialize graph-cut
-	neighbor_number = 0;
-	if (lambda > 0.0)
-	{
-		for (int i = 0; i < neighbours.size(); ++i)
-			neighbor_number += neighbours[i].size() - 1;
-		lambda = CalculateLambda(0.50 * point_number);
-	}
+	this->apply_local_optimization = apply_local_optimization;
+	this->local_optimization_limit = local_optimization_limit;
+	this->use_inlier_limit = use_inlier_limit;
+	this->threshold = threshold;
+	this->lambda = lambda;
 
-#if PRINT_TIMES
-	end = std::chrono::system_clock::now();
-	elapsed_seconds = end - start;
-	
-	ofstream file("time_distribution.csv", ios::app);
-	file << elapsed_seconds.count() << ";";
-	//printf("[TIME] FLANN = %f secs\n", elapsed_seconds);
-
-	float time_sampling = 0;
-	float time_graph_cut = 0;
-	float time_lo = 0;
-#endif
-
-	// Main iteration
 	float final_energy = 0;
 	int iteration = 0;
 	int max_iteration = DesiredIterationNumber(1, points.rows, sample_number, probability);
-	vector<int> *so_far_the_best_inlier_indices = NULL;
-	Model so_far_the_best_model;
-	Score so_far_the_best_score = {0,0};
 	int lo_count = 0;
 	int *sample = new int[sample_number];
 	bool do_local_optimization = false;
 	int inl_offset = 0;
 	int counter_for_inlier_vecs[] = { 0,0 };
-	vector<vector<int>> temp_inner_inliers(2);
+	Model so_far_the_best_model;
+	Score so_far_the_best_score = { 0,0 };
+	std::vector<std::vector<int>> temp_inner_inliers(2);
+	std::vector<int> *so_far_the_best_inlier_indices = NULL;
 
-	vector<int> pool(points.rows);
-	for (int i = 0; i < points.rows; ++i)
-		pool[i] = i; 
+	iteration_limit = 5e3;
+	gc_number = 0;
+	lo_number = 0;
+	point_number = points.rows;
+
+	// Initialize the pool for sampling (TODO: change sampler)
+	std::vector<int> pool(point_number);
+	for (int i = 0; i < point_number; ++i)
+		pool[i] = i;
+	
+	// Compute the neighborhood graph
+	cv::FlannBasedMatcher flann(new cv::flann::KDTreeIndexParams(4), new cv::flann::SearchParams(6));
+	neighbours.resize(0);
+	if (lambda > 0.0) // Compute the neighborhood if the weight is not zero
+	{
+		flann.radiusMatch(points, points, neighbours, distance);
+
+		neighbor_number = 0;
+		for (int i = 0; i < neighbours.size(); ++i)
+			neighbor_number += neighbours[i].size() - 1;
+		lambda = CalculateLambda(0.50 * point_number);
+	}
 
 	if (desired_fps > -1)
 		start = std::chrono::system_clock::now();
 
+	// The main RANSAC iteration
 	while (min_iteration > iteration || iteration < MIN(max_iteration, iteration_limit))
 	{
 		do_local_optimization = false;
 		++iteration;
 
 		// Sample a minimal subset
-		vector<Model> models;
-#if PRINT_TIMES
-		start = std::chrono::system_clock::now();
-#endif 
-		while (1)
+		std::vector<Model> models;
+
+		while (1) // Sample while needed
 		{
-			if (!Sample(points, pool, neighbours, sample_number, sample))
+			if (!Sample(points, pool, neighbours, sample_number, sample)) // Sampling
 				continue;
 			 
- 			if (estimator.EstimateModel(points, sample, &models))
+ 			if (estimator.EstimateModel(points, sample, &models)) // Estimate (and validate) models using the current sample
 				break; 
-		}                  
-
-#if PRINT_TIMES
-		end = std::chrono::system_clock::now();
-		elapsed_seconds = end - start;
-		time_sampling += (float)elapsed_seconds.count();
-#endif
+		}            
 
 		// Select the so-far-the-best from the estimated models
-#if PRINT_TIMES 
-		start = std::chrono::system_clock::now();
-#endif
 		for (int model_idx = 0; model_idx < models.size(); ++model_idx)
 		{
 			// Get the inliers of the non-optimized model
 			Score score = GetScore(points, models[model_idx], estimator, threshold, temp_inner_inliers[inl_offset], false);
 			
+			// Store the model of its score is higher than that of the previous best
 			if (ScoreLess(so_far_the_best_score, score))
 			{
 				inl_offset = (inl_offset + 1) % 2;
@@ -241,17 +256,11 @@ void GCRANSAC<ModelEstimator, Model>::Run(const Mat &points,
 			}
 		}
 
-#if PRINT_TIMES
-		end = std::chrono::system_clock::now();
-		elapsed_seconds = end - start;
-		time_graph_cut += (float)elapsed_seconds.count();
-
-		start = std::chrono::system_clock::now(); 
-#endif
-
+		// Decide whether a local optimization is needed or not
 		if (iteration > iter_before_lo && lo_count == 0 && so_far_the_best_score.I > 7)
 			do_local_optimization = true;
 
+		// Apply local optimziation
 		if (apply_local_optimization && do_local_optimization)
 		{
 			++lo_count;
@@ -264,7 +273,7 @@ void GCRANSAC<ModelEstimator, Model>::Run(const Mat &points,
 					so_far_the_best_score,
 					max_iteration, 
 					estimator,
-					only_one_lo ? 1 : 20,
+					local_optimization_limit,
 					probability);
 			else
 				FullLocalOptimization(points,
@@ -273,10 +282,10 @@ void GCRANSAC<ModelEstimator, Model>::Run(const Mat &points,
 					so_far_the_best_score,
 					max_iteration,
 					estimator,
-					only_one_lo ? 1 : 20,
+					local_optimization_limit,
 					probability);
 
-			max_iteration = DesiredIterationNumber(so_far_the_best_score.I, points.rows, sample_number, probability);
+			max_iteration = DesiredIterationNumber(so_far_the_best_score.I, point_number, sample_number, probability);
 			if (lambda > 0.0)
 				lambda = CalculateLambda(so_far_the_best_score.I);
 		}
@@ -290,15 +299,10 @@ void GCRANSAC<ModelEstimator, Model>::Run(const Mat &points,
 			if (elapsed_seconds.count() > time_limit)
 				break;
 		}
-
-#if PRINT_TIMES
-		end = std::chrono::system_clock::now();
-		elapsed_seconds = end - start;
-		time_lo += (float)elapsed_seconds.count();
-#endif
 	}
 	delete sample;
 
+	// Apply a final local optimization if it hasn't been applied yet
 	if (apply_local_optimization && lo_count == 0)
 	{
 		++lo_count;
@@ -311,7 +315,7 @@ void GCRANSAC<ModelEstimator, Model>::Run(const Mat &points,
 				so_far_the_best_score,
 				max_iteration,
 				estimator,
-				only_one_lo ? 1 : 20,
+				local_optimization_limit,
 				probability);
 		else
 			FullLocalOptimization(points,
@@ -320,27 +324,20 @@ void GCRANSAC<ModelEstimator, Model>::Run(const Mat &points,
 				so_far_the_best_score,
 				max_iteration,
 				estimator,
-				only_one_lo ? 1 : 20,
+				local_optimization_limit,
 				probability);
 	}
 
+	// Recalculate the score if needed
 	if (temp_inner_inliers[inl_offset].size() != so_far_the_best_score.I)
 		Score score = GetScore(points, so_far_the_best_model, estimator, threshold, temp_inner_inliers[inl_offset]);
 	 
-	vector<Model> models;
+	// Estimate the final model using the full inlier set
+	std::vector<Model> models;
 	estimator.EstimateModelNonminimal(points, &(temp_inner_inliers[inl_offset])[0], so_far_the_best_score.I, &models);
 
 	if (models.size() > 0)
 		so_far_the_best_model.descriptor = models[0].descriptor;
-
-#if PRINT_TIMES
-	//printf("[TIME] Sampling = %f secs\n", time_sampling);
-	//printf("[TIME] Graph Cut = %f secs\n", time_graph_cut);
-	//printf("[TIME] Local Optimization = %f secs\n", time_lo);
-	
-	file << time_sampling << ";" << time_graph_cut << "; " << time_lo << "\n";
-	file.close();
-#endif
 
 	obtained_inliers = temp_inner_inliers[inl_offset];
 	obtained_model = so_far_the_best_model;
@@ -350,17 +347,17 @@ void GCRANSAC<ModelEstimator, Model>::Run(const Mat &points,
 template <class ModelEstimator, class Model>
 float GCRANSAC<ModelEstimator, Model>::CalculateLambda(int inlier_number)
 {
-	float lambda = (point_number * ((float)inlier_number / point_number)) / (float)neighbor_number;
+	float lambda = (point_number * (static_cast<float>(inlier_number) / point_number)) / static_cast<float>(neighbor_number);
 	return lambda;
 }
 
 template <class ModelEstimator, class Model>
-bool GCRANSAC<ModelEstimator, Model>::Sample(const Mat &points, vector<int> &pool, const vector<vector<DMatch>> &neighbors, int sample_number, int *sample)
+bool GCRANSAC<ModelEstimator, Model>::Sample(const cv::Mat &points, std::vector<int> &pool, const std::vector<std::vector<cv::DMatch>> &neighbors, int sample_number, int *sample)
 {
 	// TODO: replacable sampler
 	for (int i = 0; i < sample_number; ++i)
 	{
-		int idx = (pool.size() - 1) * (float)rand() / RAND_MAX;
+		int idx = (pool.size() - 1) * static_cast<float>(rand()) / RAND_MAX;
 		sample[i] = pool[idx];
 		pool.erase(pool.begin() + idx);
 	}
@@ -371,13 +368,13 @@ bool GCRANSAC<ModelEstimator, Model>::Sample(const Mat &points, vector<int> &poo
 }
 
 template <class ModelEstimator, class Model>
-Score GCRANSAC<ModelEstimator, Model>::OneStepLocalOptimization(const Mat &points,
+Score GCRANSAC<ModelEstimator, Model>::OneStepLocalOptimization(const cv::Mat &points,
 	const float threshold,
 	float inner_threshold,
 	const int inlier_limit,
 	Model &model,
 	const ModelEstimator &estimator,
-	vector<int> &inliers,
+	std::vector<int> &inliers,
 	int lsq_number)
 {
 	Score S = {0,0}, Ss, maxS;
@@ -389,7 +386,7 @@ Score GCRANSAC<ModelEstimator, Model>::OneStepLocalOptimization(const Mat &point
 
 	float dth = (inner_threshold - threshold) / 4;
 
-	vector<Model> models;
+	std::vector<Model> models;
 	if (maxS.I < inlier_limit)
 	{
 		int *sample = &inliers[0];
@@ -398,10 +395,10 @@ Score GCRANSAC<ModelEstimator, Model>::OneStepLocalOptimization(const Mat &point
 	} else
 	{
 		int *sample = new int[inlier_limit];
-		vector<int> pool = inliers;
+		std::vector<int> pool = inliers;
 		for (int i = 0; i < inlier_limit; ++i)
 		{
-			int idx = round((pool.size() - 1) * (float)rand() / RAND_MAX);
+			int idx = round((pool.size() - 1) * static_cast<float>(rand()) / RAND_MAX);
 			sample[i] = pool[idx];
 			pool.erase(pool.begin() + idx);
 		}
@@ -439,10 +436,10 @@ Score GCRANSAC<ModelEstimator, Model>::OneStepLocalOptimization(const Mat &point
 		}
 		else {
 			int *sample = new int[inlier_limit];
-			vector<int> pool = inliers;
+			std::vector<int> pool = inliers;
 			for (int i = 0; i < inlier_limit; ++i)
 			{
-				int idx = round((pool.size() - 1) * (float)rand() / RAND_MAX);
+				int idx = round((pool.size() - 1) * static_cast<float>(rand()) / RAND_MAX);
 				sample[i] = pool[idx];
 				pool.erase(pool.begin() + idx);
 			}
@@ -461,8 +458,8 @@ Score GCRANSAC<ModelEstimator, Model>::OneStepLocalOptimization(const Mat &point
 
 
 template <class ModelEstimator, class Model>
-bool GCRANSAC<ModelEstimator, Model>::FullLocalOptimization(const Mat &points,
-	vector<int> &so_far_the_best_inliers,
+bool GCRANSAC<ModelEstimator, Model>::FullLocalOptimization(const cv::Mat &points,
+	std::vector<int> &so_far_the_best_inliers,
 	Model &so_far_the_best_model,
 	Score &so_far_the_best_score,
 	int &max_iteration,
@@ -472,7 +469,7 @@ bool GCRANSAC<ModelEstimator, Model>::FullLocalOptimization(const Mat &points,
 {
 	Score S, maxS = { 0,0 };
 	Model best_model;
-	vector<int> best_inliers;
+	std::vector<int> best_inliers;
 
 	++lo_number;
 
@@ -483,11 +480,11 @@ bool GCRANSAC<ModelEstimator, Model>::FullLocalOptimization(const Mat &points,
 	int sample_number = MIN(14, so_far_the_best_inliers.size() / 2);
 
 	GetScore(points, so_far_the_best_model, estimator, threshold, so_far_the_best_inliers, true);
-	vector<int> pool = so_far_the_best_inliers;
+	std::vector<int> pool = so_far_the_best_inliers;
 	
 	int *sample = new int[sample_number];
-	vector<int> inliers;
-	vector<Model> models;
+	std::vector<int> inliers;
+	std::vector<Model> models;
 	for (int i = 0; i < trial_number; ++i)
 	{
 		inliers.resize(0);
@@ -500,7 +497,7 @@ bool GCRANSAC<ModelEstimator, Model>::FullLocalOptimization(const Mat &points,
 		if (models.size() == 0 || models[0].descriptor.rows != 3)
 			continue;
 
-		S = OneStepLocalOptimization(points, threshold, 4 * threshold, use_inlier_limit ? estimator.InlierLimit() : INT_MAX, models[0], estimator, inliers, only_one_lo ? 1 : 4);
+		S = OneStepLocalOptimization(points, threshold, 4 * threshold, use_inlier_limit ? estimator.InlierLimit() : INT_MAX, models[0], estimator, inliers, local_optimization_limit ? 1 : 4);
 
 		if (ScoreLess(maxS, S))
 		{
@@ -524,8 +521,8 @@ bool GCRANSAC<ModelEstimator, Model>::FullLocalOptimization(const Mat &points,
 
 
 template <class ModelEstimator, class Model>
-bool GCRANSAC<ModelEstimator, Model>::LocalOptimizationWithGraphCut(const Mat &points, 
-	vector<int> &so_far_the_best_inliers,
+bool GCRANSAC<ModelEstimator, Model>::LocalOptimizationWithGraphCut(const cv::Mat &points, 
+	std::vector<int> &so_far_the_best_inliers,
 	Model &so_far_the_best_model,
 	Score &so_far_the_best_score,
 	int &max_iteration, 
@@ -535,11 +532,11 @@ bool GCRANSAC<ModelEstimator, Model>::LocalOptimizationWithGraphCut(const Mat &p
 {
 	Score maxS = so_far_the_best_score;
 	Model best_model = so_far_the_best_model;
-	vector<int> best_inliers;
+	std::vector<int> best_inliers;
 
-	vector<int> inliers;
+	std::vector<int> inliers;
 	bool there_is_change;
-	vector<Model> models;
+	std::vector<Model> models;
 	float energy;
 	int inlier_limit = estimator.InlierLimit();
 
@@ -612,22 +609,22 @@ bool GCRANSAC<ModelEstimator, Model>::LocalOptimizationWithGraphCut(const Mat &p
 }
 
 template <class ModelEstimator, class Model>
-Score GCRANSAC<ModelEstimator, Model>::GetScore(const Mat &points, const Model &model, const ModelEstimator &estimator, const float threshold, vector<int> &inliers, bool store_inliers)
+Score GCRANSAC<ModelEstimator, Model>::GetScore(const cv::Mat &points, const Model &model, const ModelEstimator &estimator, const float threshold, std::vector<int> &inliers, bool store_inliers)
 {	
 	Score s = { 0,0 };
 	float sqrThr = 2 * threshold * threshold;
 	if (store_inliers)
 		inliers.resize(0);
 	
-#if 1 || USE_CONCURRENCY
+#if USE_CONCURRENCY // TODO: Implement the non-concurrent case
 	int process_number = 8; 
 	int step_size = points.rows / process_number;
 
-	vector<vector<int>> process_inliers;
+	std::vector<std::vector<int>> process_inliers;
 	if (store_inliers)
 		process_inliers.resize(process_number);
 
-	vector<Score> process_scores(process_number, {0,0});
+	std::vector<Score> process_scores(process_number, {0,0});
 
 	concurrency::parallel_for(0, process_number, [&](int process)
 	{
@@ -666,14 +663,14 @@ Score GCRANSAC<ModelEstimator, Model>::GetScore(const Mat &points, const Model &
 
 
 template <class ModelEstimator, class Model>
-void GCRANSAC<ModelEstimator, Model>::Labeling(const Mat &points, 
+void GCRANSAC<ModelEstimator, Model>::Labeling(const cv::Mat &points, 
 	int neighbor_number, 
-	const vector<vector<DMatch>> &neighbors,
+	const std::vector<std::vector<cv::DMatch>> &neighbors,
 	Model &model,
 	ModelEstimator estimator,
 	float lambda,
 	float threshold,
-	vector<int> &inliers,
+	std::vector<int> &inliers,
 	float &energy)
 {
 	Energy<float, float, float> *e = new Energy<float, float, float>(points.rows, // poor guess at number of pairwise terms needed :(

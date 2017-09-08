@@ -87,7 +87,7 @@ namespace theia
 		int max_iterations;
 
 		// Whether to use the T_{d,d}, with d=1, test proposed in
-		// Chum, O. and Matas, J.: Randomized RANSAC and T(d,d) test, BMVC 2002.
+		// Chum, O. and cv::Matas, J.: Randomized RANSAC and T(d,d) test, BMVC 2002.
 		// After computing the pose, RANSAC selects one match at random and evaluates
 		// all poses. If the point is an outlier to one pose, the corresponding pose
 		// is rejected. Notice that if the pose solver returns multiple poses, then
@@ -139,7 +139,7 @@ namespace theia
 			Model* best_model,
 			RansacSummary* summary);
 
-		vector<double> GetOutputValues() { return output_values_; }
+		std::vector<double> GetOutputValues() { return output_values_; }
 
 	protected:
 		// This method is called from derived classes to set up the sampling scheme
@@ -171,7 +171,7 @@ namespace theia
 		// Estimator to use for generating models.
 		const ModelEstimator& estimator_;
 
-		vector<double> output_values_;
+		std::vector<double> output_values_;
 	};
 
 	// --------------------------- Implementation --------------------------------//

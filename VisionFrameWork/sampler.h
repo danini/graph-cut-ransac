@@ -52,7 +52,7 @@ namespace theia
 		virtual bool Initialize() = 0;
 
 		virtual ~Sampler() {}
-		// Samples the input variable data and fills the vector subset with the
+		// Samples the input variable data and fills the std::vector subset with the
 		// samples.
 		virtual bool Sample(const std::vector<Datum>& data,
 			std::vector<Datum>* subset) = 0;

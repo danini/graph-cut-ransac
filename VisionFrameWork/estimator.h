@@ -37,8 +37,6 @@
 
 #include <vector>
 
-using namespace concurrency;
-
 namespace theia
 {
 	// Templated class for estimating a model for RANSAC. This class is purely a
@@ -67,14 +65,14 @@ namespace theia
 		// function appropriately for the task being solved. Returns true for
 		// successful model estimation (and outputs model), false for failed
 		// estimation. Typically, this is a minimal set, but it is not required to be.
-		virtual bool EstimateModel(const Mat& data,
+		virtual bool EstimateModel(const cv::Mat& data,
 			const int *sample, 
 			std::vector<Model>* model) const = 0;
 
 		// Estimate a model from a non-minimal sampling of the data. E.g. for a line,
 		// use SVD on a set of points instead of constructing a line from two points.
 		// By default, this simply implements the minimal case.
-		virtual bool EstimateModelNonminimal(const Mat& data,
+		virtual bool EstimateModelNonminimal(const cv::Mat& data,
 			const int *sample,
 			int sample_number,
 			std::vector<Model>* model) const = 0;
@@ -89,7 +87,7 @@ namespace theia
 		// Given a model and a data point, calculate the error. Users should implement
 		// this function appropriately for the task being solved.
 		virtual double Error(const Datum& data, const Model& model) const = 0;
-		virtual float Error(const Datum& data, const Mat& model) const = 0;
+		virtual float Error(const Datum& data, const cv::Mat& model) const = 0;
 
 		// Compute the residuals of many data points. By default this is just a loop
 		// that calls Error() on each data point, but this function can be useful if

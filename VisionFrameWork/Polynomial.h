@@ -13,7 +13,7 @@ public:
     double& operator[](int power)
     {
         // Relies on the std::vector zero'ing the values
-        if(power+1 > (int)m_coeffs.size()) {
+        if(power+1 > static_cast<int>(m_coeffs.size())) {
             m_coeffs.resize(power+1);
         }
 

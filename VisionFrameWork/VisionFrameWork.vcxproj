@@ -140,7 +140,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;_WINDOWS;EIGEN_MPL2_ONLY;_VARIADIC_MAX=10;_CRT_SECURE_NO_WARNINGS;MAX_LOG_LEVEL=-100;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>e:\Download\opencv-3.0\final_build\include\;e:\Download\opencv-3.0\final_build\include\opencv\;E:/SDKs/ceres/ceres-src/include;e:/SDKs/ceres/ceres-src/internal;e:/SDKs/ceres/ceres-src/internal/ceres;e:/SDKs/ceres/glog-master/src/windows;e:\SDKs\ceres\eigen-eigen-c58038c56923;e:/SDKs/ceres/ceres-bin/config;e:\Dani\Kutatás\Projektek\VisionLibrary\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>e:\Download\opencv-3.0\final_build\include\;e:\Download\opencv-3.0\final_build\include\opencv\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/MP4 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
@@ -153,21 +153,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <Text Include="ReadMe.txt" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="..\..\..\FundamentalMatrixFromTwoPoints\Cpp\AffineQuality\VisionFrameWork\six_point_algorithm\hidden6.h" />
     <ClInclude Include="5point.h" />
-    <ClInclude Include="AsiftDetector.h" />
     <ClInclude Include="block.h" />
-    <ClInclude Include="EllipticASiftDetector.h" />
-    <ClInclude Include="EllipticKeyPoint.h" />
     <ClInclude Include="energy.h" />
-    <ClInclude Include="evsac.h" />
-    <ClInclude Include="evsac_sampler.h" />
     <ClInclude Include="GCoptimization.h" />
     <ClInclude Include="GCRANSAC.h" />
-    <ClInclude Include="gc_ransac.h" />
     <ClInclude Include="graph.h" />
     <ClInclude Include="LinkedBlockList.h" />
     <ClInclude Include="Mblock.h" />
@@ -179,9 +170,6 @@
     <ClInclude Include="Rpoly.h" />
     <ClInclude Include="sampler.h" />
     <ClInclude Include="sample_consensus_estimator.h" />
-    <ClInclude Include="Utilities.hpp" />
-    <ClInclude Include="objective_function.hpp" />
-    <ClInclude Include="pso.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
@@ -201,14 +189,10 @@
     <ClCompile Include="5point.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="AsiftDetector.cpp" />
-    <ClCompile Include="EllipticASiftDetector.cpp" />
-    <ClCompile Include="EllipticKeyPoint.cpp" />
     <ClCompile Include="essential_estimator.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="fundamental_estimator.cpp" />
-    <ClCompile Include="gc_ransac.cpp" />
     <ClCompile Include="homography_estimator.cpp" />
     <ClCompile Include="line_estimator.cpp" />
     <ClCompile Include="GCoptimization.cpp">
@@ -228,7 +212,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="pso.cpp" />
     <ClCompile Include="Rpoly.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -239,9 +222,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="VisionFrameWork.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="VisionFrameWork.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
