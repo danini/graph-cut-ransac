@@ -21,8 +21,9 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{D4582B5A-DFEB-4507-A8CA-23866D01092A}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>VisionFrameWork</RootNamespace>
+    <RootNamespace>GraphCutRANSAC</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+    <ProjectName>GraphCutRANSAC</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -153,7 +154,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\FundamentalMatrixFromTwoPoints\Cpp\AffineQuality\VisionFrameWork\six_point_algorithm\hidden6.h" />
     <ClInclude Include="5point.h" />
     <ClInclude Include="block.h" />
     <ClInclude Include="energy.h" />
@@ -174,18 +174,6 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\FundamentalMatrixFromTwoPoints\Cpp\AffineQuality\VisionFrameWork\six_point_algorithm\Ematrix_6pt.cc">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\FundamentalMatrixFromTwoPoints\Cpp\AffineQuality\VisionFrameWork\six_point_algorithm\polydet.cc">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\FundamentalMatrixFromTwoPoints\Cpp\AffineQuality\VisionFrameWork\six_point_algorithm\polyquotient.cc">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\FundamentalMatrixFromTwoPoints\Cpp\AffineQuality\VisionFrameWork\six_point_algorithm\sturm.cc">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="5point.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -193,6 +181,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="fundamental_estimator.cpp" />
+    <ClCompile Include="main.cpp" />
     <ClCompile Include="homography_estimator.cpp" />
     <ClCompile Include="line_estimator.cpp" />
     <ClCompile Include="GCoptimization.cpp">
@@ -221,7 +210,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="VisionFrameWork.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

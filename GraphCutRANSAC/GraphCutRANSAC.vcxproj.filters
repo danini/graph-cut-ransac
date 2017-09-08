@@ -9,9 +9,6 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include="six_point">
-      <UniqueIdentifier>{3303daf8-0c28-4c0b-9df2-7d5653fe9e7a}</UniqueIdentifier>
-    </Filter>
     <Filter Include="five_point">
       <UniqueIdentifier>{67307213-2276-4d45-88a7-37557b5a33b8}</UniqueIdentifier>
     </Filter>
@@ -31,9 +28,6 @@
     </ClInclude>
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\FundamentalMatrixFromTwoPoints\Cpp\AffineQuality\VisionFrameWork\six_point_algorithm\hidden6.h">
-      <Filter>six_point</Filter>
     </ClInclude>
     <ClInclude Include="GCRANSAC.h">
       <Filter>Header Files</Filter>
@@ -88,21 +82,6 @@
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="VisionFrameWork.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\FundamentalMatrixFromTwoPoints\Cpp\AffineQuality\VisionFrameWork\six_point_algorithm\Ematrix_6pt.cc">
-      <Filter>six_point</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\FundamentalMatrixFromTwoPoints\Cpp\AffineQuality\VisionFrameWork\six_point_algorithm\polydet.cc">
-      <Filter>six_point</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\FundamentalMatrixFromTwoPoints\Cpp\AffineQuality\VisionFrameWork\six_point_algorithm\polyquotient.cc">
-      <Filter>six_point</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\FundamentalMatrixFromTwoPoints\Cpp\AffineQuality\VisionFrameWork\six_point_algorithm\sturm.cc">
-      <Filter>six_point</Filter>
-    </ClCompile>
     <ClCompile Include="GCRANSAC.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -135,6 +114,9 @@
     </ClCompile>
     <ClCompile Include="maxflow.cpp">
       <Filter>gcoptimization</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
