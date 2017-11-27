@@ -5,7 +5,6 @@
 #include <chrono>
 #include <random>
 #include <vector>
-#include <cv.h>
 
 #include "estimator.h"
 #include "prosac.h"

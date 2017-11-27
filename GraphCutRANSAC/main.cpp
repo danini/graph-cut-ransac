@@ -7,8 +7,9 @@
 #include <fstream>
 #include <vector>
 #include <set>
-#include <cv.h>
 #include <opencv2\highgui\highgui.hpp>
+#include <opencv2\features2d.hpp>
+#include "opencv2/xfeatures2d.hpp"
 #include <functional>
 #include <algorithm>
 #include "GCRANSAC.h"
@@ -240,7 +241,7 @@ void DetectFeatures(std::string name, cv::Mat image1, cv::Mat image2, cv::Mat &p
 	printf("Detect SIFT features\n");
 	cv::Mat descriptors1, descriptors2;
 	std::vector<cv::KeyPoint> keypoints1, keypoints2;
-
+	
 	cv::Ptr<cv::xfeatures2d::SIFT> detector = cv::xfeatures2d::SIFT::create();
 	detector->detect(image1, keypoints1);
 	detector->compute(image1, keypoints1, descriptors1);

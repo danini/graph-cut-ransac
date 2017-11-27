@@ -5,7 +5,6 @@
 #include <chrono>
 #include <random>
 #include <vector>
-#include <cv.h>
 
 #include "5point.h"
 #include "estimator.h"
