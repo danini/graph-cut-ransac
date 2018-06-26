@@ -8,7 +8,7 @@ static double CalcDepth(const cv::Mat &X, const cv::Mat &P);
 
 bool Solve5PointEssential(std::vector<cv::Point2d> &pts1, std::vector<cv::Point2d> &pts2, cv::Mat &ret_E, cv::Mat &ret_P)
 {
-	int num_pts = pts1.size();
+	int num_pts = static_cast<int>(pts1.size());
 
     assert(num_pts >= 5);
 	
@@ -20,11 +20,11 @@ bool Solve5PointEssential(std::vector<cv::Point2d> &pts1, std::vector<cv::Point2
     cv::Mat F(num_pts, 9, CV_64F);
 
     for(int i=0; i < num_pts; i++) {
-        float x1 = pts1[i].x;
-		float y1 = pts1[i].y;
+		double x1 = pts1[i].x;
+		double y1 = pts1[i].y;
 
-		float x2 = pts2[i].x;
-		float y2 = pts2[i].y;
+		double x2 = pts2[i].x;
+		double y2 = pts2[i].y;
 
         F.at<double>(i,0) = x1*x2;
         F.at<double>(i,1) = x2*y1;
@@ -234,7 +234,7 @@ bool Solve5PointEssential(std::vector<cv::Point2d> &pts1, std::vector<cv::Point2
 
 			if (best_inliers > bestInlierNumber)
 			{
-				bestInlierIdx = Es.size() - 1;
+				bestInlierIdx = static_cast<int>(Es.size()) - 1;
 				bestInlierNumber = best_inliers;
 			}
         }

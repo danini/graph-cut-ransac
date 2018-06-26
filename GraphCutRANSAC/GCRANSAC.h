@@ -191,7 +191,7 @@ void GCRANSAC<ModelEstimator, Model>::Run(const cv::Mat &points,
 	std::vector<std::vector<int>> temp_inner_inliers(2);
 	std::vector<int> *so_far_the_best_inlier_indices = NULL;
 
-	iteration_limit = 5e3;
+	iteration_limit = 5000;
 	gc_number = 0;
 	lo_number = 0;
 	point_number = points.rows;
@@ -210,8 +210,7 @@ void GCRANSAC<ModelEstimator, Model>::Run(const cv::Mat &points,
 
 		neighbor_number = 0;
 		for (int i = 0; i < neighbours.size(); ++i)
-			neighbor_number += neighbours[i].size() - 1;
-		lambda = CalculateLambda(0.50 * point_number);
+			neighbor_number += static_cast<int>(neighbours[i].size()) - 1;
 	}
 
 	if (desired_fps > -1)
@@ -250,8 +249,6 @@ void GCRANSAC<ModelEstimator, Model>::Run(const cv::Mat &points,
 				so_far_the_best_score = score;
 				do_local_optimization = iteration > iter_before_lo;
 				max_iteration = DesiredIterationNumber(so_far_the_best_score.I, points.rows, sample_number, probability);
-				if (lambda > 0.0)
-					lambda = CalculateLambda(so_far_the_best_score.I);
 			}
 		}
 
@@ -285,8 +282,6 @@ void GCRANSAC<ModelEstimator, Model>::Run(const cv::Mat &points,
 					probability);
 
 			max_iteration = DesiredIterationNumber(so_far_the_best_score.I, point_number, sample_number, probability);
-			if (lambda > 0.0)
-				lambda = CalculateLambda(so_far_the_best_score.I);
 		}
 
 		// Apply time limit
@@ -356,7 +351,7 @@ bool GCRANSAC<ModelEstimator, Model>::Sample(const cv::Mat &points, std::vector<
 	// TODO: replacable sampler
 	for (int i = 0; i < sample_number; ++i)
 	{
-		int idx = (pool.size() - 1) * static_cast<float>(rand()) / RAND_MAX;
+		int idx = static_cast<int>((pool.size() - 1) * static_cast<float>(rand()) / RAND_MAX);
 		sample[i] = pool[idx];
 		pool.erase(pool.begin() + idx);
 	}
@@ -364,6 +359,7 @@ bool GCRANSAC<ModelEstimator, Model>::Sample(const cv::Mat &points, std::vector<
 	pool.reserve(pool.size() + sample_number);
 	for (int i = 0; i < sample_number; ++i)
 		pool.push_back(sample[i]);
+	return true;
 }
 
 template <class ModelEstimator, class Model>
@@ -389,7 +385,7 @@ Score GCRANSAC<ModelEstimator, Model>::OneStepLocalOptimization(const cv::Mat &p
 	if (maxS.I < inlier_limit)
 	{
 		int *sample = &inliers[0];
-		if (!estimator.EstimateModelNonminimal(points, sample, inliers.size(), &models))
+		if (!estimator.EstimateModelNonminimal(points, sample, static_cast<int>(inliers.size()), &models))
 			return maxS;
 	} else
 	{
@@ -397,7 +393,7 @@ Score GCRANSAC<ModelEstimator, Model>::OneStepLocalOptimization(const cv::Mat &p
 		std::vector<int> pool = inliers;
 		for (int i = 0; i < inlier_limit; ++i)
 		{
-			int idx = round((pool.size() - 1) * static_cast<float>(rand()) / RAND_MAX);
+			int idx = static_cast<int>(round((pool.size() - 1) * static_cast<float>(rand()) / RAND_MAX));
 			sample[i] = pool[idx];
 			pool.erase(pool.begin() + idx);
 		}
@@ -438,7 +434,7 @@ Score GCRANSAC<ModelEstimator, Model>::OneStepLocalOptimization(const cv::Mat &p
 			std::vector<int> pool = inliers;
 			for (int i = 0; i < inlier_limit; ++i)
 			{
-				int idx = round((pool.size() - 1) * static_cast<float>(rand()) / RAND_MAX);
+				int idx = static_cast<int>(round((pool.size() - 1) * static_cast<float>(rand()) / RAND_MAX));
 				sample[i] = pool[idx];
 				pool.erase(pool.begin() + idx);
 			}
@@ -476,7 +472,7 @@ bool GCRANSAC<ModelEstimator, Model>::FullLocalOptimization(const cv::Mat &point
 		return false;
 	}
 
-	int sample_number = MIN(14, so_far_the_best_inliers.size() / 2);
+	int sample_number = static_cast<int>(MIN(14, so_far_the_best_inliers.size() / 2));
 
 	GetScore(points, so_far_the_best_model, estimator, threshold, so_far_the_best_inliers, true);
 	std::vector<int> pool = so_far_the_best_inliers;
@@ -514,7 +510,7 @@ bool GCRANSAC<ModelEstimator, Model>::FullLocalOptimization(const cv::Mat &point
 		so_far_the_best_model.descriptor = best_model.descriptor;
 		so_far_the_best_inliers = best_inliers;
 		so_far_the_best_score = maxS;
-		so_far_the_best_score.I = so_far_the_best_inliers.size();
+		so_far_the_best_score.I = static_cast<unsigned int>(so_far_the_best_inliers.size());
 	}
 }
 
@@ -550,7 +546,7 @@ bool GCRANSAC<ModelEstimator, Model>::LocalOptimizationWithGraphCut(const cv::Ma
 
 		++gc_number;
 
-		int used_points = MIN(inlier_limit, inliers.size());
+		int used_points = static_cast<int>(MIN(inlier_limit, inliers.size()));
 		int *sample = new int[used_points];
 
 		for (int trial = 0; trial < trial_number; ++trial)
@@ -559,7 +555,7 @@ bool GCRANSAC<ModelEstimator, Model>::LocalOptimizationWithGraphCut(const cv::Ma
 			{
 				for (int i = 0; i < used_points; ++i)
 				{
-					int idx = round((inliers.size() - 1) * static_cast<float>(rand()) / RAND_MAX);
+					int idx = static_cast<int>(round((inliers.size() - 1) * static_cast<float>(rand()) / RAND_MAX));
 					sample[i] = inliers[idx];
 					inliers.erase(inliers.begin() + idx);
 				}
@@ -583,7 +579,7 @@ bool GCRANSAC<ModelEstimator, Model>::LocalOptimizationWithGraphCut(const cv::Ma
 					there_is_change = true;
 
 					maxS = s;
-					maxS.I = inliers.size();
+					maxS.I = static_cast<int>(inliers.size());
 					best_inliers = inliers;
 					best_model = models[i];
 				}
@@ -635,7 +631,7 @@ Score GCRANSAC<ModelEstimator, Model>::GetScore(const cv::Mat &points, const Mod
 
 		for (int i = start_idx; i < end_idx; ++i)
 		{
-			dist = estimator.Error(points.row(i), model);
+			dist = static_cast<float>(estimator.Error(points.row(i), model));
 			dist = exp(-dist*dist / sqrThr);
 
 			if (dist > 1e-3) {
@@ -682,7 +678,7 @@ void GCRANSAC<ModelEstimator, Model>::Labeling(const cv::Mat &points,
 	const float sqr_thr = 2 * threshold * threshold;
 	for (int i = 0; i < points.rows; ++i)
 	{
-		float distance = estimator.Error(points.row(i), model);
+		float distance = static_cast<float>(estimator.Error(points.row(i), model));
 		float energy = exp(-(distance*distance) / sqr_thr);
 
 		e->add_term1(i, energy, 0);
@@ -692,20 +688,20 @@ void GCRANSAC<ModelEstimator, Model>::Labeling(const cv::Mat &points,
 	{
 		for (int i = 0; i < points.rows; ++i)
 		{
-			float distance1 = estimator.Error(points.row(i), model);
+			float distance1 = static_cast<float>(estimator.Error(points.row(i), model));
 			float energy1 = exp(-(distance1*distance1) / sqr_thr);
 
 			for (int j = 1; j < neighbors[i].size(); ++j)
 			{
 				int n_idx = neighbors[i][j].trainIdx;
 
-				float distance2 = estimator.Error(points.row(n_idx), model);
+				float distance2 = static_cast<float>(estimator.Error(points.row(n_idx), model));
 				float energy2 = exp(-(distance2*distance2) / sqr_thr);
 				
-				const float e00 = 0.5 * (energy1 + energy2);
+				const float e00 = 0.5f * (energy1 + energy2);
 				const float e01 = 1;
 				const float e10 = 1;
-				const float e11 = 1 - 0.5 * (energy1 + energy2);
+				const float e11 = 1 - 0.5f * (energy1 + energy2);
 
 				if (e00 + e11 > e01 + e10)
 					printf("Non-submodular expansion term detected; smooth costs must be a metric for expansion\n");

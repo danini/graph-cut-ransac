@@ -42,8 +42,8 @@ public:
     {
         Polynomial ans;
 
-        for(size_t i=0; i < m_coeffs.size(); i++) {
-            ans[i] = m_coeffs[i]*val;
+        for(auto i=0; i < m_coeffs.size(); i++) {
+            ans[i] = m_coeffs[i] * val;
         }
 
         return ans;
@@ -59,8 +59,8 @@ public:
     {
         Polynomial ans;
 
-        for(size_t i=0; i < m_coeffs.size(); i++) {
-            for(size_t j=0; j < rhs.m_coeffs.size(); j++) {
+        for(auto i=0; i < m_coeffs.size(); i++) {
+            for(auto j=0; j < rhs.m_coeffs.size(); j++) {
                 double c = m_coeffs[i]*rhs.m_coeffs[j];
                 ans[i+j] += c;
             }
@@ -80,12 +80,12 @@ public:
         Polynomial ans;
 
         if(m_coeffs.size() > rhs.m_coeffs.size()) {
-            for(size_t i=0; i < m_coeffs.size(); i++) {
+            for(auto i=0; i < m_coeffs.size(); i++) {
                 ans[i] = m_coeffs[i] + rhs[i];
             }
         }
         else {
-            for(size_t i=0; i < rhs.m_coeffs.size(); i++) {
+            for(auto i=0; i < rhs.m_coeffs.size(); i++) {
                 ans[i] = operator[](i) + rhs.m_coeffs[i];
             }
         }
@@ -104,12 +104,12 @@ public:
         Polynomial ans;
 
         if(m_coeffs.size() > rhs.m_coeffs.size()) {
-            for(size_t i=0; i < m_coeffs.size(); i++) {
+            for(auto i=0; i < m_coeffs.size(); i++) {
                 ans[i] = m_coeffs[i] - rhs[i];
             }
         }
         else {
-            for(size_t i=0; i < rhs.m_coeffs.size(); i++) {
+            for(auto i=0; i < rhs.m_coeffs.size(); i++) {
                 ans[i] = operator[](i) - rhs.m_coeffs[i];
             }
         }

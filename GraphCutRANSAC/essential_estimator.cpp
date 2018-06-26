@@ -145,7 +145,7 @@ public:
 		const float d1 = a1 / a2;
 		const float d2 = b1 / b2;
 
-		return (double)abs(0.5 * (d1 + d2));
+		return abs(0.5f * (d1 + d2));
 	}
 
 	bool Algorithm_5_point(const cv::Mat& data,
@@ -246,7 +246,7 @@ public:
 		std::vector<EssentialMatrix>* models) const
 	{
 
-		float a[7 * 9], w[7], u[9 * 9], v[9 * 9], c[4], r[3];
+		float a[7 * 9], v[9 * 9], c[4], r[3];
 		float *f1, *f2;
 		float t0, t1, t2;
 		cv::Mat evals, evecs(9, 9, CV_32F, v);
@@ -337,7 +337,7 @@ public:
 			// normalize each matrix, so that F(3,3) (~fmatrix[8]) == 1
 			if (fabs(s) > DBL_EPSILON)
 			{
-				mu = 1. / s;
+				mu = 1.0f / s;
 				lambda *= mu;
 
 				for (int i = 0; i < 8; ++i)
@@ -385,7 +385,7 @@ public:
 	int all_ori_valid(const cv::Mat *F, const cv::Mat &data, const int *sample, int N) const
 	{
 		cv::Mat ec;
-		float sig, sig1, *u;
+		float sig, sig1;
 		int i;
 		epipole(ec, F);
 

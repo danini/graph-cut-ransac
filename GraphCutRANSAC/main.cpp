@@ -47,7 +47,7 @@ void ProjectionsFromEssential(const cv::Mat &E, cv::Mat &P1, cv::Mat &P2, cv::Ma
 
 int main(int argc, const char* argv[])
 {
-	srand(time(NULL));
+	srand(static_cast<int>(time(NULL)));
 	std::string task = "head";
 
 	// Create the task directory of doesn't exist
@@ -66,11 +66,11 @@ int main(int argc, const char* argv[])
 	std::string output_correspondence_path = "results/" + task + "/result_" + task + ".txt";
 	std::string output_matchImagePath = "results/" + task + "/matches_" + task + ".png";
 
-	const float probability = 0.99;
+	const float probability = 0.99f;
 	const int fps = -1;
-	const float threshold = 2.00;
-	const float lambda = 0.14;
-	const float neighborhood_size = 20.0;
+	const float threshold = 2.00f;
+	const float lambda = 0.14f;
+	const float neighborhood_size = 20.0f;
 
 	TestFundamentalMatrix(srcImagePath,
 		dstImagePath,
@@ -127,7 +127,7 @@ void TestFundamentalMatrix(std::string srcPath,
 		threshold, 
 		lambda, 
 		neighborhood_size, 
-		1.0 - probability, 
+		1.0f - probability, 
 		true, 
 		true);
 	end = std::chrono::system_clock::now();
@@ -137,7 +137,7 @@ void TestFundamentalMatrix(std::string srcPath,
 
 	// Write statistics
 	printf("Elapsed time = %f secs\n", elapsed_seconds.count());
-	printf("Inlier number = %d\n", inliers.size());
+	printf("Inlier number = %d\n", static_cast<int>(inliers.size()));
 	printf("LO Steps = %d\n", gcransac.GetLONumber());
 	printf("GC Steps = %d\n", gcransac.GetGCNumber());
 	printf("Iteration number = %d\n", iteration_number);
@@ -157,7 +157,7 @@ void TestFundamentalMatrix(std::string srcPath,
 void DrawLine(cv::Mat &descriptor, cv::Mat &image)
 {
 	cv::Point2f pt1(0, -descriptor.at<float>(2) / descriptor.at<float>(1));
-	cv::Point2f pt2(image.cols, -(image.cols * descriptor.at<float>(0) + descriptor.at<float>(2)) / descriptor.at<float>(1));
+	cv::Point2f pt2(static_cast<float>(image.cols), -(image.cols * descriptor.at<float>(0) + descriptor.at<float>(2)) / descriptor.at<float>(1));
 	cv::line(image, pt1, pt2, cv::Scalar(0, 255, 0), 2);
 }
 
@@ -195,8 +195,8 @@ void DrawMatches(cv::Mat points, std::vector<int> inliers, cv::Mat image1, cv::M
 
 			cv::Scalar color(255 * (double)rand() / RAND_MAX, 255 * (double)rand() / RAND_MAX, 255 * (double)rand() / RAND_MAX);
 
-			cv::circle(out_image, pt1, size, color, size * 0.4);
-			cv::circle(out_image, pt2, size, color, size * 0.4);
+			cv::circle(out_image, pt1, size, color, static_cast<int>(size * 0.4f));
+			cv::circle(out_image, pt2, size, color, static_cast<int>(size * 0.4f));
 			cv::line(out_image, pt1, pt2, color, 2);
 		}
 	}
@@ -220,8 +220,8 @@ void DrawMatches(cv::Mat points, std::vector<int> inliers, cv::Mat image1, cv::M
 			cv::Point2d pt2(image2.cols + (double)points.at<float>(idx, 2), (double)points.at<float>(idx, 3));
 
 			cv::Scalar color(255 * (double)rand() / RAND_MAX, 255 * (double)rand() / RAND_MAX, 255 * (double)rand() / RAND_MAX);
-			cv::circle(out_image, pt1, size, color, size * 0.4);
-			cv::circle(out_image, pt2, size, color, size * 0.4);
+			cv::circle(out_image, pt1, size, color, static_cast<int>(size * 0.4));
+			cv::circle(out_image, pt2, size, color, static_cast<int>(size * 0.4));
 			cv::line(out_image, pt1, pt2, color, 2);
 		}
 	}
@@ -245,11 +245,11 @@ void DetectFeatures(std::string name, cv::Mat image1, cv::Mat image2, cv::Mat &p
 	cv::Ptr<cv::xfeatures2d::SIFT> detector = cv::xfeatures2d::SIFT::create();
 	detector->detect(image1, keypoints1);
 	detector->compute(image1, keypoints1, descriptors1);
-	printf("Features found in the first image: %d\n", keypoints1.size());
+	printf("Features found in the first image: %d\n", static_cast<int>(keypoints1.size()));
 
 	detector->detect(image2, keypoints2);
 	detector->compute(image2, keypoints2, descriptors2);
-	printf("Features found in the second image: %d\n", keypoints2.size());
+	printf("Features found in the second image: %d\n", static_cast<int>(keypoints2.size()));
 
 	std::vector<std::vector< cv::DMatch >> matches_vector;
 	cv::FlannBasedMatcher matcher(new cv::flann::KDTreeIndexParams(5), new cv::flann::SearchParams(32));
@@ -267,7 +267,7 @@ void DetectFeatures(std::string name, cv::Mat image1, cv::Mat image2, cv::Mat &p
 		}
 	}
 
-	points = cv::Mat(src_points.size(), 4, CV_32F);
+	points = cv::Mat(static_cast<int>(src_points.size()), 4, CV_32F);
 	float *points_ptr = reinterpret_cast<float*>(points.data);
 
 	for (int i = 0; i < src_points.size(); ++i)
@@ -279,7 +279,7 @@ void DetectFeatures(std::string name, cv::Mat image1, cv::Mat image2, cv::Mat &p
 	}
 
 	SavePointsToFile(points, name.c_str());
-	printf("Match number: %d\n", dst_points.size());
+	printf("Match number: %d\n", static_cast<int>(dst_points.size()));
 }
 
 bool LoadPointsFromFile(cv::Mat &points, const char* file)
