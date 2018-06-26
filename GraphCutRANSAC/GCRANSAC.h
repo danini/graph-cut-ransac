@@ -691,9 +691,12 @@ void GCRANSAC<ModelEstimator, Model>::Labeling(const cv::Mat &points,
 			float distance1 = static_cast<float>(estimator.Error(points.row(i), model));
 			float energy1 = exp(-(distance1*distance1) / sqr_thr);
 
-			for (int j = 1; j < neighbors[i].size(); ++j)
+			for (int j = 0; j < neighbors[i].size(); ++j)
 			{
 				int n_idx = neighbors[i][j].trainIdx;
+				
+				if (n_idx == i)
+					continue;
 
 				float distance2 = static_cast<float>(estimator.Error(points.row(n_idx), model));
 				float energy2 = exp(-(distance2*distance2) / sqr_thr);
