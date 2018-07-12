@@ -232,7 +232,7 @@ void GCRANSAC<ModelEstimator, Model>::Run(const cv::Mat &points,
 			 
  			if (estimator.EstimateModel(points, sample, &models)) // Estimate (and validate) models using the current sample
 				break; 
-		}            
+		}      
 
 		// Select the so-far-the-best from the estimated models
 		for (int model_idx = 0; model_idx < models.size(); ++model_idx)
@@ -539,7 +539,6 @@ bool GCRANSAC<ModelEstimator, Model>::LocalOptimizationWithGraphCut(const cv::Ma
 
 	while (1)
 	{
-		models.resize(0);
 		there_is_change = false;
 		inliers.resize(0);
 		Labeling(points, neighbor_number, neighbours, best_model, estimator, lambda, threshold, inliers, energy);
@@ -551,6 +550,7 @@ bool GCRANSAC<ModelEstimator, Model>::LocalOptimizationWithGraphCut(const cv::Ma
 
 		for (int trial = 0; trial < trial_number; ++trial)
 		{
+			models.resize(0);
 			if (used_points < inliers.size())
 			{
 				for (int i = 0; i < used_points; ++i)
@@ -579,8 +579,7 @@ bool GCRANSAC<ModelEstimator, Model>::LocalOptimizationWithGraphCut(const cv::Ma
 					there_is_change = true;
 
 					maxS = s;
-					maxS.I = static_cast<int>(inliers.size());
-					best_inliers = inliers;
+					maxS.I = static_cast<int>(s.I);
 					best_model = models[i];
 				}
 			}
@@ -603,23 +602,23 @@ bool GCRANSAC<ModelEstimator, Model>::LocalOptimizationWithGraphCut(const cv::Ma
 	return false;
 }
 
+
 template <class ModelEstimator, class Model>
 Score GCRANSAC<ModelEstimator, Model>::GetScore(const cv::Mat &points, const Model &model, const ModelEstimator &estimator, const float threshold, std::vector<int> &inliers, bool store_inliers)
-{	
+{
 	Score s = { 0,0 };
 	float sqrThr = 2 * threshold * threshold;
 	if (store_inliers)
 		inliers.resize(0);
-	
-#if USE_CONCURRENCY // TODO: Implement the non-concurrent case
-	int process_number = 8; 
+
+	int process_number = 8;
 	int step_size = points.rows / process_number;
 
 	std::vector<std::vector<int>> process_inliers;
 	if (store_inliers)
 		process_inliers.resize(process_number);
 
-	std::vector<Score> process_scores(process_number, {0,0});
+	std::vector<Score> process_scores(process_number, { 0,0 });
 
 	concurrency::parallel_for(0, process_number, [&](int process)
 	{
@@ -632,7 +631,7 @@ Score GCRANSAC<ModelEstimator, Model>::GetScore(const cv::Mat &points, const Mod
 		for (int i = start_idx; i < end_idx; ++i)
 		{
 			dist = static_cast<float>(estimator.Error(points.row(i), model));
-			dist = exp(-dist*dist / sqrThr);
+			dist = exp(-dist * dist / sqrThr);
 
 			if (dist > 1e-3) {
 				if (store_inliers)
@@ -652,7 +651,7 @@ Score GCRANSAC<ModelEstimator, Model>::GetScore(const cv::Mat &points, const Mod
 		if (store_inliers)
 			copy(process_inliers[i].begin(), process_inliers[i].end(), back_inserter(inliers));
 	}
-#endif
+
 	return s;
 }
 
