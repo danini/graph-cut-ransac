@@ -81,6 +81,10 @@ protected:
 	int										iteration_limit;			// The iteration limit
 	int										point_number;				// The point number
 
+	float									sqr_threshold_2;			// 2 * threshold^2
+	int										step_size;					// Step size per processes
+	int										process_number;				// Number of parallel processes
+
 	Graph<float, float, float>				*graph;						// The graph for graph-cut
 
 	// Computes the desired iteration number for RANSAC w.r.t. to the current inlier number
@@ -195,6 +199,9 @@ void GCRANSAC<ModelEstimator, Model>::Run(const cv::Mat &points,
 	gc_number = 0;
 	lo_number = 0;
 	point_number = points.rows;
+	sqr_threshold_2 = 2 * threshold * threshold;
+	process_number = 8;
+	step_size = points.rows / process_number;
 
 	// Initialize the pool for sampling (TODO: change sampler)
 	std::vector<int> pool(point_number);
@@ -607,13 +614,9 @@ template <class ModelEstimator, class Model>
 Score GCRANSAC<ModelEstimator, Model>::GetScore(const cv::Mat &points, const Model &model, const ModelEstimator &estimator, const float threshold, std::vector<int> &inliers, bool store_inliers)
 {
 	Score s = { 0,0 };
-	float sqrThr = 2 * threshold * threshold;
 	if (store_inliers)
 		inliers.resize(0);
-
-	int process_number = 8;
-	int step_size = points.rows / process_number;
-
+	
 	std::vector<std::vector<int>> process_inliers;
 	if (store_inliers)
 		process_inliers.resize(process_number);
@@ -631,7 +634,7 @@ Score GCRANSAC<ModelEstimator, Model>::GetScore(const cv::Mat &points, const Mod
 		for (int i = start_idx; i < end_idx; ++i)
 		{
 			dist = static_cast<float>(estimator.Error(points.row(i), model));
-			dist = exp(-dist * dist / sqrThr);
+			dist = exp(-dist * dist / sqr_threshold_2);
 
 			if (dist > 1e-3) {
 				if (store_inliers)

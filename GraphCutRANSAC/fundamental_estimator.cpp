@@ -313,10 +313,9 @@ public:
 
 	float getorisig(const cv::Mat *F, const cv::Mat *ec, const cv::Mat &u) const
 	{
-		float s1, s2;
-
-		s1 = F->at<float>(0) * u.at<float>(3) + F->at<float>(3) * u.at<float>(4) + F->at<float>(6) * u.at<float>(5);
-		s2 = ec->at<float>(1) * u.at<float>(2) - ec->at<float>(2) * u.at<float>(1);
+		float s1, s2;		
+		s1 = F->at<float>(0,0) * u.at<float>(3) + F->at<float>(1,0) * u.at<float>(4) + F->at<float>(2,0);
+		s2 = ec->at<float>(1) - ec->at<float>(2) * u.at<float>(1);
 		return(s1 * s2);
 	}
 
@@ -326,7 +325,6 @@ public:
 		float sig, sig1;
 		int i;
 		epipole(ec, F);
-
 		sig1 = getorisig(F, &ec, data.row(sample[0]));
 		for (i = 1; i < N; i++)
 		{
