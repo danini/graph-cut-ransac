@@ -699,7 +699,7 @@ Score GCRANSAC<ModelEstimator, Model>::get_score(const cv::Mat &points_,
 					process_inliers[process].push_back(point_idx);
 
 				++(process_scores[process].I);
-				process_scores[process].J += 1.0f - distance * distance / truncated_threshold_2;
+				process_scores[process].J += 1.0f - distance * distance / truncated_threshold_2; // Truncated quadratic cost
 			}
 		}
 	});
@@ -754,7 +754,7 @@ void GCRANSAC<ModelEstimator, Model>::labeling(const cv::Mat &points_,
 		for (auto point_idx = 0; point_idx < points_.rows; ++point_idx)
 		{
 			distance1 = static_cast<float>(estimator_.Error(points_.row(point_idx), model_));
-			energy1 = MAX(0, 1 - distance1 * distance1 / truncated_threshold_2);
+			energy1 = MAX(0, 1 - distance1 * distance1 / truncated_threshold_2); // Truncated quadratic cost
 
 			for (auto neighbor_idx = 0; neighbor_idx < neighbors_[point_idx].size(); ++neighbor_idx)
 			{
@@ -764,7 +764,7 @@ void GCRANSAC<ModelEstimator, Model>::labeling(const cv::Mat &points_,
 					continue;
 
 				distance2 = static_cast<float>(estimator_.Error(points_.row(actual_neighbor_idx), model_));
-				energy2 = MAX(0, 1 - distance2 * distance2 / truncated_threshold_2);
+				energy2 = MAX(0, 1 - distance2 * distance2 / truncated_threshold_2); // Truncated quadratic cost
 								
 				e00 = 0.5f * (energy1 + energy2);
 				e01 = 1;
