@@ -67,7 +67,7 @@ int main(int argc, const char* argv[])
 {
 	srand(static_cast<int>(time(NULL)));
 
-	std::string task = "Kyoto";
+	std::string task = "head";
 
 	// Create the task directory of doesn't exist
 	std::string dir = "results/" + task;
