@@ -38,7 +38,7 @@
 	Block<MyType> *block = new Block<MyType>(BLOCK_SIZE);
 
 	// adding items
-	for (int i=0; i<sizeof(array); i++)
+	for (auto i=0; i<sizeof(array); i++)
 	{
 		ptr = block -> New();
 		ptr -> a = ptr -> b = rand();
@@ -57,19 +57,19 @@
 	DBlock<MyType> *dblock = new DBlock<MyType>(BLOCK_SIZE);
 	
 	// adding items
-	for (int i=0; i<sizeof(array); i++)
+	for (auto i=0; i<sizeof(array); i++)
 	{
 		array[i] = dblock -> New();
 	}
 
 	// deleting items
-	for (int i=0; i<sizeof(array); i+=2)
+	for (auto i=0; i<sizeof(array); i+=2)
 	{
 		dblock -> Delete(array[i]);
 	}
 
 	// adding items
-	for (int i=0; i<sizeof(array); i++)
+	for (auto i=0; i<sizeof(array); i++)
 	{
 		array[i] = dblock -> New();
 	}

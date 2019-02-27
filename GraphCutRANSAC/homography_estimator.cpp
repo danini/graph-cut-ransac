@@ -42,7 +42,7 @@ public:
 		std::vector<cv::Point2d> pts1(M);
 		std::vector<cv::Point2d> pts2(M);
 
-		for (int i = 0; i < M; ++i)
+		for (auto i = 0; i < M; ++i)
 		{
 			pts1[i].x = (double)data.at<float>(sample[i], 0);
 			pts1[i].y = (double)data.at<float>(sample[i], 1);
@@ -77,7 +77,7 @@ public:
 		std::vector<cv::Point2d> pts1(M);
 		std::vector<cv::Point2d> pts2(M);
 
-		for (int i = 0; i < M; ++i)
+		for (auto i = 0; i < M; ++i)
 		{
 			pts1[i].x = (double)data.at<float>(sample[i], 0);
 			pts1[i].y = (double)data.at<float>(sample[i], 1);
@@ -151,7 +151,7 @@ public:
 		/*float a[8 * 9];
 		cv::Mat A(8, 9, CV_32F, a);
 		
-		for (int i = 0; i < 4; ++i)
+		for (auto i = 0; i < 4; ++i)
 		{
 			float x1 = data.at<float>(sample[i], 0);
 			float y1 = data.at<float>(sample[i], 1);

@@ -48,7 +48,7 @@ namespace theia
 			: min_num_samples_(min_num_samples) {}
 
 		// Initializes any non-trivial variables and sets up sampler if
-		// necessary. Must be called before Sample is called.
+		// necessary. Must be called before sample is called.
 		virtual bool Initialize() = 0;
 
 		virtual ~Sampler() {}

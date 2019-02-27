@@ -80,7 +80,7 @@ public:
 		if (models->size() == 0)
 			return false;
 
-		for (int i = 0; i < models->size(); ++i)
+		for (auto i = 0; i < models->size(); ++i)
 			if (models->at(i).F.rows != 3 || models->at(i).descriptor.rows != 3)
 				return false;
 
@@ -156,7 +156,7 @@ public:
 		cv::Mat E, P;
 		std::vector<cv::Point2d> pts1(5), pts2(5);
 
-		for (int i = 0; i < 5; i++)
+		for (auto i = 0; i < 5; i++)
 		{
 			float x0 = data.at<float>(sample[i], 0), y0 = data.at<float>(sample[i], 1);
 			float x1 = data.at<float>(sample[i], 3), y1 = data.at<float>(sample[i], 4);
@@ -340,7 +340,7 @@ public:
 				mu = 1.0f / s;
 				lambda *= mu;
 
-				for (int i = 0; i < 8; ++i)
+				for (auto i = 0; i < 8; ++i)
 					f[i] = f1[i] * lambda + f2[i] * mu;
 				f[8] = 1.0;
 
@@ -353,7 +353,7 @@ public:
 				model.descriptor = E;
 				model.F = K2ti * E * K1i;
 				model.mss.resize(sample_number);
-				for (int i = 0; i < sample_number; ++i)
+				for (auto i = 0; i < sample_number; ++i)
 					model.mss[i] = sample[i];
 
 				models->push_back(model);
@@ -368,7 +368,7 @@ public:
 	{
 		ec = F->row(0).cross(F->row(2));
 
-		for (int i = 0; i < 3; i++)
+		for (auto i = 0; i < 3; i++)
 			if ((ec.at<float>(i) > 1.9984e-15) || (ec.at<float>(i) < -1.9984e-15)) return;
 		ec = F->row(1).cross(F->row(2));
 	}

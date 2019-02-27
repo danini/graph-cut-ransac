@@ -54,7 +54,7 @@ public:
 		cv::Mat A(sample_number, 3, CV_64F);
 		int idx;
 		cv::Mat mass_point = cv::Mat::zeros(1, 2, CV_32F);
-		for (int i = 0; i < sample_number; ++i)
+		for (auto i = 0; i < sample_number; ++i)
 		{
 			idx = sample[i];
 			mass_point = mass_point + data.row(idx);

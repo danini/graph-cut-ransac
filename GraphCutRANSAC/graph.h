@@ -218,7 +218,7 @@ public:
 	//		... // add nodes and edges
 	//
 	//		g->maxflow(); // first call should be without arguments
-	//		for (int iter=0; iter<10; iter++)
+	//		for (auto iter=0; iter<10; iter++)
 	//		{
 	//			... // change graph, call mark_node() accordingly
 	//

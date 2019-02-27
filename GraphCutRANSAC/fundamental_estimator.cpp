@@ -79,14 +79,24 @@ public:
 		const float y2 = *(s + 3);
 
 		const float* p = (float *)model.descriptor.data;
-		
-		const float l1 = *(p)* x2 + *(p + 3) * y2 + *(p + 6);
-		const float l2 = *(p + 1) * x2 + *(p + 4) * y2 + *(p + 7);
-		const float l3 = *(p + 2) * x2 + *(p + 5) * y2 + *(p + 8);
 
-		const float t1 = *(p)* x1 + *(p + 1) * y1 + *(p + 2);
-		const float t2 = *(p + 3) * x1 + *(p + 4) * y1 + *(p + 5);
-		const float t3 = *(p + 6) * x1 + *(p + 7) * y1 + *(p + 8);
+		const float f11 = *(p);
+		const float f12 = *(p + 1);
+		const float f13 = *(p + 2);
+		const float f21 = *(p + 3);
+		const float f22 = *(p + 4);
+		const float f23 = *(p + 5);
+		const float f31 = *(p + 6);
+		const float f32 = *(p + 7);
+		const float f33 = *(p + 8);
+
+		const float l1 = f11* x2 + f21 * y2 + f31;
+		const float l2 = f12 * x2 + f22 * y2 + f32;
+		const float l3 = f13 * x2 + f23 * y2 + f33;
+
+		const float t1 = f11 * x1 + f12 * y1 + f13;
+		const float t2 = f21 * x1 + f22 * y1 + f23;
+		const float t3 = f31 * x1 + f32 * y1 + f33;
 
 		const float a1 = l1 * x1 + l2 * y1 + l3;
 		const float a2 = sqrt(l1 * l1 + l2 * l2);
@@ -111,13 +121,23 @@ public:
 
 		const float* p = (float *)descriptor.data;
 
-		const float l1 = *(p)* x2 + *(p + 3) * y2 + *(p + 6);
-		const float l2 = *(p + 1) * x2 + *(p + 4) * y2 + *(p + 7);
-		const float l3 = *(p + 2) * x2 + *(p + 5) * y2 + *(p + 8);
+		const float f11 = *(p);
+		const float f12 = *(p + 1);
+		const float f13 = *(p + 2);
+		const float f21 = *(p + 3);
+		const float f22 = *(p + 4);
+		const float f23 = *(p + 5);
+		const float f31 = *(p + 6);
+		const float f32 = *(p + 7);
+		const float f33 = *(p + 8);
 
-		const float t1 = *(p)* x1 + *(p + 1) * y1 + *(p + 2);
-		const float t2 = *(p + 3) * x1 + *(p + 4) * y1 + *(p + 5);
-		const float t3 = *(p + 6) * x1 + *(p + 7) * y1 + *(p + 8);
+		const float l1 = f11 * x2 + f21 * y2 + f31;
+		const float l2 = f12 * x2 + f22 * y2 + f32;
+		const float l3 = f13 * x2 + f23 * y2 + f33;
+
+		const float t1 = f11 * x1 + f12 * y1 + f13;
+		const float t2 = f21 * x1 + f22 * y1 + f23;
+		const float t3 = f31 * x1 + f32 * y1 + f33;
 
 		const float a1 = l1 * x1 + l2 * y1 + l3;
 		const float a2 = sqrt(l1 * l1 + l2 * l2);
@@ -169,9 +189,6 @@ public:
 
 		for (i = 0; i < 9; ++i)
 			f[i] = evecs.at<float>(8, i);
-		//f[8] = 1.0;
-
-		//std::cout << F << endl;
 
 		Model model;
 		model.descriptor = F;
@@ -279,19 +296,19 @@ public:
 				mu = 1.0f / s;
 				lambda *= mu;
 
-				for (int i = 0; i < 8; ++i)
+				for (auto i = 0; i < 8; ++i)
 					f[i] = f1[i] * lambda + f2[i] * mu;
 				f[8] = 1.0;
 
 				/* orient. constr. */
-				if (!all_ori_valid(&F, data, sample, sample_number)) {
+				/*if (!all_ori_valid(&F, data, sample, sample_number)) {
 					continue;
-				}
+				}*/
 
 				Model model;
 				model.descriptor = F;
 				model.mss.resize(sample_number);
-				for (int i = 0; i < sample_number; ++i)
+				for (auto i = 0; i < sample_number; ++i)
 					model.mss[i] = sample[i];
 
 				models->push_back(model);
@@ -306,7 +323,7 @@ public:
 	{
 		ec = F->row(0).cross(F->row(2));
 
-		for (int i = 0; i < 3; i++)
+		for (auto i = 0; i < 3; i++)
 			if ((ec.at<float>(i) > 1.9984e-15) || (ec.at<float>(i) < -1.9984e-15)) return;
 		ec = F->row(1).cross(F->row(2));
 	}

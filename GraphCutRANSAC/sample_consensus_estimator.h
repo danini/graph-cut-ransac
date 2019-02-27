@@ -265,7 +265,7 @@ namespace theia
 			summary->num_iterations++)
 		{
 
-			// Sample subset. Proceed if successfully sampled.
+			// sample subset. Proceed if successfully sampled.
 			std::vector<Datum> data_subset;
 			if (!sampler_->Sample(data, &data_subset))
 			{

@@ -26,29 +26,48 @@
 
 struct stat info;
 
-void TestFundamentalMatrix(std::string srcPath,
-	std::string dstPath,
-	std::string out_corrPath,
-	std::string in_corrPath,
-	std::string output_matchImagePath,
-	const float probability,
-	const float threshold,
-	const float lambda,
-	const float neighborhood_size,
-	const int fps);
+void test_fundamental_matrix_fitting(std::string source_path_,
+	std::string destination_path_,
+	std::string out_correspondence_path_,
+	std::string in_correspondence_path_,
+	std::string output_match_image_path_,
+	const float confidence_,
+	const float inlier_outlier_threshold_,
+	const float spatial_coherence_weight_,
+	const float neighborhood_size_,
+	const int fps_);
 
-void DrawLine(cv::Mat &descriptor, cv::Mat &image);
-void DrawMatches(cv::Mat points, std::vector<int> inliers, cv::Mat image1, cv::Mat image2, cv::Mat &out_image);
+void draw_line(cv::Mat &descriptor_, cv::Mat &image_);
 
-bool SavePointsToFile(const cv::Mat &points, const char* file, std::vector<int> *inliers = NULL);
-bool LoadPointsFromFile(cv::Mat &points, const char* file);
-void DetectFeatures(std::string name, cv::Mat image1, cv::Mat image2, cv::Mat &points);
-void ProjectionsFromEssential(const cv::Mat &E, cv::Mat &P1, cv::Mat &P2, cv::Mat &P3, cv::Mat &P4);
+void draw_matches(cv::Mat points_, 
+	std::vector<int> inliers_, 
+	cv::Mat image1_, 
+	cv::Mat image2_, 
+	cv::Mat &out_image_);
+
+bool save_points_to_file(const cv::Mat &points_, 
+	const char* file_, 
+	std::vector<int> *inliers_ = NULL);
+
+bool load_points_from_file(cv::Mat &points_, 
+	const char* file_);
+
+void detect_features(std::string name_, 
+	cv::Mat image1_, 
+	cv::Mat image2_, 
+	cv::Mat &points_);
+
+void projection_matrices_from_essential_matrix(const cv::Mat &essential_,
+	cv::Mat &projection_1_, 
+	cv::Mat &projection_2_, 
+	cv::Mat &projection_3_, 
+	cv::Mat &projection_4_);
 
 int main(int argc, const char* argv[])
 {
 	srand(static_cast<int>(time(NULL)));
-	std::string task = "head";
+
+	std::string task = "johnssona";
 
 	// Create the task directory of doesn't exist
 	std::string dir = "results/" + task;
@@ -60,54 +79,54 @@ int main(int argc, const char* argv[])
 			return -1;
 		}
 
-	std::string srcImagePath = "data/head/head1.jpg";
-	std::string dstImagePath = "data/head/head2.jpg";
+	std::string srcImagePath = "data/" + task + "/" + task + "1.jpg";
+	std::string dstImagePath = "data/" + task + "/" + task + "2.jpg";
 	std::string input_correspondence_path = "results/" + task + "/" + task + "_points_with_no_annotation.txt";
 	std::string output_correspondence_path = "results/" + task + "/result_" + task + ".txt";
 	std::string output_matchImagePath = "results/" + task + "/matches_" + task + ".png";
 
-	const float probability = 0.99f;
+	const float confidence = 0.99f;
 	const int fps = -1;
-	const float threshold = 2.00f;
-	const float lambda = 0.14f;
+	const float inlier_outlier_threshold = 2.00f;
+	const float spatial_coherence_weight = 0.14f;
 	const float neighborhood_size = 20.0f;
 
-	TestFundamentalMatrix(srcImagePath,
+	test_fundamental_matrix_fitting(srcImagePath,
 		dstImagePath,
 		input_correspondence_path,
 		output_correspondence_path,
 		output_matchImagePath,
-		probability,
-		threshold,
-		lambda,
+		confidence,
+		inlier_outlier_threshold,
+		spatial_coherence_weight,
 		neighborhood_size,
 		fps);
 
 	return 0;
 } 
 
-void TestFundamentalMatrix(std::string srcPath,
-	std::string dstPath,
-	std::string out_corrPath,
-	std::string in_corrPath,
-	std::string output_matchImagePath,
-	const float probability,
-	const float threshold,
-	const float lambda,
-	const float neighborhood_size,
-	const int fps)
+void test_fundamental_matrix_fitting(std::string source_path_,
+	std::string destination_path_,
+	std::string out_correspondence_path_,
+	std::string in_correspondence_path_,
+	std::string output_match_image_path_,
+	const float confidence_,
+	const float inlier_outlier_threshold_,
+	const float spatial_coherence_weight_,
+	const float neighborhood_size_,
+	const int fps_)
 {
 	std::vector<std::string> tests(0);
 	
 	int iteration_number = 0;
 
 	// Read the images
-	cv::Mat image1 = cv::imread(srcPath);
-	cv::Mat image2 = cv::imread(dstPath);
+	cv::Mat image1 = cv::imread(source_path_);
+	cv::Mat image2 = cv::imread(destination_path_);
 
 	// Detect keypoints using SIFT 
 	cv::Mat points;
-	DetectFeatures(in_corrPath, image1, image2, points);
+	detect_features(in_correspondence_path_, image1, image2, points);
 
 	// Apply Graph Cut RANSAC
 	FundamentalMatrixEstimator estimator;
@@ -115,21 +134,22 @@ void TestFundamentalMatrix(std::string srcPath,
 	FundamentalMatrix model;
 
 	GCRANSAC<FundamentalMatrixEstimator, FundamentalMatrix> gcransac;
-	gcransac.SetFPS(fps); // Set the desired FPS (-1 means no limit)
+	gcransac.set_fps(fps_); // Set the desired FPS (-1 means no limit)
 
 	std::chrono::time_point<std::chrono::system_clock> start, end;
 	start = std::chrono::system_clock::now();
-	gcransac.Run(points, 
-		estimator, 
-		model, 
-		inliers,
-		iteration_number,
-		threshold, 
-		lambda, 
-		neighborhood_size, 
-		1.0f - probability, 
-		true, 
-		true);
+	//for (auto i = 0; i < 1000; ++i)
+		gcransac.run(points, 
+			estimator, 
+			model, 
+			inliers,
+			iteration_number,
+			inlier_outlier_threshold_, 
+			spatial_coherence_weight_, 
+			neighborhood_size_,  
+			1.0f - confidence_, 
+			true, 
+			true);
 	end = std::chrono::system_clock::now();
 
 	std::chrono::duration<double> elapsed_seconds = end - start;
@@ -138,35 +158,40 @@ void TestFundamentalMatrix(std::string srcPath,
 	// Write statistics
 	printf("Elapsed time = %f secs\n", elapsed_seconds.count());
 	printf("Inlier number = %d\n", static_cast<int>(inliers.size()));
-	printf("LO Steps = %d\n", gcransac.GetLONumber());
-	printf("GC Steps = %d\n", gcransac.GetGCNumber());
+	printf("LO Steps = %d\n", gcransac.get_lo_number());
+	printf("GC Steps = %d\n", gcransac.get_gc_number());
 	printf("Iteration number = %d\n", iteration_number);
 
 	// Save data
 	cv::Mat match_image;
-	DrawMatches(points, 
+	draw_matches(points, 
 		inliers, 
 		image1, 
 		image2, 
 		match_image);
 
-	imwrite(output_matchImagePath, match_image); // Save the matched image
-	SavePointsToFile(points, out_corrPath.c_str(), &inliers); // Save the inliers into file
+	imwrite(output_match_image_path_, match_image); // Save the matched image_
+	save_points_to_file(points, out_correspondence_path_.c_str(), &inliers); // Save the inliers_ into file_
 }
 
-void DrawLine(cv::Mat &descriptor, cv::Mat &image)
+void draw_line(cv::Mat &descriptor_, 
+	cv::Mat &image_)
 {
-	cv::Point2f pt1(0, -descriptor.at<float>(2) / descriptor.at<float>(1));
-	cv::Point2f pt2(static_cast<float>(image.cols), -(image.cols * descriptor.at<float>(0) + descriptor.at<float>(2)) / descriptor.at<float>(1));
-	cv::line(image, pt1, pt2, cv::Scalar(0, 255, 0), 2);
+	cv::Point2f pt1(0, -descriptor_.at<float>(2) / descriptor_.at<float>(1));
+	cv::Point2f pt2(static_cast<float>(image_.cols), -(image_.cols * descriptor_.at<float>(0) + descriptor_.at<float>(2)) / descriptor_.at<float>(1));
+	cv::line(image_, pt1, pt2, cv::Scalar(0, 255, 0), 2);
 }
 
-void DrawMatches(cv::Mat points, std::vector<int> inliers, cv::Mat image1, cv::Mat image2, cv::Mat &out_image)
+void draw_matches(cv::Mat points_, 
+	std::vector<int> inliers_, 
+	cv::Mat image1_, 
+	cv::Mat image2_, 
+	cv::Mat &out_image_)
 {
 	float rotation_angle = 0;
 	bool horizontal = true;
 
-	if (image1.cols < image1.rows)
+	if (image1_.cols < image1_.rows)
 	{
 		rotation_angle = 90;
 	}
@@ -176,65 +201,68 @@ void DrawMatches(cv::Mat points, std::vector<int> inliers, cv::Mat image1, cv::M
 
 	if (horizontal)
 	{
-		out_image = cv::Mat(image1.rows, 2 * image1.cols, image1.type()); // Your final image
+		out_image_ = cv::Mat(image1_.rows, 2 * image1_.cols, image1_.type()); // Your final image_
 
-		cv::Mat roiImgResult_Left = out_image(cv::Rect(0, 0, image1.cols, image1.rows)); //Img1 will be on the left part
-		cv::Mat roiImgResult_Right = out_image(cv::Rect(image1.cols, 0, image2.cols, image2.rows)); //Img2 will be on the right part, we shift the roi of img1.cols on the right
+		cv::Mat roiImgResult_Left = out_image_(cv::Rect(0, 0, image1_.cols, image1_.rows)); //Img1 will be on the left part
+		cv::Mat roiImgResult_Right = out_image_(cv::Rect(image1_.cols, 0, image2_.cols, image2_.rows)); //Img2 will be on the right part, we shift the roi of img1.cols on the right
 
-		cv::Mat roiImg1 = image1(cv::Rect(0, 0, image1.cols, image1.rows));
-		cv::Mat roiImg2 = image2(cv::Rect(0, 0, image2.cols, image2.rows));
+		cv::Mat roiImg1 = image1_(cv::Rect(0, 0, image1_.cols, image1_.rows));
+		cv::Mat roiImg2 = image2_(cv::Rect(0, 0, image2_.cols, image2_.rows));
 
 		roiImg1.copyTo(roiImgResult_Left); //Img1 will be on the left of imgResult
 		roiImg2.copyTo(roiImgResult_Right); //Img2 will be on the right of imgResult
 
-		for (int i = 0; i < inliers.size(); ++i)
+		for (auto i = 0; i < inliers_.size(); ++i)
 		{
-			int idx = inliers[i];
-			cv::Point2d pt1((double)points.at<float>(idx, 0), (double)points.at<float>(idx, 1));
-			cv::Point2d pt2(image2.cols + (double)points.at<float>(idx, 2), (double)points.at<float>(idx, 3));
+			int idx = inliers_[i];
+			cv::Point2d pt1((double)points_.at<float>(idx, 0), (double)points_.at<float>(idx, 1));
+			cv::Point2d pt2(image2_.cols + (double)points_.at<float>(idx, 2), (double)points_.at<float>(idx, 3));
 
 			cv::Scalar color(255 * (double)rand() / RAND_MAX, 255 * (double)rand() / RAND_MAX, 255 * (double)rand() / RAND_MAX);
 
-			cv::circle(out_image, pt1, size, color, static_cast<int>(size * 0.4f));
-			cv::circle(out_image, pt2, size, color, static_cast<int>(size * 0.4f));
-			cv::line(out_image, pt1, pt2, color, 2);
+			cv::circle(out_image_, pt1, size, color, static_cast<int>(size * 0.4f));
+			cv::circle(out_image_, pt2, size, color, static_cast<int>(size * 0.4f));
+			cv::line(out_image_, pt1, pt2, color, 2);
 		}
 	}
 	else
 	{
-		out_image = cv::Mat(2 * image1.rows, image1.cols, image1.type()); // Your final image
+		out_image_ = cv::Mat(2 * image1_.rows, image1_.cols, image1_.type()); // Your final image_
 
-		cv::Mat roiImgResult_Left = out_image(cv::Rect(0, 0, image1.cols, image1.rows)); //Img1 will be on the left part
-		cv::Mat roiImgResult_Right = out_image(cv::Rect(0, image1.rows, image2.cols, image2.rows)); //Img2 will be on the right part, we shift the roi of img1.cols on the right
+		cv::Mat roiImgResult_Left = out_image_(cv::Rect(0, 0, image1_.cols, image1_.rows)); //Img1 will be on the left part
+		cv::Mat roiImgResult_Right = out_image_(cv::Rect(0, image1_.rows, image2_.cols, image2_.rows)); //Img2 will be on the right part, we shift the roi of img1.cols on the right
 
-		cv::Mat roiImg1 = image1(cv::Rect(0, 0, image1.cols, image1.rows));
-		cv::Mat roiImg2 = image2(cv::Rect(0, 0, image2.cols, image2.rows));
+		cv::Mat roiImg1 = image1_(cv::Rect(0, 0, image1_.cols, image1_.rows));
+		cv::Mat roiImg2 = image2_(cv::Rect(0, 0, image2_.cols, image2_.rows));
 
 		roiImg1.copyTo(roiImgResult_Left); //Img1 will be on the left of imgResult
 		roiImg2.copyTo(roiImgResult_Right); //Img2 will be on the right of imgResult
 
-		for (int i = 0; i < inliers.size(); ++i)
+		for (auto i = 0; i < inliers_.size(); ++i)
 		{
-			int idx = inliers[i];
-			cv::Point2d pt1((double)points.at<float>(idx, 0), (double)points.at<float>(idx, 1));
-			cv::Point2d pt2(image2.cols + (double)points.at<float>(idx, 2), (double)points.at<float>(idx, 3));
+			int idx = inliers_[i];
+			cv::Point2d pt1((double)points_.at<float>(idx, 0), (double)points_.at<float>(idx, 1));
+			cv::Point2d pt2(image2_.cols + (double)points_.at<float>(idx, 2), (double)points_.at<float>(idx, 3));
 
 			cv::Scalar color(255 * (double)rand() / RAND_MAX, 255 * (double)rand() / RAND_MAX, 255 * (double)rand() / RAND_MAX);
-			cv::circle(out_image, pt1, size, color, static_cast<int>(size * 0.4));
-			cv::circle(out_image, pt2, size, color, static_cast<int>(size * 0.4));
-			cv::line(out_image, pt1, pt2, color, 2);
+			cv::circle(out_image_, pt1, size, color, static_cast<int>(size * 0.4));
+			cv::circle(out_image_, pt2, size, color, static_cast<int>(size * 0.4));
+			cv::line(out_image_, pt1, pt2, color, 2);
 		}
 	}
 
-	cv::imshow("Image Out", out_image);
+	cv::imshow("Image Out", out_image_);
 	cv::waitKey(0);
 }
 
-void DetectFeatures(std::string name, cv::Mat image1, cv::Mat image2, cv::Mat &points)
+void detect_features(std::string scene_name_, 
+	cv::Mat image1_, 
+	cv::Mat image2_, 
+	cv::Mat &points_)
 {
-	if (LoadPointsFromFile(points, name.c_str()))
+	if (load_points_from_file(points_, scene_name_.c_str()))
 	{
-		printf("Match number: %d\n", points.rows);
+		printf("Match number: %d\n", points_.rows);
 		return;
 	}
 
@@ -243,46 +271,52 @@ void DetectFeatures(std::string name, cv::Mat image1, cv::Mat image2, cv::Mat &p
 	std::vector<cv::KeyPoint> keypoints1, keypoints2;
 	
 	cv::Ptr<cv::xfeatures2d::SIFT> detector = cv::xfeatures2d::SIFT::create();
-	detector->detect(image1, keypoints1);
-	detector->compute(image1, keypoints1, descriptors1);
+	detector->detect(image1_, keypoints1);
+	detector->compute(image1_, keypoints1, descriptors1);
 	printf("Features found in the first image: %d\n", static_cast<int>(keypoints1.size()));
 
-	detector->detect(image2, keypoints2);
-	detector->compute(image2, keypoints2, descriptors2);
+	detector->detect(image2_, keypoints2);
+	detector->compute(image2_, keypoints2, descriptors2);
 	printf("Features found in the second image: %d\n", static_cast<int>(keypoints2.size()));
 
 	std::vector<std::vector< cv::DMatch >> matches_vector;
 	cv::FlannBasedMatcher matcher(new cv::flann::KDTreeIndexParams(5), new cv::flann::SearchParams(32));
 	matcher.knnMatch(descriptors1, descriptors2, matches_vector, 2);
-
-	std::vector<cv::Point2f> src_points, dst_points;
-	for (auto m : matches_vector)
+	
+	std::vector<std::tuple<float, cv::Point2f, cv::Point2f>> correspondences;
+	for (auto match : matches_vector)
 	{
-		if (m.size() == 2 && m[0].distance < m[1].distance * 0.7)
+		if (match.size() == 2 && match[0].distance < match[1].distance * 0.8)
 		{
-			auto& kp1 = keypoints1[m[0].queryIdx];
-			auto& kp2 = keypoints2[m[0].trainIdx];
-			src_points.push_back(kp1.pt);
-			dst_points.push_back(kp2.pt);
+			auto& kp1 = keypoints1[match[0].queryIdx];
+			auto& kp2 = keypoints2[match[0].trainIdx];
+			correspondences.push_back(std::make_tuple<float, cv::Point2f, cv::Point2f>(match[0].distance / match[1].distance, (cv::Point2f)kp1.pt, (cv::Point2f)kp2.pt));
 		}
 	}
-
-	points = cv::Mat(static_cast<int>(src_points.size()), 4, CV_32F);
-	float *points_ptr = reinterpret_cast<float*>(points.data);
-
-	for (int i = 0; i < src_points.size(); ++i)
+	
+	// Sort the points for PROSAC
+	std::sort(correspondences.begin(), correspondences.end(), [](const std::tuple<float, cv::Point2f, cv::Point2f>& correspondence_1_, 
+		const std::tuple<float, cv::Point2f, cv::Point2f>& correspondence_2_) -> bool
 	{
-		*(points_ptr++) = src_points[i].x;
-		*(points_ptr++) = src_points[i].y;
-		*(points_ptr++) = dst_points[i].x;
-		*(points_ptr++) = dst_points[i].y;
+		return std::get<0>(correspondence_1_) < std::get<0>(correspondence_2_);
+	});
+
+	points_ = cv::Mat(static_cast<int>(correspondences.size()), 4, CV_32F);
+	float *points_ptr = reinterpret_cast<float*>(points_.data);
+
+	for (auto[distance_ratio, point_1, point_2] : correspondences)
+	{
+		*(points_ptr++) = point_1.x;
+		*(points_ptr++) = point_1.y;
+		*(points_ptr++) = point_2.x;
+		*(points_ptr++) = point_2.y;
 	}
 
-	SavePointsToFile(points, name.c_str());
-	printf("Match number: %d\n", static_cast<int>(dst_points.size()));
+	save_points_to_file(points_, scene_name_.c_str());
+	printf("Match number: %d\n", static_cast<int>(points_.rows));
 }
 
-bool LoadPointsFromFile(cv::Mat &points, const char* file)
+bool load_points_from_file(cv::Mat &points, const char* file)
 {
 	std::ifstream infile(file);
 
@@ -315,7 +349,7 @@ bool LoadPointsFromFile(cv::Mat &points, const char* file)
 	return true;
 }
 
-bool SavePointsToFile(const cv::Mat &points, const char* file, std::vector<int> *inliers)
+bool save_points_to_file(const cv::Mat &points, const char* file, std::vector<int> *inliers)
 {
 	std::ofstream outfile(file, std::ios::out);
 	
