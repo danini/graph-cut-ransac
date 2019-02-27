@@ -301,9 +301,9 @@ public:
 				f[8] = 1.0;
 
 				/* orient. constr. */
-				/*if (!all_ori_valid(&F, data, sample, sample_number)) {
+				if (!all_ori_valid(&F, data, sample, sample_number)) {
 					continue;
-				}*/
+				}
 
 				Model model;
 				model.descriptor = F;

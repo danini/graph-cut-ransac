@@ -67,7 +67,7 @@ int main(int argc, const char* argv[])
 {
 	srand(static_cast<int>(time(NULL)));
 
-	std::string task = "johnssona";
+	std::string task = "Kyoto";
 
 	// Create the task directory of doesn't exist
 	std::string dir = "results/" + task;
@@ -117,7 +117,7 @@ void test_fundamental_matrix_fitting(std::string source_path_,
 	const int fps_)
 {
 	std::vector<std::string> tests(0);
-	
+
 	int iteration_number = 0;
 
 	// Read the images
@@ -138,18 +138,17 @@ void test_fundamental_matrix_fitting(std::string source_path_,
 
 	std::chrono::time_point<std::chrono::system_clock> start, end;
 	start = std::chrono::system_clock::now();
-	//for (auto i = 0; i < 1000; ++i)
-		gcransac.run(points, 
-			estimator, 
-			model, 
-			inliers,
-			iteration_number,
-			inlier_outlier_threshold_, 
-			spatial_coherence_weight_, 
-			neighborhood_size_,  
-			1.0f - confidence_, 
-			true, 
-			true);
+	gcransac.run(points,
+		estimator,
+		model,
+		inliers,
+		iteration_number,
+		inlier_outlier_threshold_,
+		spatial_coherence_weight_,
+		neighborhood_size_,
+		1.0f - confidence_,
+		true,
+		true);
 	end = std::chrono::system_clock::now();
 
 	std::chrono::duration<double> elapsed_seconds = end - start;
