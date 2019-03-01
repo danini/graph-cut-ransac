@@ -91,7 +91,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 
 # five_point
 file(GLOB_RECURSE HDRSSRCS_FIVE_POINT 
-	"src/Sample_FundamentalEstimator/five_point/*.*"
+	"src/Sample_FundamentalEstimator/five_point/*.h"
+	"src/Sample_FundamentalEstimator/five_point/*.cpp"
 )
 source_group(third_pary\\five_point FILES
 	${HDRSSRCS_FIVE_POINT}
@@ -104,7 +105,6 @@ source_group("Estimators" FILES
 	src/Sample_FundamentalEstimator/homography_estimator.h
 	src/Sample_FundamentalEstimator/line_estimator.h
 )
-
 
 add_executable(Sample_FundamentalEstimator
 	${HDRSSRCS_FIVE_POINT}
