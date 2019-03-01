@@ -98,11 +98,13 @@ namespace theia
 			const Model& model) const 
 		{
 			std::vector<double> residuals(data.size());
-			concurrency::parallel_for(0, (int)data.size(), [&](int i)
-			//for (int i = 0; i < data.size(); i++) 
+#ifdef USE_OPENMP
+#pragma omp parallel for
+#endif
+			for (int i = 0; i < data.size(); i++) 
 			{
 				residuals[i] = Error(data[i], model);
-			});
+			}
 			return residuals;
 		}
 

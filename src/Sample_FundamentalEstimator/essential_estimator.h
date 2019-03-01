@@ -1,54 +1,58 @@
-#include "stdafx.h"
-
 #include <iostream>
 #include <math.h>
 #include <chrono>
 #include <random>
 #include <vector>
 
+#include "five_point/5point.h"
 #include "estimator.h"
 #include "prosac.h"
 
 using namespace theia;
 
-struct FundamentalMatrix
+struct EssentialMatrix
 {
 	cv::Mat descriptor;
+	cv::Mat F;
 	std::vector<int> mss;
 
-	FundamentalMatrix() {}
-	FundamentalMatrix(const FundamentalMatrix& other)
+	EssentialMatrix() {}
+	EssentialMatrix(const EssentialMatrix& other)
 	{
 		descriptor = other.descriptor.clone();
+		F = other.F.clone();
 		mss = other.mss;
 	}
 };
 
 // This is the estimator class for estimating a homography matrix between two images. A model estimation method and error calculation method are implemented
-class FundamentalMatrixEstimator : public Estimator < cv::Mat, FundamentalMatrix >
+class EssentialMatrixEstimator : public Estimator < cv::Mat, EssentialMatrix >
 {
 protected:
 
 public:
-	FundamentalMatrixEstimator() {}
-	~FundamentalMatrixEstimator() {}
+	cv::Mat K1i, K2ti;
 
-	int SampleSize() const { 
-		return 7;
+	EssentialMatrixEstimator() {}
+	~EssentialMatrixEstimator() {}
+
+	int SampleSize() const {
+		return 5;
 	}
 
 	int InlierLimit() const {
-		return 49;
+		return 7 * SampleSize();
 	}
 
 	bool EstimateModel(const cv::Mat& data,
 		const int *sample,
-		std::vector<FundamentalMatrix>* models) const
+		std::vector<EssentialMatrix>* models) const
 	{
 		// model calculation 
 		int M = SampleSize();
 
-		Algorithm_7_point(data, sample, M, models);
+		//Algorithm_8_point(data, sample, M, models);
+		Algorithm_5_point(data, sample, M, models);
 		if (models->size() == 0)
 			return false;
 		return true;
@@ -57,46 +61,47 @@ public:
 	bool EstimateModelNonminimal(const cv::Mat& data,
 		const int *sample,
 		int sample_number,
-		std::vector<FundamentalMatrix>* models) const
+		std::vector<EssentialMatrix>* models) const
 	{
 
 		// model calculation 
 		int M = sample_number;
 
-		if (sample_number < 8)
+		if (sample_number < 7)
 			return false;
 
-		Algorithm_8_point(data, sample, sample_number, models);
+		if (sample_number == 7)
+			Algorithm_7_point(data, sample, M, models);
+		else
+			Algorithm_8_point(data, sample, sample_number, models);
+
+		if (models->size() == 0)
+			return false;
+
+		for (auto i = 0; i < models->size(); ++i)
+			if (models->at(i).F.rows != 3 || models->at(i).descriptor.rows != 3)
+				return false;
+
 		return true;
 	}
 
-	double Error(const cv::Mat& point, const FundamentalMatrix& model) const
+	double Error(const cv::Mat& point, const EssentialMatrix& model) const
 	{
 		const float* s = (float *)point.data;
-		const float x1 = *s;
-		const float y1 = *(s + 1);
-		const float x2 = *(s + 2);
-		const float y2 = *(s + 3);
+		const float x1 = *(s + 6);
+		const float y1 = *(s + 7);
+		const float x2 = *(s + 9);
+		const float y2 = *(s + 10);
+				
+		const float* p = (float *)model.F.data;
 
-		const float* p = (float *)model.descriptor.data;
+		const float l1 = *(p)* x2 + *(p + 3) * y2 + *(p + 6);
+		const float l2 = *(p + 1) * x2 + *(p + 4) * y2 + *(p + 7);
+		const float l3 = *(p + 2) * x2 + *(p + 5) * y2 + *(p + 8);
 
-		const float f11 = *(p);
-		const float f12 = *(p + 1);
-		const float f13 = *(p + 2);
-		const float f21 = *(p + 3);
-		const float f22 = *(p + 4);
-		const float f23 = *(p + 5);
-		const float f31 = *(p + 6);
-		const float f32 = *(p + 7);
-		const float f33 = *(p + 8);
-
-		const float l1 = f11* x2 + f21 * y2 + f31;
-		const float l2 = f12 * x2 + f22 * y2 + f32;
-		const float l3 = f13 * x2 + f23 * y2 + f33;
-
-		const float t1 = f11 * x1 + f12 * y1 + f13;
-		const float t2 = f21 * x1 + f22 * y1 + f23;
-		const float t3 = f31 * x1 + f32 * y1 + f33;
+		const float t1 = *(p)* x1 + *(p + 1) * y1 + *(p + 2);
+		const float t2 = *(p + 3) * x1 + *(p + 4) * y1 + *(p + 5);
+		const float t3 = *(p + 6) * x1 + *(p + 7) * y1 + *(p + 8);
 
 		const float a1 = l1 * x1 + l2 * y1 + l3;
 		const float a2 = sqrt(l1 * l1 + l2 * l2);
@@ -114,30 +119,20 @@ public:
 	float Error(const cv::Mat& point, const cv::Mat& descriptor) const
 	{
 		const float* s = (float *)point.data;
-		const float x1 = *s;
-		const float y1 = *(s + 1);
-		const float x2 = *(s + 2);
-		const float y2 = *(s + 3);
+		const float x1 = *(s + 6 - 6);
+		const float y1 = *(s + 7 - 6);
+		const float x2 = *(s + 9 - 6);
+		const float y2 = *(s + 10 - 6);
 
 		const float* p = (float *)descriptor.data;
 
-		const float f11 = *(p);
-		const float f12 = *(p + 1);
-		const float f13 = *(p + 2);
-		const float f21 = *(p + 3);
-		const float f22 = *(p + 4);
-		const float f23 = *(p + 5);
-		const float f31 = *(p + 6);
-		const float f32 = *(p + 7);
-		const float f33 = *(p + 8);
+		const float l1 = *(p)* x2 + *(p + 3) * y2 + *(p + 6);
+		const float l2 = *(p + 1) * x2 + *(p + 4) * y2 + *(p + 7);
+		const float l3 = *(p + 2) * x2 + *(p + 5) * y2 + *(p + 8);
 
-		const float l1 = f11 * x2 + f21 * y2 + f31;
-		const float l2 = f12 * x2 + f22 * y2 + f32;
-		const float l3 = f13 * x2 + f23 * y2 + f33;
-
-		const float t1 = f11 * x1 + f12 * y1 + f13;
-		const float t2 = f21 * x1 + f22 * y1 + f23;
-		const float t3 = f31 * x1 + f32 * y1 + f33;
+		const float t1 = *(p)* x1 + *(p + 1) * y1 + *(p + 2);
+		const float t2 = *(p + 3) * x1 + *(p + 4) * y1 + *(p + 5);
+		const float t3 = *(p + 6) * x1 + *(p + 7) * y1 + *(p + 8);
 
 		const float a1 = l1 * x1 + l2 * y1 + l3;
 		const float a2 = sqrt(l1 * l1 + l2 * l2);
@@ -151,23 +146,66 @@ public:
 		return abs(0.5f * (d1 + d2));
 	}
 
+	bool Algorithm_5_point(const cv::Mat& data,
+		const int *sample,
+		int sample_number,
+		std::vector<EssentialMatrix>* models) const
+	{
+		cv::Mat E, P;
+		std::vector<cv::Point2d> pts1(5), pts2(5);
+
+		for (auto i = 0; i < 5; i++)
+		{
+			float x0 = data.at<float>(sample[i], 0), y0 = data.at<float>(sample[i], 1);
+			float x1 = data.at<float>(sample[i], 3), y1 = data.at<float>(sample[i], 4);
+
+			pts1[i].x = static_cast<double>(x0);
+			pts1[i].y = static_cast<double>(y0);
+			pts2[i].x = static_cast<double>(x1);
+			pts2[i].y = static_cast<double>(y1);
+		}
+
+		Solve5PointEssential(pts1, pts2, E, P);
+		E.convertTo(E, CV_32F);
+
+		if (E.rows != 3)
+			return false;
+
+		Model model;
+		model.descriptor = E;
+		model.F = K2ti * E * K1i;
+
+		models->push_back(model);
+		return true;
+	}
+
 	bool Algorithm_8_point(const cv::Mat& data,
 		const int *sample,
 		int sample_number,
-		std::vector<FundamentalMatrix>* models) const
+		std::vector<EssentialMatrix>* models) const
 	{
 		float f[9];
 		cv::Mat evals(1, 9, CV_32F), evecs(9, 9, CV_32F);
 		cv::Mat A(sample_number, 9, CV_32F);
-		cv::Mat F(3, 3, CV_32F, f);
+		cv::Mat E(3, 3, CV_32F, f);
 		int i;
+
 
 		// form a linear system: i-th row of A(=a) represents
 		// the equation: (m2[i], 1)'*F*(m1[i], 1) = 0
 		for (i = 0; i < sample_number; i++)
 		{
-			float x0 = data.at<float>(sample[i], 0), y0 = data.at<float>(sample[i], 1);
-			float x1 = data.at<float>(sample[i], 2), y1 = data.at<float>(sample[i], 3);
+			/*if (sample[i] >= data.rows)
+				return false;*/
+
+			//float x0 = data.at<float>(sample[i], 0), y0 = data.at<float>(sample[i], 1);
+			//float x1 = data.at<float>(sample[i], 3), y1 = data.at<float>(sample[i], 4);
+
+			//std::cout << sample[i] << endl;
+			int idx = sample[i] * 12;
+			const float *data_ptr = ((float *)data.data + idx);
+			float x0 = *(data_ptr), y0 = *(data_ptr + 1);
+			float x1 = *(data_ptr + 3), y1 = *(data_ptr + 4);
 
 			A.at<float>(i, 0) = x1*x0;
 			A.at<float>(i, 1) = x1*y0;
@@ -189,9 +227,13 @@ public:
 
 		for (i = 0; i < 9; ++i)
 			f[i] = evecs.at<float>(8, i);
+		//f[8] = 1.0;
+
+		//std::cout << F << endl;
 
 		Model model;
-		model.descriptor = F;
+		model.descriptor = E;
+		model.F = K2ti * E * K1i;
 		models->push_back(model);
 		return true;
 	}
@@ -199,7 +241,7 @@ public:
 	bool Algorithm_7_point(const cv::Mat& data,
 		const int *sample,
 		int sample_number,
-		std::vector<FundamentalMatrix>* models) const
+		std::vector<EssentialMatrix>* models) const
 	{
 
 		float a[7 * 9], v[9 * 9], c[4], r[3];
@@ -216,7 +258,7 @@ public:
 		for (i = 0; i < 7; i++)
 		{
 			float x0 = data.at<float>(sample[i], 0), y0 = data.at<float>(sample[i], 1);
-			float x1 = data.at<float>(sample[i], 2), y1 = data.at<float>(sample[i], 3);
+			float x1 = data.at<float>(sample[i], 3), y1 = data.at<float>(sample[i], 4);
 
 			a[i * 9 + 0] = x1*x0;
 			a[i * 9 + 1] = x1*y0;
@@ -284,7 +326,7 @@ public:
 		for (k = 0; k < n; k++)
 		{
 			float f[9];
-			cv::Mat F(3, 3, CV_32F, f);
+			cv::Mat E(3, 3, CV_32F, f);
 
 			// for each root form the fundamental matrix
 			float lambda = r[k], mu = 1.;
@@ -301,12 +343,13 @@ public:
 				f[8] = 1.0;
 
 				/* orient. constr. */
-				if (!all_ori_valid(&F, data, sample, sample_number)) {
+				if (!all_ori_valid(&E, data, sample, sample_number)) {
 					continue;
 				}
 
 				Model model;
-				model.descriptor = F;
+				model.descriptor = E;
+				model.F = K2ti * E * K1i;
 				model.mss.resize(sample_number);
 				for (auto i = 0; i < sample_number; ++i)
 					model.mss[i] = sample[i];
@@ -330,9 +373,10 @@ public:
 
 	float getorisig(const cv::Mat *F, const cv::Mat *ec, const cv::Mat &u) const
 	{
-		float s1, s2;		
-		s1 = F->at<float>(0,0) * u.at<float>(3) + F->at<float>(1,0) * u.at<float>(4) + F->at<float>(2,0);
-		s2 = ec->at<float>(1) - ec->at<float>(2) * u.at<float>(1);
+		float s1, s2;
+
+		s1 = F->at<float>(0) * u.at<float>(3) + F->at<float>(3) * u.at<float>(4) + F->at<float>(6) * u.at<float>(5);
+		s2 = ec->at<float>(1) * u.at<float>(2) - ec->at<float>(2) * u.at<float>(1);
 		return(s1 * s2);
 	}
 
@@ -342,6 +386,7 @@ public:
 		float sig, sig1;
 		int i;
 		epipole(ec, F);
+
 		sig1 = getorisig(F, &ec, data.row(sample[0]));
 		for (i = 1; i < N; i++)
 		{

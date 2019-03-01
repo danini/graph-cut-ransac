@@ -42,7 +42,6 @@
 #include <vector>
 
 #include "sampler.h"
-#include "random.h"
 
 namespace theia
 {

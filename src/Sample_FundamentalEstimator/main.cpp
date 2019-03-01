@@ -1,24 +1,24 @@
-// VisionFrameWork.cpp : Defines the entry point for the console application.
+// main.cpp : Defines the entry point for the console application.
 //
 
-#include "stdafx.h"
-
-#include <sstream>
-#include <fstream>
-#include <vector>
-#include <set>
-#include <opencv2\highgui\highgui.hpp>
-#include <opencv2\features2d.hpp>
-#include "opencv2/xfeatures2d.hpp"
-#include <functional>
 #include <algorithm>
+#include <fstream>
+#include <functional>
+#include <set>
+#include <sstream>
+#include <vector>
+
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/xfeatures2d.hpp>
+
 #include "GCRANSAC.h"
-#include <ppl.h>
 #include <ctime>
-#include "line_estimator.cpp"
-#include "essential_estimator.cpp"
-#include "fundamental_estimator.cpp"
-#include "homography_estimator.cpp"
+#include "line_estimator.h"
+#include "essential_estimator.h"
+#include "fundamental_estimator.h"
+#include "homography_estimator.h"
 
 #include <direct.h>
 #include <sys/types.h>
@@ -69,8 +69,10 @@ int main(int argc, const char* argv[])
 
 	std::string task = "head";
 
+  const std::string root_dir = "../";
+
 	// Create the task directory of doesn't exist
-	std::string dir = "results/" + task;
+  std::string dir = root_dir + "results/" + task;
 
 	if (stat(dir.c_str(), &info) != 0)
 		if (_mkdir(dir.c_str()) != 0)
@@ -79,11 +81,11 @@ int main(int argc, const char* argv[])
 			return -1;
 		}
 
-	std::string srcImagePath = "data/" + task + "/" + task + "1.jpg";
-	std::string dstImagePath = "data/" + task + "/" + task + "2.jpg";
-	std::string input_correspondence_path = "results/" + task + "/" + task + "_points_with_no_annotation.txt";
-	std::string output_correspondence_path = "results/" + task + "/result_" + task + ".txt";
-	std::string output_matchImagePath = "results/" + task + "/matches_" + task + ".png";
+	std::string srcImagePath = root_dir + "data/" + task + "/" + task + "1.jpg";
+	std::string dstImagePath = root_dir + "data/" + task + "/" + task + "2.jpg";
+	std::string input_correspondence_path =  root_dir + "results/" + task + "/" + task + "_points_with_no_annotation.txt";
+	std::string output_correspondence_path = root_dir + "results/" + task + "/result_" + task + ".txt";
+	std::string output_matchImagePath = root_dir + "results/" + task + "/matches_" + task + ".png";
 
 	const float confidence = 0.99f;
 	const int fps = -1;

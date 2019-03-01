@@ -681,8 +681,10 @@ Score GCRANSAC<ModelEstimator, Model>::get_score(const cv::Mat &points_,
 
 	std::vector<Score> process_scores(process_number, { 0,0 });
 
-	concurrency::parallel_for(0, process_number, [&](int process)
-	{
+#ifdef USE_OPENMP
+#pragma omp for
+#endif
+  for (int process = 0; process < process_number; process++) {
 		if (store_inliers_)
 			process_inliers[process].reserve(step_size);
 		const int start_idx = process * step_size;
@@ -702,7 +704,7 @@ Score GCRANSAC<ModelEstimator, Model>::get_score(const cv::Mat &points_,
 				process_scores[process].J += 1.0f - distance * distance / truncated_threshold_2; // Truncated quadratic cost
 			}
 		}
-	});
+	}
 
 	for (auto i = 0; i < process_number; ++i)
 	{

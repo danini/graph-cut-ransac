@@ -1,7 +1,7 @@
-#include "stdafx.h"
-
 #include "estimator.h"
 #include "prosac.h"
+
+#include <opencv2/calib3d/calib3d.hpp>
 
 using namespace theia;
 
