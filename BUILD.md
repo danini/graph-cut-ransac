@@ -25,10 +25,12 @@ Compiling
 ---------
 
 ```shell
+$ git clone https://github.com/danini/graph-cut-ransac
 $ mkdir build
 $ cd build
 $ cmake-gui ..
 ```
 
-- Configure + Generate
-- Set the OpenCV_DIR if needed.
+- CMake: Configure + Generate
+- CMake: Set the OpenCV_DIR if needed.
+- Build
