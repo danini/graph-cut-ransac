@@ -31,7 +31,7 @@ public:
 	inline void generateUniqueRandomSet(int * sample_,
 		unsigned int sample_size_)
 	{
-		for (auto i = 0; i < sample_size_; i++)
+		for (size_t i = 0; i < sample_size_; i++)
 		{
 			sample_[i] = generate(generator);
 			for (int j = i - 1; j >= 0; j--) {
@@ -47,7 +47,7 @@ public:
 		unsigned int sample_size_,
 		unsigned int max_) {
 		resetGenerator(0, max_);
-		for (auto i = 0; i < sample_size_; i++) {
+		for (size_t i = 0; i < sample_size_; i++) {
 			sample_[i] = generate(generator);
 			for (int j = i - 1; j >= 0; j--) {
 				if (sample_[i] == sample_[j]) {

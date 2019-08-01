@@ -7,8 +7,6 @@
 #include "five_point/5point.h"
 #include "estimator.h"
 
-using namespace theia;
-
 struct EssentialMatrix
 {
 	cv::Mat descriptor;
@@ -25,7 +23,7 @@ struct EssentialMatrix
 };
 
 // This is the estimator class for estimating a homography matrix between two images. A model estimation method and error calculation method are implemented
-class EssentialMatrixEstimator : public Estimator < cv::Mat, EssentialMatrix >
+class EssentialMatrixEstimator : public theia::Estimator < cv::Mat, EssentialMatrix >
 {
 protected:
 
@@ -35,11 +33,11 @@ public:
 	EssentialMatrixEstimator() {}
 	~EssentialMatrixEstimator() {}
 
-	int sampleSize() const {
+	size_t sampleSize() const {
 		return 5;
 	}
 
-	int inlierLimit() const {
+	size_t inlierLimit() const {
 		return 7 * sampleSize();
 	}
 
@@ -59,7 +57,7 @@ public:
 
 	bool estimateModelNonminimal(const cv::Mat& data,
 		const int *sample,
-		int sample_number,
+		size_t sample_number,
 		std::vector<EssentialMatrix>* models) const
 	{
 

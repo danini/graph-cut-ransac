@@ -5,9 +5,6 @@
 #include "prosac_sampler.h"
 #include "uniform_random_generator.h"
 
-#define PRINT_TIMES 0
-#define USE_CONCURRENCY 1
-
 /* RANSAC Scoring */
 struct Score {
 	/* number of inliers_, rectangular gain function */

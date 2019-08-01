@@ -6,8 +6,6 @@
 
 #include "estimator.h"
 
-using namespace theia;
-
 struct FundamentalMatrix
 {
 	cv::Mat descriptor;
@@ -22,7 +20,7 @@ struct FundamentalMatrix
 };
 
 // This is the estimator class for estimating a homography matrix between two images. A model estimation method and error calculation method are implemented
-class FundamentalMatrixEstimator : public Estimator < cv::Mat, FundamentalMatrix >
+class FundamentalMatrixEstimator : public theia::Estimator < cv::Mat, FundamentalMatrix >
 {
 protected:
 
@@ -30,11 +28,11 @@ public:
 	FundamentalMatrixEstimator() {}
 	~FundamentalMatrixEstimator() {}
 
-	int sampleSize() const { 
+	size_t sampleSize() const {
 		return 7;
 	}
 
-	int inlierLimit() const {
+	size_t inlierLimit() const {
 		return 49;
 	}
 
@@ -51,7 +49,8 @@ public:
 		return true;
 	}
 
-	double residual(const cv::Mat& point, const FundamentalMatrix& model) const
+	double residual(const cv::Mat& point, 
+		const FundamentalMatrix& model) const
 	{
 		const double* s = (double *)point.data;
 		const double x1 = *s;
@@ -92,7 +91,8 @@ public:
 		return (double)abs(0.5 * (d1 + d2));
 	}
 
-	double residual(const cv::Mat& point, const cv::Mat& descriptor) const
+	double residual(const cv::Mat& point, 
+		const cv::Mat& descriptor) const
 	{
 		const double* s = (double *)point.data;
 		const double x1 = *s;
@@ -135,7 +135,7 @@ public:
 	bool estimateModelNonminimal(
 		const cv::Mat& data,
 		const int *sample,
-		int sample_number,
+		size_t sample_number,
 		std::vector<FundamentalMatrix>* models) const
 	{
 		// model calculation 
@@ -173,7 +173,7 @@ public:
 	bool normalizePoints(
 		const cv::Mat& data, // The data points
 		const int *sample, // The points to which the model will be fit
-		int sample_number,// The number of points
+		size_t sample_number,// The number of points
 		cv::Mat &normalized_points, // The normalized point coordinates
 		cv::Mat &T1, // The normalizing transformation in the first image
 		cv::Mat &T2) const // The normalizing transformation in the second image

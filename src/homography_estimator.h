@@ -2,8 +2,6 @@
 
 #include <opencv2/calib3d/calib3d.hpp>
 
-using namespace theia;
-
 struct Homography
 {
 	cv::Mat descriptor;
@@ -15,7 +13,7 @@ struct Homography
 };
 
 // This is the estimator class for estimating a homography matrix between two images. A model estimation method and error calculation method are implemented
-class RobustHomographyEstimator : public Estimator < cv::Mat, Homography >
+class RobustHomographyEstimator : public theia::Estimator < cv::Mat, Homography >
 {
 protected:
 
@@ -23,11 +21,11 @@ public:
 	RobustHomographyEstimator() {}
 	~RobustHomographyEstimator() {}
 
-	int sampleSize() const {
+	size_t sampleSize() const {
 		return 4;
 	}
 
-	int inlierLimit() const {
+	size_t inlierLimit() const {
 		return 28;
 	}
 
@@ -63,7 +61,7 @@ public:
 
 	bool estimateModelNonminimal(const cv::Mat& data,
 		const int *sample,
-		int sample_number,
+		size_t sample_number,
 		std::vector<Homography>* models) const
 	{
 

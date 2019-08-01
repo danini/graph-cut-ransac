@@ -57,8 +57,8 @@ namespace theia
 		virtual ~Estimator() {}
 
 		// Get the minimum number of samples needed to generate a model.
-		virtual int sampleSize() const = 0;
-		virtual int inlierLimit() const = 0;
+		virtual size_t sampleSize() const = 0;
+		virtual size_t inlierLimit() const = 0;
 
 		// Given a set of data points, estimate the model. Users should implement this
 		// function appropriately for the task being solved. Returns true for
@@ -73,7 +73,7 @@ namespace theia
 		// By default, this simply implements the minimal case.
 		virtual bool estimateModelNonminimal(const cv::Mat& data,
 			const int *sample,
-			int sample_number,
+			size_t sample_number,
 			std::vector<Model>* model) const = 0;
 
 		// Refine the model based on an updated subset of data, and a pre-computed
@@ -116,12 +116,18 @@ namespace theia
 			std::vector<int> inliers;
 			inliers.reserve(data.size());
 
-			vector<bool> isInlier(data.size(), false);
+			vector<bool> isInlier(data.size(), false); 
+#ifdef _WIN32
 			concurrency::parallel_for(0, (int)data.size(), [&](int i)
-			//for (int i = 0; i < data.size(); i++)
+#else
+			for (int i = 0; i < data.size(); i++)
+#endif
 			{
 				isInlier[i] = residual(data[i], model) < error_threshold;
-			});
+			}
+#ifdef _WIN32
+			);
+#endif
 
 			for (int i = 0; i < data.size(); ++i)
 				if (isInlier[i])
