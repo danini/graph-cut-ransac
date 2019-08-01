@@ -80,7 +80,7 @@ namespace theia
 			: Sampler<Datum>(min_num_samples) {}
 		~ProsacSampler() {}
 
-		bool Initialize()
+		bool initialize()
 		{
 			ransac_convergence_iterations_ = 100000;
 			kth_sample_number_ = 1;
@@ -91,7 +91,7 @@ namespace theia
 		}
 
 		// Set the sample such that you are sampling the kth prosac sample (Eq. 6).
-		void SetSampleNumber(int k)
+		void setSampleNumber(int k)
 		{
 			kth_sample_number_ = k;
 		}
@@ -100,7 +100,7 @@ namespace theia
 		// samples.
 		// NOTE: This assumes that data is in sorted order by quality where data[i] is
 		// of higher quality than data[j] for all i < j.
-		bool Sample(const std::vector<Datum>& data, std::vector<Datum>* subset)
+		bool sample(const std::vector<Datum>& data, std::vector<Datum>* subset)
 		{
 			// Set t_n according to the PROSAC paper's recommendation.
 			double t_n = ransac_convergence_iterations_;
@@ -172,7 +172,7 @@ namespace theia
 			return true;
 		}
 
-		bool Sample(const cv::Mat& data, std::vector<int>& subset)
+		bool sample(const cv::Mat& data, std::vector<int>& subset)
 		{
 			// Set t_n according to the PROSAC paper's recommendation.
 			double t_n = ransac_convergence_iterations_;
@@ -244,7 +244,7 @@ namespace theia
 			return true;
 		}
 		
-		bool Sample(const cv::Mat& data, int * const subset)
+		bool sample(const cv::Mat& data, int * const subset)
 		{
 			// Set t_n according to the PROSAC paper's recommendation.
 			double t_n = ransac_convergence_iterations_;

@@ -61,7 +61,7 @@ namespace theia
 			max_iterations(std::numeric_limits<int>::max()),
 			use_Tdd_test(false) {}
 
-		// Error threshold to determin inliers for RANSAC (e.g., squared reprojection
+		// residual threshold to determin inliers for RANSAC (e.g., squared reprojection
 		// error). This is what will be used by the estimator to determine inliers.
 		double error_thresh;
 
@@ -120,7 +120,7 @@ namespace theia
 		SampleConsensusEstimator(const RansacParameters& ransac_params,
 			const ModelEstimator& estimator);
 
-		virtual bool Initialize()
+		virtual bool initialize()
 		{
 			return true;
 		}
@@ -150,7 +150,7 @@ namespace theia
 		//   particular type of sampling consensus.
 		// quality_measurement: class that instantiates the quality measurement of
 		//   the data. This determines the stopping criterion.
-		bool Initialize(Sampler<Datum>* sampler,
+		bool initialize(Sampler<Datum>* sampler,
 			QualityMeasurement* quality_measurement);
 
 		// Computes the maximum number of iterations required to ensure the inlier
@@ -194,7 +194,7 @@ namespace theia
 	}
 
 	template <class ModelEstimator>
-	bool SampleConsensusEstimator<ModelEstimator>::Initialize(
+	bool SampleConsensusEstimator<ModelEstimator>::initialize(
 		Sampler<Datum>* sampler,
 		QualityMeasurement* quality_measurement)
 	{
@@ -204,13 +204,13 @@ namespace theia
 			std::cout << "Error quality_measurement must not be null" << " @" << __LINE__ << std::endl;
 
 		sampler_.reset(sampler);
-		if (!sampler_->Initialize())
+		if (!sampler_->initialize())
 		{
 			return false;
 		}
 
 		quality_measurement_.reset(quality_measurement);
-		return quality_measurement_->Initialize();
+		return quality_measurement_->initialize();
 	}
 
 	template <class ModelEstimator>
@@ -267,7 +267,7 @@ namespace theia
 
 			// sample subset. Proceed if successfully sampled.
 			std::vector<Datum> data_subset;
-			if (!sampler_->Sample(data, &data_subset))
+			if (!sampler_->sample(data, &data_subset))
 			{
 				continue;
 			}
@@ -275,7 +275,7 @@ namespace theia
 			// Estimate model from subset. Skip to next iteration if the model fails to
 			// estimate.
 			std::vector<Model> temp_models;
-			if (!estimator_.EstimateModel(data_subset, &temp_models))
+			if (!estimator_.estimateModel(data_subset, &temp_models))
 			{
 				continue;
 			}
@@ -283,7 +283,7 @@ namespace theia
 			// Calculate residuals from estimated model.
 			for (const Model& temp_model : temp_models)
 			{
-				std::vector<double> residuals = estimator_.Residuals(data, temp_model);
+				std::vector<double> residuals = estimator_.residuals(data, temp_model);
 
 				// Determine quality of the generated model.
 				double sample_quality =
@@ -296,7 +296,7 @@ namespace theia
 					*best_model = temp_model;
 					best_quality = sample_quality;
 					max_iterations = ComputeMaxIterations(
-						estimator_.SampleSize(),
+						estimator_.sampleSize(),
 						std::max(quality_measurement_->GetInlierRatio(),
 						ransac_params_.min_inlier_ratio),
 						log_failure_prob);
@@ -305,11 +305,11 @@ namespace theia
 		}
 
 		summary->inliers =
-			estimator_.GetInliers(data, *best_model, ransac_params_.error_thresh);
+			estimator_.getInliers(data, *best_model, ransac_params_.error_thresh);
 		const double inlier_ratio =
 			static_cast<double>(summary->inliers.size()) / data.size();
 		summary->confidence =
-			1.0 - pow(1.0 - pow(inlier_ratio, estimator_.SampleSize()),
+			1.0 - pow(1.0 - pow(inlier_ratio, estimator_.sampleSize()),
 			summary->num_iterations);
 
 		return true;

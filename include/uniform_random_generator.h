@@ -19,16 +19,16 @@ public:
 
 	}
 
-	inline int get_random_number() {
+	inline int getRandomNumber() {
 		return generate(generator);
 	}
 
-	void reset_generator(int min_range_,
+	void resetGenerator(int min_range_,
 		int max_range_) {
 		generate = std::uniform_int_distribution<int>(min_range_, max_range_);
 	}
 
-	inline void generate_unique_random_set(int * sample_,
+	inline void generateUniqueRandomSet(int * sample_,
 		unsigned int sample_size_)
 	{
 		for (auto i = 0; i < sample_size_; i++)
@@ -43,10 +43,10 @@ public:
 		}
 	}
 
-	inline void generate_unique_random_set(int * sample_,
+	inline void generateUniqueRandomSet(int * sample_,
 		unsigned int sample_size_,
 		unsigned int max_) {
-		reset_generator(0, max_);
+		resetGenerator(0, max_);
 		for (auto i = 0; i < sample_size_; i++) {
 			sample_[i] = generate(generator);
 			for (int j = i - 1; j >= 0; j--) {

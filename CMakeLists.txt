@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.8)
 
-project(GraphCut_RANSAC LANGUAGES CXX)
+project(GraphCutRANSAC LANGUAGES CXX)
 
 # indicate if OPENMP should be enabled
 option(USE_OPENMP "Use OPENMP" ON)
@@ -15,7 +15,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # ==============================================================================
 # Find OpenCV
 # ==============================================================================
-find_package(OpenCV 3.3 REQUIRED)
+find_package(OpenCV 3.0 REQUIRED)
 
 # ==============================================================================
 # Find OpenMP
@@ -33,7 +33,7 @@ endif (USE_OPENMP)
 # Includes
 # ==============================================================================
 include_directories (
-	${PROJECT_SOURCE_DIR}/include/GraphCut_RANSAC
+	${PROJECT_SOURCE_DIR}/include
 )
 
 # ==============================================================================
@@ -43,35 +43,31 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 
 # Set header files for the library
 file(GLOB_RECURSE HDRS_GCRANSAC
-	"include/GraphCut_RANSAC/*.h"
-	"include/GraphCut_RANSAC/*.cpp"
+	"include/*.h"
+	"include/*.cpp"
 ) 
 
 # Set source files to be added to the library
 file(GLOB_RECURSE SRCS_GCRANSAC 
-	"src/GraphCut_RANSAC/*.cpp"
+	"src/*.cpp"
 )
 
-source_group(third_pary\\GCOptimization FILES
-	src/GraphCut_RANSAC/GCoptimization.cpp
-	include/GraphCut_RANSAC/graph.cpp
-	src/GraphCut_RANSAC/LinkedBlockList.cpp
-	include/GraphCut_RANSAC/maxflow.cpp
-	include/GraphCut_RANSAC/block.h
-	include/GraphCut_RANSAC/energy.h
-	include/GraphCut_RANSAC/GCoptimization.h
-	include/GraphCut_RANSAC/graph.h
-	include/GraphCut_RANSAC/LinkedBlockList.h
+source_group(third_party\\GCOptimization FILES
+	include/GCoptimization.cpp
+	include/LinkedBlockList.cpp
+	include/graph.cpp
+	include/maxflow.cpp
+	include/block.h
+	include/energy.h
+	include/GCoptimization.h
+	include/graph.h
+	include/LinkedBlockList.h
 )
 
-source_group(third_pary\\Theia FILES
-	include/GraphCut_RANSAC/prosac.h
-	include/GraphCut_RANSAC/prosac_sampler.h
-	include/GraphCut_RANSAC/quality_measurement.h
-	include/GraphCut_RANSAC/sample_consensus_estimator.h
-	include/GraphCut_RANSAC/sampler.h
-	include/GraphCut_RANSAC/inline_support.h
-	include/GraphCut_RANSAC/estimator.h
+source_group(third_party\\Theia FILES
+	include/prosac_sampler.h
+	include/sampler.h
+	include/estimator.h
 )
 
 add_library(${PROJECT_NAME} STATIC
@@ -91,31 +87,31 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 
 # five_point
 file(GLOB_RECURSE HDRSSRCS_FIVE_POINT 
-	"src/Sample_FundamentalEstimator/five_point/*.h"
-	"src/Sample_FundamentalEstimator/five_point/*.cpp"
+	"src/five_point/*.h"
+	"src/five_point/*.cpp"
 )
-source_group(third_pary\\five_point FILES
+source_group(third_party\\five_point FILES
 	${HDRSSRCS_FIVE_POINT}
 )
 
 # estimators
 source_group("Estimators" FILES
-	src/Sample_FundamentalEstimator/essential_estimator.h
-	src/Sample_FundamentalEstimator/fundamental_estimator.h
-	src/Sample_FundamentalEstimator/homography_estimator.h
-	src/Sample_FundamentalEstimator/line_estimator.h
+	src/essential_estimator.h
+	src/fundamental_estimator.h
+	src/homography_estimator.h
+	src/line_estimator.h
 )
 
-add_executable(Sample_FundamentalEstimator
+add_executable(SampleProject
 	${HDRSSRCS_FIVE_POINT}
-	src/Sample_FundamentalEstimator/essential_estimator.h
-	src/Sample_FundamentalEstimator/fundamental_estimator.h
-	src/Sample_FundamentalEstimator/homography_estimator.h
-	src/Sample_FundamentalEstimator/line_estimator.h
-	src/Sample_FundamentalEstimator/main.cpp)
+	src/essential_estimator.h
+	src/fundamental_estimator.h
+	src/homography_estimator.h
+	src/line_estimator.h
+	src/main.cpp)
 	
-target_link_libraries(Sample_FundamentalEstimator 
+target_link_libraries(SampleProject 
 	${OpenCV_LIBS}
 	${PROJECT_NAME}
 )
-add_dependencies(Sample_FundamentalEstimator ${PROJECT_NAME})
+add_dependencies(SampleProject ${PROJECT_NAME})

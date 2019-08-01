@@ -1,5 +1,4 @@
 #include "estimator.h"
-#include "prosac.h"
 
 #include <opencv2/calib3d/calib3d.hpp>
 
@@ -24,34 +23,34 @@ public:
 	RobustHomographyEstimator() {}
 	~RobustHomographyEstimator() {}
 
-	int SampleSize() const {
+	int sampleSize() const {
 		return 4;
 	}
 
-	int InlierLimit() const {
+	int inlierLimit() const {
 		return 28;
 	}
 
-	bool EstimateModel(const cv::Mat& data,
+	bool estimateModel(const cv::Mat& data,
 		const int *sample,
 		std::vector<Homography>* models) const
 	{
 		// model calculation 
-		int M = SampleSize();
+		int M = sampleSize();
 		
 		std::vector<cv::Point2d> pts1(M);
 		std::vector<cv::Point2d> pts2(M);
 
 		for (auto i = 0; i < M; ++i)
 		{
-			pts1[i].x = (double)data.at<float>(sample[i], 0);
-			pts1[i].y = (double)data.at<float>(sample[i], 1);
-			pts2[i].x = (double)data.at<float>(sample[i], 3);
-			pts2[i].y = (double)data.at<float>(sample[i], 4);
+			pts1[i].x = (double)data.at<double>(sample[i], 0);
+			pts1[i].y = (double)data.at<double>(sample[i], 1);
+			pts2[i].x = (double)data.at<double>(sample[i], 3);
+			pts2[i].y = (double)data.at<double>(sample[i], 4);
 		}
 
 		cv::Mat H = cv::findHomography(pts1, pts2);
-		H.convertTo(H, CV_32F);
+		H.convertTo(H, CV_64F);
 
 		if (H.cols == 0)
 			return false;
@@ -62,13 +61,13 @@ public:
 		return true;
 	}
 
-	bool EstimateModelNonminimal(const cv::Mat& data,
+	bool estimateModelNonminimal(const cv::Mat& data,
 		const int *sample,
 		int sample_number,
 		std::vector<Homography>* models) const
 	{
 
-		if (sample_number < SampleSize())
+		if (sample_number < sampleSize())
 			return false;
 
 		// model calculation 
@@ -79,19 +78,19 @@ public:
 
 		for (auto i = 0; i < M; ++i)
 		{
-			pts1[i].x = (double)data.at<float>(sample[i], 0);
-			pts1[i].y = (double)data.at<float>(sample[i], 1);
-			pts2[i].x = (double)data.at<float>(sample[i], 3);
-			pts2[i].y = (double)data.at<float>(sample[i], 4);
+			pts1[i].x = (double)data.at<double>(sample[i], 0);
+			pts1[i].y = (double)data.at<double>(sample[i], 1);
+			pts2[i].x = (double)data.at<double>(sample[i], 3);
+			pts2[i].y = (double)data.at<double>(sample[i], 4);
 		}
 
 		cv::Mat H = cv::findHomography(pts1, pts2, NULL, 0);
-		H.convertTo(H, CV_32F);
+		H.convertTo(H, CV_64F);
 
 		if (H.cols == 0)
 		{
 			H = cv::findHomography(pts1, pts2, NULL, CV_LMEDS);
-			H.convertTo(H, CV_32F);
+			H.convertTo(H, CV_64F);
 
 			if (H.cols == 0)
 				return false;
@@ -103,42 +102,42 @@ public:
 		return true;
 	}
 
-	double Error(const cv::Mat& point, const Homography& model) const
+	double residual(const cv::Mat& point, const Homography& model) const
 	{
-		const float* s = (float *)point.data;
-		const float* p = (float *)model.descriptor.data;
+		const double* s = (double *)point.data;
+		const double* p = (double *)model.descriptor.data;
 
-		const float x1 = *s;
-		const float y1 = *(s + 1);
-		const float x2 = *(s + 3);
-		const float y2 = *(s + 4);
+		const double x1 = *s;
+		const double y1 = *(s + 1);
+		const double x2 = *(s + 3);
+		const double y2 = *(s + 4);
 
-		const float t1 = *p * x1 + *(p + 1) * y1 + *(p + 2);
-		const float t2 = *(p + 3) * x1 + *(p + 4) * y1 + *(p + 5);
-		const float t3 = *(p + 6) * x1 + *(p + 7) * y1 + *(p + 8);
+		const double t1 = *p * x1 + *(p + 1) * y1 + *(p + 2);
+		const double t2 = *(p + 3) * x1 + *(p + 4) * y1 + *(p + 5);
+		const double t3 = *(p + 6) * x1 + *(p + 7) * y1 + *(p + 8);
 
-		const float d1 = x2 - (t1 / t3);
-		const float d2 = y2 - (t2 / t3);
+		const double d1 = x2 - (t1 / t3);
+		const double d2 = y2 - (t2 / t3);
 
 		return d1*d1 + d2*d2;
 	}
 
-	float Error(const cv::Mat& point, const cv::Mat& descriptor) const
+	double residual(const cv::Mat& point, const cv::Mat& descriptor) const
 	{
-		const float* s = (float *)point.data;
-		const float* p = (float *)descriptor.data;
+		const double* s = (double *)point.data;
+		const double* p = (double *)descriptor.data;
 
-		const float x1 = *s;
-		const float y1 = *(s + 1);
-		const float x2 = *(s + 3);
-		const float y2 = *(s + 4);
+		const double x1 = *s;
+		const double y1 = *(s + 1);
+		const double x2 = *(s + 3);
+		const double y2 = *(s + 4);
 
-		const float t1 = *p * x1 + *(p + 1) * y1 + *(p + 2);
-		const float t2 = *(p + 3) * x1 + *(p + 4) * y1 + *(p + 5);
-		const float t3 = *(p + 6) * x1 + *(p + 7) * y1 + *(p + 8);
+		const double t1 = *p * x1 + *(p + 1) * y1 + *(p + 2);
+		const double t2 = *(p + 3) * x1 + *(p + 4) * y1 + *(p + 5);
+		const double t3 = *(p + 6) * x1 + *(p + 7) * y1 + *(p + 8);
 
-		const float d1 = x2 - (t1 / t3);
-		const float d2 = y2 - (t2 / t3);
+		const double d1 = x2 - (t1 / t3);
+		const double d2 = y2 - (t2 / t3);
 
 		return d1*d1 + d2*d2;
 	}
@@ -148,15 +147,15 @@ public:
 		int sample_number,
 		std::vector<Homography>* models) const
 	{
-		/*float a[8 * 9];
-		cv::Mat A(8, 9, CV_32F, a);
+		/*double a[8 * 9];
+		cv::Mat A(8, 9, CV_64F, a);
 		
 		for (auto i = 0; i < 4; ++i)
 		{
-			float x1 = data.at<float>(sample[i], 0);
-			float y1 = data.at<float>(sample[i], 1);
-			float x2 = data.at<float>(sample[i], 3);
-			float y2 = data.at<float>(sample[i], 4);
+			double x1 = data.at<double>(sample[i], 0);
+			double y1 = data.at<double>(sample[i], 1);
+			double x2 = data.at<double>(sample[i], 3);
+			double y2 = data.at<double>(sample[i], 4);
 
 			int r = i * 9;
 			a[r + 0] = x1;

@@ -2,7 +2,7 @@
 #include "Polynomial.h"
 #include "Rpoly.h"
 
-static void projection_matrices_from_essential_matrix(const cv::Mat &E, cv::Mat &P1, cv::Mat &P2, cv::Mat &P3, cv::Mat &P4);
+static void projectionMatricesFromEssentialMatrix(const cv::Mat &E, cv::Mat &P1, cv::Mat &P2, cv::Mat &P3, cv::Mat &P4);
 static cv::Mat TriangulatePoint(const cv::Point2d &pt1, const cv::Point2d &pt2, const cv::Mat &P1, const cv::Mat &P2);
 static double CalcDepth(const cv::Mat &X, const cv::Mat &P);
 
@@ -188,7 +188,7 @@ bool Solve5PointEssential(std::vector<cv::Point2d> &pts1, std::vector<cv::Point2
         x2.at<double>(2,0) = 1.0;
 
         // Test to see if this E matrix is the correct one we're after
-        projection_matrices_from_essential_matrix(E, P[0], P[1], P[2], P[3]);
+        projectionMatricesFromEssentialMatrix(E, P[0], P[1], P[2], P[3]);
 
         cv::Mat best_E, best_P;
         int best_inliers = 0;
@@ -314,7 +314,7 @@ cv::Mat TriangulatePoint(const cv::Point2d &pt1, const cv::Point2d &pt2, const c
     return X;
 }
 
-void projection_matrices_from_essential_matrix(const cv::Mat &E, cv::Mat &P1, cv::Mat &P2, cv::Mat &P3, cv::Mat &P4)
+void projectionMatricesFromEssentialMatrix(const cv::Mat &E, cv::Mat &P1, cv::Mat &P2, cv::Mat &P3, cv::Mat &P4)
 {
     // Assumes input E is a rank 2 matrix, with equal singular values
     cv::SVD svd(E);

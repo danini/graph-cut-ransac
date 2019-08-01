@@ -6,7 +6,6 @@
 
 #include "five_point/5point.h"
 #include "estimator.h"
-#include "prosac.h"
 
 using namespace theia;
 
@@ -36,20 +35,20 @@ public:
 	EssentialMatrixEstimator() {}
 	~EssentialMatrixEstimator() {}
 
-	int SampleSize() const {
+	int sampleSize() const {
 		return 5;
 	}
 
-	int InlierLimit() const {
-		return 7 * SampleSize();
+	int inlierLimit() const {
+		return 7 * sampleSize();
 	}
 
-	bool EstimateModel(const cv::Mat& data,
+	bool estimateModel(const cv::Mat& data,
 		const int *sample,
 		std::vector<EssentialMatrix>* models) const
 	{
 		// model calculation 
-		int M = SampleSize();
+		int M = sampleSize();
 
 		//Algorithm_8_point(data, sample, M, models);
 		Algorithm_5_point(data, sample, M, models);
@@ -58,7 +57,7 @@ public:
 		return true;
 	}
 
-	bool EstimateModelNonminimal(const cv::Mat& data,
+	bool estimateModelNonminimal(const cv::Mat& data,
 		const int *sample,
 		int sample_number,
 		std::vector<EssentialMatrix>* models) const
@@ -71,9 +70,9 @@ public:
 			return false;
 
 		if (sample_number == 7)
-			Algorithm_7_point(data, sample, M, models);
+			solverSevenPoint(data, sample, M, models);
 		else
-			Algorithm_8_point(data, sample, sample_number, models);
+			solverEightPoint(data, sample, sample_number, models);
 
 		if (models->size() == 0)
 			return false;
@@ -85,63 +84,63 @@ public:
 		return true;
 	}
 
-	double Error(const cv::Mat& point, const EssentialMatrix& model) const
+	double residual(const cv::Mat& point, const EssentialMatrix& model) const
 	{
-		const float* s = (float *)point.data;
-		const float x1 = *(s + 6);
-		const float y1 = *(s + 7);
-		const float x2 = *(s + 9);
-		const float y2 = *(s + 10);
+		const double* s = (double *)point.data;
+		const double x1 = *(s + 6);
+		const double y1 = *(s + 7);
+		const double x2 = *(s + 9);
+		const double y2 = *(s + 10);
 				
-		const float* p = (float *)model.F.data;
+		const double* p = (double *)model.F.data;
 
-		const float l1 = *(p)* x2 + *(p + 3) * y2 + *(p + 6);
-		const float l2 = *(p + 1) * x2 + *(p + 4) * y2 + *(p + 7);
-		const float l3 = *(p + 2) * x2 + *(p + 5) * y2 + *(p + 8);
+		const double l1 = *(p)* x2 + *(p + 3) * y2 + *(p + 6);
+		const double l2 = *(p + 1) * x2 + *(p + 4) * y2 + *(p + 7);
+		const double l3 = *(p + 2) * x2 + *(p + 5) * y2 + *(p + 8);
 
-		const float t1 = *(p)* x1 + *(p + 1) * y1 + *(p + 2);
-		const float t2 = *(p + 3) * x1 + *(p + 4) * y1 + *(p + 5);
-		const float t3 = *(p + 6) * x1 + *(p + 7) * y1 + *(p + 8);
+		const double t1 = *(p)* x1 + *(p + 1) * y1 + *(p + 2);
+		const double t2 = *(p + 3) * x1 + *(p + 4) * y1 + *(p + 5);
+		const double t3 = *(p + 6) * x1 + *(p + 7) * y1 + *(p + 8);
 
-		const float a1 = l1 * x1 + l2 * y1 + l3;
-		const float a2 = sqrt(l1 * l1 + l2 * l2);
+		const double a1 = l1 * x1 + l2 * y1 + l3;
+		const double a2 = sqrt(l1 * l1 + l2 * l2);
 
-		const float b1 = t1 * x2 + t2 * y2 + t3;
-		const float b2 = sqrt(t1 * t1 + t2 * t2);
+		const double b1 = t1 * x2 + t2 * y2 + t3;
+		const double b2 = sqrt(t1 * t1 + t2 * t2);
 
-		const float d = l1 * x2 + l2 * y2 + l3;
-		const float d1 = a1 / a2;
-		const float d2 = b1 / b2;
+		const double d = l1 * x2 + l2 * y2 + l3;
+		const double d1 = a1 / a2;
+		const double d2 = b1 / b2;
 
 		return (double)abs(0.5 * (d1 + d2));
 	}
 
-	float Error(const cv::Mat& point, const cv::Mat& descriptor) const
+	double residual(const cv::Mat& point, const cv::Mat& descriptor) const
 	{
-		const float* s = (float *)point.data;
-		const float x1 = *(s + 6 - 6);
-		const float y1 = *(s + 7 - 6);
-		const float x2 = *(s + 9 - 6);
-		const float y2 = *(s + 10 - 6);
+		const double* s = (double *)point.data;
+		const double x1 = *(s + 6 - 6);
+		const double y1 = *(s + 7 - 6);
+		const double x2 = *(s + 9 - 6);
+		const double y2 = *(s + 10 - 6);
 
-		const float* p = (float *)descriptor.data;
+		const double* p = (double *)descriptor.data;
 
-		const float l1 = *(p)* x2 + *(p + 3) * y2 + *(p + 6);
-		const float l2 = *(p + 1) * x2 + *(p + 4) * y2 + *(p + 7);
-		const float l3 = *(p + 2) * x2 + *(p + 5) * y2 + *(p + 8);
+		const double l1 = *(p)* x2 + *(p + 3) * y2 + *(p + 6);
+		const double l2 = *(p + 1) * x2 + *(p + 4) * y2 + *(p + 7);
+		const double l3 = *(p + 2) * x2 + *(p + 5) * y2 + *(p + 8);
 
-		const float t1 = *(p)* x1 + *(p + 1) * y1 + *(p + 2);
-		const float t2 = *(p + 3) * x1 + *(p + 4) * y1 + *(p + 5);
-		const float t3 = *(p + 6) * x1 + *(p + 7) * y1 + *(p + 8);
+		const double t1 = *(p)* x1 + *(p + 1) * y1 + *(p + 2);
+		const double t2 = *(p + 3) * x1 + *(p + 4) * y1 + *(p + 5);
+		const double t3 = *(p + 6) * x1 + *(p + 7) * y1 + *(p + 8);
 
-		const float a1 = l1 * x1 + l2 * y1 + l3;
-		const float a2 = sqrt(l1 * l1 + l2 * l2);
+		const double a1 = l1 * x1 + l2 * y1 + l3;
+		const double a2 = sqrt(l1 * l1 + l2 * l2);
 
-		const float b1 = t1 * x2 + t2 * y1 + t3;
-		const float b2 = sqrt(t1 * t1 + t2 * t2);
+		const double b1 = t1 * x2 + t2 * y1 + t3;
+		const double b2 = sqrt(t1 * t1 + t2 * t2);
 
-		const float d1 = a1 / a2;
-		const float d2 = b1 / b2;
+		const double d1 = a1 / a2;
+		const double d2 = b1 / b2;
 
 		return abs(0.5f * (d1 + d2));
 	}
@@ -156,8 +155,8 @@ public:
 
 		for (auto i = 0; i < 5; i++)
 		{
-			float x0 = data.at<float>(sample[i], 0), y0 = data.at<float>(sample[i], 1);
-			float x1 = data.at<float>(sample[i], 3), y1 = data.at<float>(sample[i], 4);
+			double x0 = data.at<double>(sample[i], 0), y0 = data.at<double>(sample[i], 1);
+			double x1 = data.at<double>(sample[i], 3), y1 = data.at<double>(sample[i], 4);
 
 			pts1[i].x = static_cast<double>(x0);
 			pts1[i].y = static_cast<double>(y0);
@@ -166,7 +165,7 @@ public:
 		}
 
 		Solve5PointEssential(pts1, pts2, E, P);
-		E.convertTo(E, CV_32F);
+		E.convertTo(E, CV_64F);
 
 		if (E.rows != 3)
 			return false;
@@ -179,15 +178,15 @@ public:
 		return true;
 	}
 
-	bool Algorithm_8_point(const cv::Mat& data,
+	bool solverEightPoint(const cv::Mat& data,
 		const int *sample,
 		int sample_number,
 		std::vector<EssentialMatrix>* models) const
 	{
-		float f[9];
-		cv::Mat evals(1, 9, CV_32F), evecs(9, 9, CV_32F);
-		cv::Mat A(sample_number, 9, CV_32F);
-		cv::Mat E(3, 3, CV_32F, f);
+		double f[9];
+		cv::Mat evals(1, 9, CV_64F), evecs(9, 9, CV_64F);
+		cv::Mat A(sample_number, 9, CV_64F);
+		cv::Mat E(3, 3, CV_64F, f);
 		int i;
 
 
@@ -198,24 +197,24 @@ public:
 			/*if (sample[i] >= data.rows)
 				return false;*/
 
-			//float x0 = data.at<float>(sample[i], 0), y0 = data.at<float>(sample[i], 1);
-			//float x1 = data.at<float>(sample[i], 3), y1 = data.at<float>(sample[i], 4);
+			//double x0 = data.at<double>(sample[i], 0), y0 = data.at<double>(sample[i], 1);
+			//double x1 = data.at<double>(sample[i], 3), y1 = data.at<double>(sample[i], 4);
 
 			//std::cout << sample[i] << endl;
 			int idx = sample[i] * 12;
-			const float *data_ptr = ((float *)data.data + idx);
-			float x0 = *(data_ptr), y0 = *(data_ptr + 1);
-			float x1 = *(data_ptr + 3), y1 = *(data_ptr + 4);
+			const double *data_ptr = ((double *)data.data + idx);
+			double x0 = *(data_ptr), y0 = *(data_ptr + 1);
+			double x1 = *(data_ptr + 3), y1 = *(data_ptr + 4);
 
-			A.at<float>(i, 0) = x1*x0;
-			A.at<float>(i, 1) = x1*y0;
-			A.at<float>(i, 2) = x1;
-			A.at<float>(i, 3) = y1*x0;
-			A.at<float>(i, 4) = y1*y0;
-			A.at<float>(i, 5) = y1;
-			A.at<float>(i, 6) = x0;
-			A.at<float>(i, 7) = y0;
-			A.at<float>(i, 8) = 1;
+			A.at<double>(i, 0) = x1*x0;
+			A.at<double>(i, 1) = x1*y0;
+			A.at<double>(i, 2) = x1;
+			A.at<double>(i, 3) = y1*x0;
+			A.at<double>(i, 4) = y1*y0;
+			A.at<double>(i, 5) = y1;
+			A.at<double>(i, 6) = x0;
+			A.at<double>(i, 7) = y0;
+			A.at<double>(i, 8) = 1;
 		}
 
 		// A*(f11 f12 ... f33)' = 0 is singular (7 equations for 9 variables), so
@@ -226,7 +225,7 @@ public:
 		eigen(cov, evals, evecs);
 
 		for (i = 0; i < 9; ++i)
-			f[i] = evecs.at<float>(8, i);
+			f[i] = evecs.at<double>(8, i);
 		//f[8] = 1.0;
 
 		//std::cout << F << endl;
@@ -238,27 +237,27 @@ public:
 		return true;
 	}
 
-	bool Algorithm_7_point(const cv::Mat& data,
+	bool solverSevenPoint(const cv::Mat& data,
 		const int *sample,
 		int sample_number,
 		std::vector<EssentialMatrix>* models) const
 	{
 
-		float a[7 * 9], v[9 * 9], c[4], r[3];
-		float *f1, *f2;
-		float t0, t1, t2;
-		cv::Mat evals, evecs(9, 9, CV_32F, v);
-		cv::Mat A(7, 9, CV_32F, a);
-		cv::Mat coeffs(1, 4, CV_32F, c);
-		cv::Mat roots(1, 3, CV_32F, r);
+		double a[7 * 9], v[9 * 9], c[4], r[3];
+		double *f1, *f2;
+		double t0, t1, t2;
+		cv::Mat evals, evecs(9, 9, CV_64F, v);
+		cv::Mat A(7, 9, CV_64F, a);
+		cv::Mat coeffs(1, 4, CV_64F, c);
+		cv::Mat roots(1, 3, CV_64F, r);
 		int i, k, n;
 
 		// form a linear system: i-th row of A(=a) represents
 		// the equation: (m2[i], 1)'*F*(m1[i], 1) = 0
 		for (i = 0; i < 7; i++)
 		{
-			float x0 = data.at<float>(sample[i], 0), y0 = data.at<float>(sample[i], 1);
-			float x1 = data.at<float>(sample[i], 3), y1 = data.at<float>(sample[i], 4);
+			double x0 = data.at<double>(sample[i], 0), y0 = data.at<double>(sample[i], 1);
+			double x1 = data.at<double>(sample[i], 3), y1 = data.at<double>(sample[i], 4);
 
 			a[i * 9 + 0] = x1*x0;
 			a[i * 9 + 1] = x1*y0;
@@ -325,12 +324,12 @@ public:
 
 		for (k = 0; k < n; k++)
 		{
-			float f[9];
-			cv::Mat E(3, 3, CV_32F, f);
+			double f[9];
+			cv::Mat E(3, 3, CV_64F, f);
 
 			// for each root form the fundamental matrix
-			float lambda = r[k], mu = 1.;
-			float s = f1[8] * r[k] + f2[8];
+			double lambda = r[k], mu = 1.;
+			double s = f1[8] * r[k] + f2[8];
 
 			// normalize each matrix, so that F(3,3) (~fmatrix[8]) == 1
 			if (fabs(s) > DBL_EPSILON)
@@ -367,23 +366,23 @@ public:
 		ec = F->row(0).cross(F->row(2));
 
 		for (auto i = 0; i < 3; i++)
-			if ((ec.at<float>(i) > 1.9984e-15) || (ec.at<float>(i) < -1.9984e-15)) return;
+			if ((ec.at<double>(i) > 1.9984e-15) || (ec.at<double>(i) < -1.9984e-15)) return;
 		ec = F->row(1).cross(F->row(2));
 	}
 
-	float getorisig(const cv::Mat *F, const cv::Mat *ec, const cv::Mat &u) const
+	double getorisig(const cv::Mat *F, const cv::Mat *ec, const cv::Mat &u) const
 	{
-		float s1, s2;
+		double s1, s2;
 
-		s1 = F->at<float>(0) * u.at<float>(3) + F->at<float>(3) * u.at<float>(4) + F->at<float>(6) * u.at<float>(5);
-		s2 = ec->at<float>(1) * u.at<float>(2) - ec->at<float>(2) * u.at<float>(1);
+		s1 = F->at<double>(0) * u.at<double>(3) + F->at<double>(3) * u.at<double>(4) + F->at<double>(6) * u.at<double>(5);
+		s2 = ec->at<double>(1) * u.at<double>(2) - ec->at<double>(2) * u.at<double>(1);
 		return(s1 * s2);
 	}
 
 	int all_ori_valid(const cv::Mat *F, const cv::Mat &data, const int *sample, int N) const
 	{
 		cv::Mat ec;
-		float sig, sig1;
+		double sig, sig1;
 		int i;
 		epipole(ec, F);
 
