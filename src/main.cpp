@@ -68,7 +68,6 @@ int main(int argc, const char* argv[])
 	const double spatial_coherence_weight = 0.14; // The weight of the spatial coherence term in the graph-cut energy minimization.
 	const double neighborhood_size = 20.0; // The radius of the neighborhood ball for determining the neighborhoods.
 
-	for (int i = 0; i < 100; ++i)
 	testFundamentalMatrixFitting(
 		src_image_path, // The source image's path
 		dst_image_path, // The destination image's path
