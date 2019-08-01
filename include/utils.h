@@ -14,16 +14,13 @@
 /*
 	Function declaration
 */
-void drawLine(
-	cv::Mat &descriptor_, 
-	cv::Mat &image_);
-
 void drawMatches(
-	cv::Mat points_,
-	std::vector<int> inliers_,
-	cv::Mat image1_,
-	cv::Mat image2_,
-	cv::Mat &out_image_);
+	const cv::Mat &points_,
+	const std::vector<int> &inliers_,
+	const cv::Mat &image1_,
+	const cv::Mat &image2_,
+	cv::Mat &out_image_,
+	int circle_radius_ = 10);
 
 bool savePointsToFile(
 	const cv::Mat &points_,
@@ -40,89 +37,56 @@ void detectFeatures(
 	cv::Mat image2_,
 	cv::Mat &points_);
 
+void showImage(
+	const cv::Mat &image_,
+	std::string window_name_,
+	int max_width_,
+	int max_height_,
+	bool wait_);
+
 /*
 	Function definition
 */
 
-void drawLine(cv::Mat &descriptor_,
-	cv::Mat &image_)
-{
-	cv::Point2d pt1(0, -descriptor_.at<double>(2) / descriptor_.at<double>(1));
-	cv::Point2d pt2(static_cast<double>(image_.cols), -(image_.cols * descriptor_.at<double>(0) + descriptor_.at<double>(2)) / descriptor_.at<double>(1));
-	cv::line(image_, pt1, pt2, cv::Scalar(0, 255, 0), 2);
-}
+void drawMatches(
+	const cv::Mat &points_,
+	const std::vector<int> &inliers_,
+	const cv::Mat &image_src_,
+	const cv::Mat &image_dst_,
+	cv::Mat &out_image_,
+	int circle_radius_)
+{	
+	// Final image
+	out_image_.create(image_src_.rows, // Height
+		2 * image_src_.cols, // Width
+		image_src_.type()); // Type
 
-void drawMatches(cv::Mat points_,
-	std::vector<int> inliers_,
-	cv::Mat image1_,
-	cv::Mat image2_,
-	cv::Mat &out_image_)
-{
-	double rotation_angle = 0;
-	bool horizontal = true;
+	cv::Mat roi_img_result_left = 
+		out_image_(cv::Rect(0, 0, image_src_.cols, image_src_.rows)); // Img1 will be on the left part
+	cv::Mat roi_img_result_right =
+		out_image_(cv::Rect(image_src_.cols, 0, image_dst_.cols, image_dst_.rows)); // Img2 will be on the right part, we shift the roi of img1.cols on the right
 
-	if (image1_.cols < image1_.rows)
+	cv::Mat roi_image_src = image_src_(cv::Rect(0, 0, image_src_.cols, image_src_.rows));
+	cv::Mat roi_image_dst = image_dst_(cv::Rect(0, 0, image_dst_.cols, image_dst_.rows));
+
+	roi_image_src.copyTo(roi_img_result_left); //Img1 will be on the left of imgResult
+	roi_image_dst.copyTo(roi_img_result_right); //Img2 will be on the right of imgResult
+
+	for (const auto &idx : inliers_)
 	{
-		rotation_angle = 90;
+		cv::Point2d pt1(points_.at<double>(idx, 0), 
+			points_.at<double>(idx, 1));
+		cv::Point2d pt2(image_dst_.cols + points_.at<double>(idx, 2),
+			points_.at<double>(idx, 3));
+
+		cv::Scalar color(255 * static_cast<double>(rand()) / RAND_MAX, 
+			255 * static_cast<double>(rand()) / RAND_MAX, 
+			255 * static_cast<double>(rand()) / RAND_MAX);
+
+		cv::circle(out_image_, pt1, circle_radius_, color, static_cast<int>(circle_radius_ * 0.4));
+		cv::circle(out_image_, pt2, circle_radius_, color, static_cast<int>(circle_radius_ * 0.4));
+		cv::line(out_image_, pt1, pt2, color, 2);
 	}
-
-	int counter = 0;
-	int size = 10;
-
-	if (horizontal)
-	{
-		out_image_ = cv::Mat(image1_.rows, 2 * image1_.cols, image1_.type()); // Your final image_
-
-		cv::Mat roiImgResult_Left = out_image_(cv::Rect(0, 0, image1_.cols, image1_.rows)); //Img1 will be on the left part
-		cv::Mat roiImgResult_Right = out_image_(cv::Rect(image1_.cols, 0, image2_.cols, image2_.rows)); //Img2 will be on the right part, we shift the roi of img1.cols on the right
-
-		cv::Mat roiImg1 = image1_(cv::Rect(0, 0, image1_.cols, image1_.rows));
-		cv::Mat roiImg2 = image2_(cv::Rect(0, 0, image2_.cols, image2_.rows));
-
-		roiImg1.copyTo(roiImgResult_Left); //Img1 will be on the left of imgResult
-		roiImg2.copyTo(roiImgResult_Right); //Img2 will be on the right of imgResult
-
-		for (auto i = 0; i < inliers_.size(); ++i)
-		{
-			int idx = inliers_[i];
-			cv::Point2d pt1((double)points_.at<double>(idx, 0), (double)points_.at<double>(idx, 1));
-			cv::Point2d pt2(image2_.cols + (double)points_.at<double>(idx, 2), (double)points_.at<double>(idx, 3));
-
-			cv::Scalar color(255 * (double)rand() / RAND_MAX, 255 * (double)rand() / RAND_MAX, 255 * (double)rand() / RAND_MAX);
-
-			cv::circle(out_image_, pt1, size, color, static_cast<int>(size * 0.4f));
-			cv::circle(out_image_, pt2, size, color, static_cast<int>(size * 0.4f));
-			cv::line(out_image_, pt1, pt2, color, 2);
-		}
-	}
-	else
-	{
-		out_image_ = cv::Mat(2 * image1_.rows, image1_.cols, image1_.type()); // Your final image_
-
-		cv::Mat roiImgResult_Left = out_image_(cv::Rect(0, 0, image1_.cols, image1_.rows)); //Img1 will be on the left part
-		cv::Mat roiImgResult_Right = out_image_(cv::Rect(0, image1_.rows, image2_.cols, image2_.rows)); //Img2 will be on the right part, we shift the roi of img1.cols on the right
-
-		cv::Mat roiImg1 = image1_(cv::Rect(0, 0, image1_.cols, image1_.rows));
-		cv::Mat roiImg2 = image2_(cv::Rect(0, 0, image2_.cols, image2_.rows));
-
-		roiImg1.copyTo(roiImgResult_Left); //Img1 will be on the left of imgResult
-		roiImg2.copyTo(roiImgResult_Right); //Img2 will be on the right of imgResult
-
-		for (auto i = 0; i < inliers_.size(); ++i)
-		{
-			int idx = inliers_[i];
-			cv::Point2d pt1((double)points_.at<double>(idx, 0), (double)points_.at<double>(idx, 1));
-			cv::Point2d pt2(image2_.cols + (double)points_.at<double>(idx, 2), (double)points_.at<double>(idx, 3));
-
-			cv::Scalar color(255 * (double)rand() / RAND_MAX, 255 * (double)rand() / RAND_MAX, 255 * (double)rand() / RAND_MAX);
-			cv::circle(out_image_, pt1, size, color, static_cast<int>(size * 0.4));
-			cv::circle(out_image_, pt2, size, color, static_cast<int>(size * 0.4));
-			cv::line(out_image_, pt1, pt2, color, 2);
-		}
-	}
-
-	cv::imshow("Image Out", out_image_);
-	cv::waitKey(0);
 }
 
 void detectFeatures(std::string scene_name_,
@@ -241,7 +205,7 @@ bool savePointsToFile(const cv::Mat &points, const char* file, const std::vector
 	else
 	{
 		outfile << inliers->size() << std::endl;
-		for (auto i = 0; i < inliers->size(); ++i)
+		for (size_t i = 0; i < inliers->size(); ++i)
 		{
 			const int offset = inliers->at(i) * M;
 			for (auto j = 0; j < M; ++j)
@@ -253,4 +217,35 @@ bool savePointsToFile(const cv::Mat &points, const char* file, const std::vector
 	outfile.close();
 
 	return true;
+}
+
+void showImage(const cv::Mat &image_,
+	std::string window_name_,
+	int max_width_,
+	int max_height_,
+	bool wait_)
+{
+	// Resizing the window to fit into the screen if needed
+	int window_width = image_.cols,
+		window_height = image_.rows;
+	if (static_cast<double>(image_.cols) / max_width_ > 1.0 &&
+		static_cast<double>(image_.cols) / max_width_ >
+		static_cast<double>(image_.rows) / max_height_)
+	{
+		window_width = max_width_;
+		window_height = static_cast<int>(window_width * static_cast<double>(image_.rows) / static_cast<double>(image_.cols));
+	}
+	else if (static_cast<double>(image_.rows) / max_height_ > 1.0 &&
+		static_cast<double>(image_.cols) / max_width_ <
+		static_cast<double>(image_.rows) / max_height_)
+	{
+		window_height = max_height_;
+		window_width = static_cast<int>(window_height * static_cast<double>(image_.cols) / static_cast<double>(image_.rows));
+	}
+
+	cv::namedWindow(window_name_, CV_WINDOW_NORMAL);
+	cv::resizeWindow(window_name_, window_width, window_height);
+	cv::imshow(window_name_, image_);
+	if (wait_)
+		cv::waitKey(0);
 }
