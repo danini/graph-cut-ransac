@@ -99,7 +99,6 @@ source_group("Estimators" FILES
 	src/essential_estimator.h
 	src/fundamental_estimator.h
 	src/homography_estimator.h
-	src/line_estimator.h
 )
 
 add_executable(SampleProject
@@ -107,7 +106,6 @@ add_executable(SampleProject
 	src/essential_estimator.h
 	src/fundamental_estimator.h
 	src/homography_estimator.h
-	src/line_estimator.h
 	src/main.cpp)
 	
 target_link_libraries(SampleProject 
