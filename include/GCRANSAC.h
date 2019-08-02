@@ -665,6 +665,7 @@ bool GCRANSAC<ModelEstimator, Model>::graphCutLocalOptimization(const cv::Mat &p
 					max_score = score; // Store the new best score
 					best_model = model; // Store the new best model parameters
 					best_inliers.swap(tmp_inliers);
+					tmp_inliers.clear();
 				}
 			}
 		}
@@ -681,6 +682,7 @@ bool GCRANSAC<ModelEstimator, Model>::graphCutLocalOptimization(const cv::Mat &p
 		so_far_the_best_score_ = max_score; // Store the new best score
 		so_far_the_best_model_ = best_model;
 		so_far_the_best_inliers_.swap(best_inliers);
+		best_inliers.clear();
 		return true;
 	}
 	return false;
