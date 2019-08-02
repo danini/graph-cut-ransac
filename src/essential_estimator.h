@@ -172,7 +172,7 @@ public:
 		model.descriptor = E;
 		model.F = K2ti * E * K1i;
 
-		models->push_back(model);
+		models->emplace_back(model);
 		return true;
 	}
 
@@ -231,7 +231,7 @@ public:
 		Model model;
 		model.descriptor = E;
 		model.F = K2ti * E * K1i;
-		models->push_back(model);
+		models->emplace_back(model);
 		return true;
 	}
 
@@ -351,7 +351,7 @@ public:
 				for (auto i = 0; i < sample_number; ++i)
 					model.mss[i] = sample[i];
 
-				models->push_back(model);
+				models->emplace_back(model);
 			}
 		}
 

@@ -316,12 +316,17 @@ void GCRANSAC<ModelEstimator, Model>::run(
 				estimator_, // The estimator 
 				settings.threshold, // The current threshold
 				temp_inner_inliers[inl_offset], // The current inlier set
-				false); // Flag to decide if the inliers are needed
+				true); // Flag to decide if the inliers are needed
 			
 			// Store the model of its score is higher than that of the previous best
 			if (isScoreLess(so_far_the_best_score, // The so-far-the-best model's score
-				score)) // The current model's score
+				score) && // The current model's score
+				estimator_.isValidModel(model, // The current model parameters
+					points_, // All input points
+					temp_inner_inliers[inl_offset], // The inliers of the current model
+					truncated_threshold)) // The truncated inlier-outlier threshold
 			{				
+				inl_offset = (inl_offset + 1) % 2;
 				so_far_the_best_model = model; // The new so-far-the-best model
 				so_far_the_best_score = score; // The new so-far-the-best model's score
 				// Decide if local optimization is needed. The current criterion requires a minimum number of iterations
@@ -692,7 +697,7 @@ Score GCRANSAC<ModelEstimator, Model>::getScore(const cv::Mat &points_, // The i
 {
 	Score score; // The current score
 	if (store_inliers_) // If the inlier should be stored, clear the variables
-		inliers_.resize(0);
+		inliers_.clear();
 	
 	// Containers for the parallel threads
 	std::vector<std::vector<int>> process_inliers;
@@ -723,7 +728,7 @@ Score GCRANSAC<ModelEstimator, Model>::getScore(const cv::Mat &points_, // The i
 			if (residual < truncated_threshold)
 			{
 				if (store_inliers_) // Store the point as an inlier if needed.
-					process_inliers[process].push_back(point_idx);
+					process_inliers[process].emplace_back(point_idx);
 
 				// Increase the inlier number
 				++(process_scores[process].I);
@@ -831,7 +836,7 @@ void GCRANSAC<ModelEstimator, Model>::labeling(const cv::Mat &points_,
 	inliers_.reserve(points_.rows);
 	for (auto point_idx = 0; point_idx < points_.rows; ++point_idx)
 		if (problem_graph->what_segment(point_idx) == Graph<double, double, double>::SINK)
-			inliers_.push_back(point_idx);
+			inliers_.emplace_back(point_idx);
 	 
 	// Clean the memory
 	delete problem_graph;

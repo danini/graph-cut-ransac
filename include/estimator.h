@@ -64,14 +64,14 @@ namespace theia
 		// function appropriately for the task being solved. Returns true for
 		// successful model estimation (and outputs model), false for failed
 		// estimation. Typically, this is a minimal set, but it is not required to be.
-		virtual bool estimateModel(const cv::Mat& data,
+		virtual bool estimateModel(const Datum& data,
 			const int *sample, 
 			std::vector<Model>* model) const = 0;
 
 		// Estimate a model from a non-minimal sampling of the data. E.g. for a line,
 		// use SVD on a set of points instead of constructing a line from two points.
 		// By default, this simply implements the minimal case.
-		virtual bool estimateModelNonminimal(const cv::Mat& data,
+		virtual bool estimateModelNonminimal(const Datum& data,
 			const int *sample,
 			size_t sample_number,
 			std::vector<Model>* model) const = 0;
@@ -131,7 +131,7 @@ namespace theia
 
 			for (int i = 0; i < data.size(); ++i)
 				if (isInlier[i])
-					inliers.push_back(i);
+					inliers.emplace_back(i);
 
 			return inliers;
 		}
@@ -139,6 +139,14 @@ namespace theia
 		// Enable a quick check to see if the model is valid. This can be a geometric
 		// check or some other verification of the model structure.
 		virtual bool isValidModel(const Model& model) const { return true; }
+
+		// Enable a quick check to see if the model is valid. This can be a geometric
+		// check or some other verification of the model structure.
+		virtual bool isValidModel(const Model& model,
+			const Datum& data,
+			const std::vector<int> &inliers,
+			const double threshold) const
+		{ return true; }
 	};
 
 }  // namespace theia

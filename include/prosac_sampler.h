@@ -139,10 +139,10 @@ namespace theia
 					{
 					}
 
-					random_numbers.push_back(rand_number);
+					random_numbers.emplace_back(rand_number);
 
 					// Push the *unique* random index back.
-					subset->push_back(data[rand_number]);
+					subset->emplace_back(data[rand_number]);
 				}
 			}
 			else
@@ -158,13 +158,13 @@ namespace theia
 						random_numbers.end())
 					{
 					}
-					random_numbers.push_back(rand_number);
+					random_numbers.emplace_back(rand_number);
 
 					// Push the *unique* random index back.
-					subset->push_back(data[rand_number]);
+					subset->emplace_back(data[rand_number]);
 				}
 				// Make the last point from the nth position.
-				subset->push_back(data[n]);
+				subset->emplace_back(data[n]);
 			}
 			if (subset->size() != this->min_num_samples_)
 				std::cout << "Prosac subset is of incorrect " << "size!" << " @" << __LINE__ << std::endl;
@@ -211,10 +211,10 @@ namespace theia
 					{
 					}
 
-					random_numbers.push_back(rand_number);
+					random_numbers.emplace_back(rand_number);
 
 					// Push the *unique* random index back.
-					subset.push_back(rand_number);
+					subset.emplace_back(rand_number);
 				}
 			}
 			else
@@ -230,13 +230,13 @@ namespace theia
 						random_numbers.end())
 					{
 					}
-					random_numbers.push_back(rand_number);
+					random_numbers.emplace_back(rand_number);
 
 					// Push the *unique* random index back.
-					subset.push_back(rand_number);
+					subset.emplace_back(rand_number);
 				}
 				// Make the last point from the nth position.
-				subset.push_back(n);
+				subset.emplace_back(n);
 			}
 			if (subset.size() != this->min_num_samples_)
 				std::cout << "Prosac subset is of incorrect " << "size!" << " @" << __LINE__ << std::endl;
@@ -284,7 +284,7 @@ namespace theia
 					{
 					}
 
-					random_numbers.push_back(rand_number);
+					random_numbers.emplace_back(rand_number);
 
 					// Push the *unique* random index back.
 					subset[current_sample_number++] = rand_number;
@@ -303,7 +303,7 @@ namespace theia
 						random_numbers.end())
 					{
 					}
-					random_numbers.push_back(rand_number);
+					random_numbers.emplace_back(rand_number);
 
 					// Push the *unique* random index back.
 					subset[current_sample_number++] = rand_number;

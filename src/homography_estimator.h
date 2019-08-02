@@ -55,7 +55,7 @@ public:
 
 		Homography model;
 		model.descriptor = H;
-		models->push_back(model);
+		models->emplace_back(model);
 		return true;
 	}
 
@@ -96,7 +96,7 @@ public:
 
 		Homography model;
 		model.descriptor = H;
-		models->push_back(model);
+		models->emplace_back(model);
 		return true;
 	}
 

@@ -125,7 +125,7 @@ void detectFeatures(std::string scene_name_,
 		{
 			auto& kp1 = keypoints1[match[0].queryIdx];
 			auto& kp2 = keypoints2[match[0].trainIdx];
-			correspondences.push_back(std::make_tuple<double, cv::Point2d, cv::Point2d>(match[0].distance / match[1].distance, (cv::Point2d)kp1.pt, (cv::Point2d)kp2.pt));
+			correspondences.emplace_back(std::make_tuple<double, cv::Point2d, cv::Point2d>(match[0].distance / match[1].distance, (cv::Point2d)kp1.pt, (cv::Point2d)kp2.pt));
 		}
 	}
 

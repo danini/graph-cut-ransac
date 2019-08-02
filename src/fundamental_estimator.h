@@ -49,49 +49,27 @@ public:
 		return true;
 	}
 
-	double residual(const cv::Mat& point, 
-		const FundamentalMatrix& model) const
+	double sampsonDistance(const cv::Mat& point,
+		const cv::Mat& descriptor) const
 	{
-		const double* s = (double *)point.data;
+		const double* p = (double*)descriptor.data;
+		const double* s = (double*)point.data;
 		const double x1 = *s;
 		const double y1 = *(s + 1);
 		const double x2 = *(s + 2);
 		const double y2 = *(s + 3);
 
-		const double* p = (double *)model.descriptor.data;
+		double rxc = *(p)* x2 + *(p + 3) * y2 + *(p + 6);
+		double ryc = *(p + 1) * x2 + *(p + 4) * y2 + *(p + 7);
+		double rwc = *(p + 2) * x2 + *(p + 5) * y2 + *(p + 8);
+		double r = (x1 * rxc + y1 * ryc + rwc);
+		double rx = *(p)* x1 + *(p + 1) * y1 + *(p + 2);
+		double ry = *(p + 3) * x1 + *(p + 4) * y1 + *(p + 5);
 
-		const double f11 = *(p);
-		const double f12 = *(p + 1);
-		const double f13 = *(p + 2);
-		const double f21 = *(p + 3);
-		const double f22 = *(p + 4);
-		const double f23 = *(p + 5);
-		const double f31 = *(p + 6);
-		const double f32 = *(p + 7);
-		const double f33 = *(p + 8);
-
-		const double l1 = f11* x2 + f21 * y2 + f31;
-		const double l2 = f12 * x2 + f22 * y2 + f32;
-		const double l3 = f13 * x2 + f23 * y2 + f33;
-
-		const double t1 = f11 * x1 + f12 * y1 + f13;
-		const double t2 = f21 * x1 + f22 * y1 + f23;
-		const double t3 = f31 * x1 + f32 * y1 + f33;
-
-		const double a1 = l1 * x1 + l2 * y1 + l3;
-		const double a2 = sqrt(l1 * l1 + l2 * l2);
-
-		const double b1 = t1 * x2 + t2 * y2 + t3;
-		const double b2 = sqrt(t1 * t1 + t2 * t2);
-
-		const double d = l1 * x2 + l2 * y2 + l3;
-		const double d1 = a1 / a2;
-		const double d2 = b1 / b2;
-
-		return (double)abs(0.5 * (d1 + d2));
+		return sqrt(r * r / (rxc * rxc + ryc * ryc + rx * rx + ry * ry));
 	}
 
-	double residual(const cv::Mat& point, 
+	double symmetricEpipolarDistance(const cv::Mat& point,
 		const cv::Mat& descriptor) const
 	{
 		const double* s = (double *)point.data;
@@ -129,7 +107,45 @@ public:
 		const double d1 = a1 / a2;
 		const double d2 = b1 / b2;
 
-		return abs(0.5f * (d1 + d2));
+		return abs(0.5 * (d1 + d2));
+	}
+
+	double residual(const cv::Mat& point, 
+		const FundamentalMatrix& model) const
+	{
+		return residual(point, model.descriptor);
+	}
+
+	double residual(const cv::Mat& point, 
+		const cv::Mat& descriptor) const
+	{
+		return sampsonDistance(point, descriptor);
+	}
+
+	// Validate the model by checking the number of inlier with symmetric epipolar distance
+	// instead of Sampson distance. In general, Sampson distance is more accurate but less
+	// robust to degenerate solutions than the symmetric epipolar distance. Therefore,
+	// every so-far-the-best model is checked if it has enough inlier with symmetric
+	// epipolar distance as well. 
+	bool isValidModel(const FundamentalMatrix& model,
+		const cv::Mat& data,
+		const std::vector<int> &inliers,
+		const double threshold) const
+	{
+		size_t inlier_number = 0; // Number of inlier if using symmetric epipolar distance
+		const cv::Mat &descriptor = model.descriptor; // The decriptor of the current model
+		static const size_t M = sampleSize(); // Size of a minimal sample
+
+		// Iterate through the inliers determined by Sampson distance
+		for (const auto &idx : inliers)
+			// Calculate the residual using symmetric epipolar distance and check if
+			// it is smaller than the threshold.
+			if (symmetricEpipolarDistance(data.row(idx), descriptor) < threshold)
+				// Increase the inlier number and terminate if enough inliers have been found.
+				if (++inlier_number > M)
+					return true;
+		// If the algorithm has not terminated earlier, there are not enough inliers.
+		return false;
 	}
 		
 	bool estimateModelNonminimal(
@@ -139,7 +155,7 @@ public:
 		std::vector<FundamentalMatrix>* models) const
 	{
 		// model calculation 
-		const int M = sample_number;
+		const size_t M = sample_number;
 
 		if (M < 8)
 			return false;
