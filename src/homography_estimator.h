@@ -34,7 +34,7 @@ public:
 		const int *sample,
 		std::vector<Homography>* models) const
 	{
-		static const size_t M = sampleSize();
+		constexpr size_t M = 4;
 		solverFourPoint(data,
 			sample,
 			M,
@@ -52,7 +52,6 @@ public:
 
 		cv::Mat normalized_points(sample_number, data.cols, data.type()); // The normalized point coordinates
 		cv::Mat T1, T2; // The normalizing transformations in the 1st and 2nd images
-		T1 = T2 = cv::Mat::zeros(3, 3, data.type());
 
 		// Normalize the point coordinates to achieve numerical stability when
 		// applying the least-squares model fitting.
@@ -71,18 +70,19 @@ public:
 			models);
 
 		// Denormalizing the estimated fundamental matrices
+		const cv::Mat T2_inverse = T2.inv();
 		for (auto &model : *models)
-			model.descriptor = T2.inv() * model.descriptor * T1;
+			model.descriptor = T2_inverse * model.descriptor * T1;
 		return true;
 	}
 
-	double residual(const cv::Mat& point, 
+	double squaredResidual(const cv::Mat& point,
 		const Homography& model) const
 	{
-		return residual(point, model.descriptor);
+		return squaredResidual(point, model.descriptor);
 	}
 
-	double residual(const cv::Mat& point, 
+	double squaredResidual(const cv::Mat& point,
 		const cv::Mat& descriptor) const
 	{
 		const double* s = reinterpret_cast<double *>(point.data);
@@ -100,7 +100,19 @@ public:
 		const double d1 = x2 - (t1 / t3);
 		const double d2 = y2 - (t2 / t3);
 
-		return sqrt(d1*d1 + d2*d2);
+		return d1 * d1 + d2 * d2;
+	}
+
+	double residual(const cv::Mat& point, 
+		const Homography& model) const
+	{
+		return residual(point, model.descriptor);
+	}
+
+	double residual(const cv::Mat& point, 
+		const cv::Mat& descriptor) const
+	{
+		return sqrt(squaredResidual(point, descriptor));
 	}
 
 	bool normalizePoints(
@@ -128,12 +140,8 @@ public:
 		// Calculating the mass points in both images
 		for (size_t i = 0; i < sample_number; ++i)
 		{
-			const int sample_idx = sample[i];
-			if (sample_idx >= data.rows)
-				return false;
-
 			// Get pointer of the current point
-			const double *d_idx = points_ptr + cols * sample_idx;
+			const double *d_idx = points_ptr + cols * sample[i];
 
 			// Add the coordinates to that of the mass points
 			mass_point_src[0] += *(d_idx);
@@ -193,6 +201,7 @@ public:
 			*normalized_points_ptr++ = (y2 - mass_point_dst[1]) * ratio_dst;
 		}
 
+		// Creating the normalizing transformations
 		T1 = (cv::Mat_<double>(3, 3) << ratio_src, 0, -ratio_src * mass_point_src[0],
 			0, ratio_src, -ratio_src * mass_point_src[1],
 			0, 0, 1);

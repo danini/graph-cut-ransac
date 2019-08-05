@@ -33,6 +33,7 @@ struct Settings {
 		min_iteration_number, // Minimum number of RANSAC iterations
 		max_iteration_number, // Maximum number of RANSAC iterations
 		max_unsuccessful_model_generations, // Maximum number of unsuccessful model generations
+		max_least_squares_iterations, // Maximum number of iterated least-squares iterations
 		max_graph_cut_number, // Maximum number of graph-cuts applied in each iteration
 		core_number; // Number of parallel threads
 
@@ -49,6 +50,7 @@ struct Settings {
 		desired_fps(-1),
 		max_local_optimization_number(std::numeric_limits<size_t>::max()),
 		max_graph_cut_number(std::numeric_limits<size_t>::max()),
+		max_least_squares_iterations(std::numeric_limits<size_t>::max()),
 		min_iteration_number_before_lo(20),
 		min_iteration_number(20),
 		neighborhood_sphere_radius(20),
@@ -121,14 +123,14 @@ public:
 		const ModelEstimator &estimator_, // The model_ estimator_
 		const double threshold_, // The threshold_ for model_ estimation
 		std::vector<int> &inliers_, // The inlier set
-		bool store_inliers_ = true); // Store the inliers_ or not
+		const Score &best_score_ = Score(), // The score of the current so-far-the-best model
+		const bool store_inliers_ = true); // Store the inliers_ or not
 
 	// Decides whether score s2 is higher than s1
-	int isScoreLess(const Score &s1_, // Input score
-		const Score &s2_, // Input score
-		int type_ = 1) // Decision type_: 1 -- RANSAC-like, 2 -- MSAC-like 
+	inline int isScoreLess(const Score &s1_, // Input score
+		const Score &s2_) // Input score
 	{ 
-		return type_ == 1 ? (s1_.I < s2_.I || (s1_.I == s2_.I && s1_.J < s2_.J)) : s1_.J < s2_.J; 
+		return s1_.J < s2_.J; 
 	}
 
 protected:
@@ -140,7 +142,7 @@ protected:
 	int point_number; // The point number
 	double sqr_threshold_2; // 2 * threshold_^2
 	double truncated_threshold; // 3 / 2 * threshold_
-	double truncated_threshold_2; // 9 / 4 * threshold_^2
+	double squared_truncated_threshold; // 9 / 4 * threshold_^2
 	int step_size; // Step size per processes
 	double log_probability; // The logarithm of 1 - confidence
 
@@ -242,7 +244,7 @@ void GCRANSAC<ModelEstimator, Model>::run(
 
 	point_number = points_.rows; // Number of points in the dataset
 	truncated_threshold = 3.0 / 2.0 * settings.threshold; // The truncated least-squares threshold
-	truncated_threshold_2 = truncated_threshold * truncated_threshold; // The squared least-squares threshold
+	squared_truncated_threshold = truncated_threshold * truncated_threshold; // The squared least-squares threshold
 	sqr_threshold_2 = 2.0 * settings.threshold * settings.threshold; // Two times squared least-squares threshold
 	random_generator->resetGenerator(0, point_number); // Initializing the used random generator
 
@@ -317,6 +319,7 @@ void GCRANSAC<ModelEstimator, Model>::run(
 				estimator_, // The estimator 
 				settings.threshold, // The current threshold
 				temp_inner_inliers[inl_offset], // The current inlier set
+				so_far_the_best_score, // The score of the current so-far-the-best model
 				true); // Flag to decide if the inliers are needed
 			
 			// Store the model of its score is higher than that of the previous best
@@ -400,7 +403,7 @@ void GCRANSAC<ModelEstimator, Model>::run(
 		Score score = getScore(points_, // All points
 			so_far_the_best_model, // Best model parameters
 			estimator_, // The estimator
-			settings.threshold, // The inloer-outlier threshold
+			settings.threshold, // The inlier-outlier threshold
 			temp_inner_inliers[inl_offset]); // The current inliers
 	 
 	// Apply iteration least-squares fitting to get the final model parameters if needed
@@ -447,12 +450,11 @@ bool GCRANSAC<ModelEstimator, Model>::iteratedLeastSquaresFitting(
 	if (inliers_.size() <= sample_size) // Return if there are not enough points
 		return false;
 
-	constexpr size_t max_iterations = std::numeric_limits<size_t>::max(); // Maximum number of least-squares iterations
 	size_t iterations = 0; // Number of least-squares iterations
 	std::vector<int> tmp_inliers; // Inliers of the current model
 
 	// Iterated least-squares model fitting
-	while (++iterations < max_iterations)
+	while (++iterations < settings.max_least_squares_iterations)
 	{
 		std::vector<Model> models; // Estimated models
 
@@ -654,6 +656,7 @@ bool GCRANSAC<ModelEstimator, Model>::graphCutLocalOptimization(const cv::Mat &p
 					estimator_, // The model estimator
 					settings.threshold, // The inlier-outlier threshold
 					tmp_inliers, // The inliers of the estimated model
+					max_score, // The current best model
 					true); // Flag saying that we do not need the inlier set
 
 				// If this model is better than the previous best, update.
@@ -694,12 +697,14 @@ Score GCRANSAC<ModelEstimator, Model>::getScore(const cv::Mat &points_, // The i
 	const ModelEstimator &estimator_, // The model estimator
 	const double threshold_, // The inlier-outlier threshold
 	std::vector<int> &inliers_, // The selected inliers
-	bool store_inliers_) // A flag determining if the inliers should be stored
+	const Score &best_score_, // The score of the current so-far-the-best model
+	const bool store_inliers_) // A flag determining if the inliers should be stored
 {
 	Score score; // The current score
 	if (store_inliers_) // If the inlier should be stored, clear the variables
 		inliers_.clear();
 	
+#ifdef USE_OPENMP // If OpenMP is available for parallel processing
 	// Containers for the parallel threads
 	std::vector<std::vector<int>> process_inliers;
 	if (store_inliers_) // If the inlier should be stored, set the container sizes
@@ -708,25 +713,23 @@ Score GCRANSAC<ModelEstimator, Model>::getScore(const cv::Mat &points_, // The i
 	// Scores for the parallel threads
 	std::vector<Score> process_scores(settings.core_number);
 
-#ifdef USE_OPENMP
 #pragma omp for
-#endif
   for (auto process = 0; process < settings.core_number; process++) {
 		if (store_inliers_) // If the inlier should be stored, occupy the memory for the inliers
 			process_inliers[process].reserve(step_size);
 		const int start_idx = process * step_size; // The starting point's index
 		const int end_idx = MIN(points_.rows - 1, (process + 1) * step_size); // The last point's index
 		
-		double residual; // The point-to-model residual
+		double squared_residual; // The point-to-model residual
 		// Iterate through all points, calculate the residuals and store the points as inliers if needed.
 		for (auto point_idx = start_idx; point_idx < end_idx; ++point_idx)
 		{
 			// Calculate the point-to-model residual
-			residual = estimator_.residual(points_.row(point_idx), model_);
+			squared_residual = estimator_.squaredResidual(points_.row(point_idx), model_.descriptor);
 			
 			// If the residual is smaller than the threshold, store it as an inlier and
 			// increase the score.
-			if (residual < truncated_threshold)
+			if (squared_residual < squared_truncated_threshold)
 			{
 				if (store_inliers_) // Store the point as an inlier if needed.
 					process_inliers[process].emplace_back(point_idx);
@@ -735,7 +738,7 @@ Score GCRANSAC<ModelEstimator, Model>::getScore(const cv::Mat &points_, // The i
 				++(process_scores[process].I);
 				// Increase the score. The original truncated quadratic loss is as follows: 
 				// 1 - residual^2 / threshold^2. For RANSAC, -residual^2 is enough.
-				process_scores[process].J += -residual * residual; // Truncated quadratic cost
+				process_scores[process].J += squared_residual; // Truncated quadratic cost
 			}
 		}
 	}
@@ -749,6 +752,35 @@ Score GCRANSAC<ModelEstimator, Model>::getScore(const cv::Mat &points_, // The i
 		if (store_inliers_)
 			copy(process_inliers[i].begin(), process_inliers[i].end(), back_inserter(inliers_));
 	}
+#else // If there is no parallel processing
+
+	double squared_residual; // The point-to-model residual
+	// Iterate through all points, calculate the residuals and store the points as inliers if needed.
+	for (auto point_idx = 0; point_idx < point_number; ++point_idx)
+	{
+		// Calculate the point-to-model residual
+		squared_residual = estimator_.squaredResidual(points_.row(point_idx), model_.descriptor);
+
+		// If the residual is smaller than the threshold, store it as an inlier and
+		// increase the score.
+		if (squared_residual < squared_truncated_threshold)
+		{
+			if (store_inliers_) // Store the point as an inlier if needed.
+				inliers_.emplace_back(point_idx);
+
+			// Increase the inlier number
+			++(score.I);
+			// Increase the score. The original truncated quadratic loss is as follows: 
+			// 1 - residual^2 / threshold^2. For RANSAC, -residual^2 is enough.
+			score.J += squared_residual; // Truncated quadratic cost
+		}
+
+		// Interrupt if there is no chance of being better than the best model
+		if (point_number - point_idx + score.I < best_score_.I)
+			return Score();
+	}
+
+#endif
 
 	// Return the final score
 	return score;
@@ -777,29 +809,32 @@ void GCRANSAC<ModelEstimator, Model>::labeling(const cv::Mat &points_,
 		problem_graph->add_node();
 
 	// The distance and energy for each point
-	double tmp_distance, 
+	double tmp_squared_distance, 
 		tmp_energy;
 
 	// Estimate the vertex capacities
 	for (auto i = 0; i < points_.rows; ++i)
 	{
-		tmp_distance = static_cast<double>(estimator_.residual(points_.row(i), model_));
-		tmp_energy = 1.0 - tmp_distance * tmp_distance / sqr_threshold_2;
+		tmp_squared_distance = estimator_.squaredResidual(points_.row(i), 
+			model_.descriptor);
+		tmp_energy = 1.0 - tmp_squared_distance / sqr_threshold_2;
 		problem_graph->add_term1(i, tmp_energy, 0);
 	}
 
 	if (lambda_ > 0)
 	{
-		double distance1, distance2;
-		double energy1, energy2;
-		double e00, e01, e10, e11;
+		double squared_distance_1, squared_distance_2;
+		double energy1, energy2, energy_sum;
+		double e00, e01 = 1.0, e10 = 1.0, e11;
 		int actual_neighbor_idx;
 
 		// Iterate through all points and set their edges
 		for (auto point_idx = 0; point_idx < points_.rows; ++point_idx)
 		{
-			distance1 = static_cast<double>(estimator_.residual(points_.row(point_idx), model_));
-			energy1 = MAX(0, 1 - distance1 * distance1 / truncated_threshold_2); // Truncated quadratic cost
+			squared_distance_1 = estimator_.squaredResidual(points_.row(point_idx), 
+				model_.descriptor);
+			energy1 = MAX(0, 
+				1.0 - squared_distance_1 / squared_truncated_threshold); // Truncated quadratic cost
 
 			// Iterate through  all neighbors
 			for (auto neighbor_idx = 0; neighbor_idx < neighbors_[point_idx].size(); ++neighbor_idx)
@@ -809,22 +844,24 @@ void GCRANSAC<ModelEstimator, Model>::labeling(const cv::Mat &points_,
 				if (actual_neighbor_idx == point_idx)
 					continue;
 
-				distance2 = static_cast<double>(estimator_.residual(points_.row(actual_neighbor_idx), model_));
-				energy2 = MAX(0, 1 - distance2 * distance2 / truncated_threshold_2); // Truncated quadratic cost
-								
-				e00 = 0.5 * (energy1 + energy2);
-				e01 = 1.0;
-				e10 = 1.0;
-				e11 = 1.0 - 0.5 * (energy1 + energy2);
+				squared_distance_2 = estimator_.squaredResidual(points_.row(actual_neighbor_idx), 
+					model_.descriptor);
+				energy2 = MAX(0, 
+					1.0 - squared_distance_2 / squared_truncated_threshold); // Truncated quadratic cost
+				energy_sum = energy1 + energy2;
 
-				if (e00 + e11 > e01 + e10)
+				e00 = 0.5 * energy_sum;
+				e11 = 1.0 - 0.5 * energy_sum;
+
+				constexpr double e01_plus_e10 = 2.0; // e01 + e10 = 2
+				if (e00 + e11 > e01_plus_e10)
 					printf("Non-submodular expansion term detected; smooth costs must be a metric for expansion\n");
 
 				problem_graph->add_term2(point_idx, // The current point's index
 					actual_neighbor_idx, // The current neighbor's index
 					e00 * lambda_, 
-					e01 * lambda_, 
-					e10 * lambda_, 
+					lambda_, // = e01 * lambda
+					lambda_, // = e10 * lambda 
 					e11 * lambda_);
 			}
 		}

@@ -9,13 +9,11 @@
 struct FundamentalMatrix
 {
 	cv::Mat descriptor;
-	std::vector<int> mss;
 
 	FundamentalMatrix() {}
 	FundamentalMatrix(const FundamentalMatrix& other)
 	{
 		descriptor = other.descriptor.clone();
-		mss = other.mss;
 	}
 };
 
@@ -40,8 +38,8 @@ public:
 		const int *sample,
 		std::vector<FundamentalMatrix>* models) const
 	{
-		// model calculation 
-		int M = sampleSize();
+		// Model calculation by the seven point algorithm
+		constexpr size_t M = 7;
 
 		solverSevenPoint(data, sample, M, models);
 		if (models->size() == 0)
@@ -49,11 +47,11 @@ public:
 		return true;
 	}
 
-	double sampsonDistance(const cv::Mat& point,
+	double squaredSampsonDistance(const cv::Mat& point,
 		const cv::Mat& descriptor) const
 	{
-		const double* p = (double*)descriptor.data;
-		const double* s = (double*)point.data;
+		const double* p = reinterpret_cast<double *>(descriptor.data);
+		const double* s = reinterpret_cast<double *>(point.data);
 		const double x1 = *s;
 		const double y1 = *(s + 1);
 		const double x2 = *(s + 2);
@@ -66,19 +64,25 @@ public:
 		double rx = *(p)* x1 + *(p + 1) * y1 + *(p + 2);
 		double ry = *(p + 3) * x1 + *(p + 4) * y1 + *(p + 5);
 
-		return sqrt(r * r / (rxc * rxc + ryc * ryc + rx * rx + ry * ry));
+		return r * r / (rxc * rxc + ryc * ryc + rx * rx + ry * ry);
+	}
+
+	double sampsonDistance(const cv::Mat& point,
+		const cv::Mat& descriptor) const
+	{
+		return sqrt(squaredSampsonDistance(point, descriptor));
 	}
 
 	double symmetricEpipolarDistance(const cv::Mat& point,
 		const cv::Mat& descriptor) const
 	{
-		const double* s = (double *)point.data;
+		const double* s = reinterpret_cast<double *>(point.data);
 		const double x1 = *s;
 		const double y1 = *(s + 1);
 		const double x2 = *(s + 2);
 		const double y2 = *(s + 3);
 
-		const double* p = (double *)descriptor.data;
+		const double* p = reinterpret_cast<double *>(descriptor.data);
 
 		const double f11 = *(p);
 		const double f12 = *(p + 1);
@@ -108,6 +112,18 @@ public:
 		const double d2 = b1 / b2;
 
 		return abs(0.5 * (d1 + d2));
+	}
+
+	double squaredResidual(const cv::Mat& point,
+		const FundamentalMatrix& model) const
+	{
+		return squaredSampsonDistance(point, model.descriptor);
+	}
+
+	double squaredResidual(const cv::Mat& point,
+		const cv::Mat& descriptor) const
+	{
+		return squaredSampsonDistance(point, descriptor);
 	}
 
 	double residual(const cv::Mat& point, 
@@ -162,7 +178,6 @@ public:
 
 		cv::Mat normalized_points(M, data.cols, data.type()); // The normalized point coordinates
 		cv::Mat T1, T2; // The normalizing transformations in the 1st and 2nd images
-		T1 = T2 = cv::Mat::zeros(3, 3, data.type());
 
 		// Normalize the point coordinates to achieve numerical stability when
 		// applying the least-squares model fitting.
@@ -177,12 +192,13 @@ public:
 		// The eight point fundamental matrix fitting algorithm
 		solverEightPoint(normalized_points,
 			nullptr,
-			M,
+			M, 
 			models);
 
 		// Denormalizing the estimated fundamental matrices
+		const cv::Mat T2_transpose = T2.t();
 		for (auto &model : *models)
-			model.descriptor = T2.t() * model.descriptor * T1;
+			model.descriptor = T2_transpose * model.descriptor * T1;
 		return true;
 	}
 
@@ -210,9 +226,6 @@ public:
 		// Calculating the mass points in both images
 		for (size_t i = 0; i < sample_number; ++i)
 		{
-			if (sample[i] >= data.rows)
-				return false;
-
 			// Get pointer of the current point
 			const double *d_idx = points_ptr + cols * sample[i];
 
@@ -274,6 +287,7 @@ public:
 			*normalized_points_ptr++ = (y2 - mass_point_dst[1]) * ratio_dst;
 		}
 
+		// Creating the normalizing transformations
 		T1 = (cv::Mat_<double>(3, 3) << ratio_src, 0, -ratio_src * mass_point_src[0],
 			0, ratio_src, -ratio_src * mass_point_src[1],
 			0, 0, 1);
@@ -362,8 +376,12 @@ public:
 		// the equation: (m2[i], 1)'*F*(m1[i], 1) = 0
 		for (i = 0; i < 7; i++)
 		{
-			double x0 = data.at<double>(sample[i], 0), y0 = data.at<double>(sample[i], 1);
-			double x1 = data.at<double>(sample[i], 2), y1 = data.at<double>(sample[i], 3);
+			const int sample_idx = sample[i];
+
+			double x0 = data.at<double>(sample_idx, 0),
+				y0 = data.at<double>(sample_idx, 1),
+				x1 = data.at<double>(sample_idx, 2), 
+				y1 = data.at<double>(sample_idx, 3);
 
 			a[i * 9 + 0] = x1*x0;
 			a[i * 9 + 1] = x1*y0;
@@ -438,7 +456,7 @@ public:
 			double s = f1[8] * r[k] + f2[8];
 
 			// normalize each matrix, so that F(3,3) (~fmatrix[8]) == 1
-			if (fabs(s) > DBL_EPSILON)
+			if (fabs(s) > std::numeric_limits<double>::epsilon())
 			{
 				mu = 1.0f / s;
 				lambda *= mu;
@@ -454,10 +472,6 @@ public:
 
 				Model model;
 				model.descriptor = F;
-				model.mss.resize(sample_number);
-				for (auto i = 0; i < sample_number; ++i)
-					model.mss[i] = sample[i];
-
 				models->push_back(model);
 			}
 		}
@@ -472,7 +486,9 @@ public:
 		ec = F->row(0).cross(F->row(2));
 
 		for (auto i = 0; i < 3; i++)
-			if ((ec.at<double>(i) > 1.9984e-15) || (ec.at<double>(i) < -1.9984e-15)) return;
+			if ((ec.at<double>(i) > 1.9984e-15) || 
+				(ec.at<double>(i) < -1.9984e-15)) 
+				return;
 		ec = F->row(1).cross(F->row(2));
 	}
 
@@ -483,7 +499,7 @@ public:
 		double s1, s2;		
 		s1 = F->at<double>(0,0) * u.at<double>(2) + F->at<double>(1,0) * u.at<double>(3) + F->at<double>(2,0);
 		s2 = ec->at<double>(1) - ec->at<double>(2) * u.at<double>(1);
-		return(s1 * s2);
+		return s1 * s2;
 	}
 
 	int all_ori_valid(const cv::Mat *F, const cv::Mat &data, const int *sample, int N) const

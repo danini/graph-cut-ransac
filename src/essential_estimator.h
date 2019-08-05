@@ -82,6 +82,18 @@ public:
 		return true;
 	}
 
+	double squaredResidual(const cv::Mat& point, const EssentialMatrix& model) const
+	{
+		const double r = residual(point, model.descriptor);
+		return r * r;
+	}
+
+	double squaredResidual(const cv::Mat& point, const cv::Mat& descriptor) const
+	{
+		const double r = residual(point, descriptor);
+		return r * r;
+	}
+
 	double residual(const cv::Mat& point, const EssentialMatrix& model) const
 	{
 		const double* s = (double *)point.data;
