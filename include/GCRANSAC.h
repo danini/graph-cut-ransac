@@ -108,7 +108,8 @@ public:
 		const std::vector<int> &pool_,
 		const std::vector<std::vector<cv::DMatch>> &neighbors_, 
 		int sample_number_, 
-		int *sample_);
+		int *sample_,
+		bool use_prosac = true);
 
 	void setFPS(int fps_) { settings.desired_fps = fps_; time_limit = 1.0 / fps_; } // Set a desired FPS value
 
@@ -538,9 +539,10 @@ bool GCRANSAC<ModelEstimator, Model>::sample(
 	const std::vector<int> &pool_, // The pool if indices determining which point can be selected
 	const std::vector<std::vector<cv::DMatch>> &neighbors_,
 	int sample_number_,
-	int *sample_)
+	int *sample_,
+	bool use_prosac)
 {
-	if (pool_.size() == points_.rows) // Apply PROSAC sampler when sampling from the whole point set
+	if (use_prosac) // Apply PROSAC sampler when sampling from the whole point set
 	{
 		prosac_sampler->sample(
 			points_, // All data points
@@ -584,7 +586,7 @@ bool GCRANSAC<ModelEstimator, Model>::graphCutLocalOptimization(const cv::Mat &p
 		updated = false;
 
 		// Clear the inliers
-		inliers.resize(0);
+		inliers.clear();
 
 		// Apply the graph-cut-based inlier/outlier labeling.
 		// The inlier set will contain the points closer than the threshold and
@@ -602,7 +604,7 @@ bool GCRANSAC<ModelEstimator, Model>::graphCutLocalOptimization(const cv::Mat &p
 
 		// Number of points (i.e. the sample size) used in the inner RANSAC
 		size_t sample_size = static_cast<int>(MIN(inlier_limit, inliers.size()));
-
+		
 		// The current sample used in the inner RANSAC
 		std::unique_ptr<int[]> current_sample(new int[sample_size]);
 
@@ -617,7 +619,8 @@ bool GCRANSAC<ModelEstimator, Model>::graphCutLocalOptimization(const cv::Mat &p
 					inliers, // The inliers used for the selection
 					neighbours, // The neighborhood structure
 					sample_size, // The size of the minimal sample
-					current_sample.get()); // The selected sample
+					current_sample.get(), // The selected sample
+					false); // Don't use PROSAC sampling when doing an inner RANSAC
 
 				// Apply least-squares model fitting to the selected points.
 				// If it fails, continue the for cycle and, thus, the sampling.
@@ -629,14 +632,10 @@ bool GCRANSAC<ModelEstimator, Model>::graphCutLocalOptimization(const cv::Mat &p
 			}
 			else if (estimator_.sampleSize() < inliers.size()) // If there are enough inliers to estimate the model, use all of them
 			{
-				// Clear the current sample and use all of the inliers
-				current_sample.release();
-				current_sample = std::unique_ptr<int[]>(&inliers[0]);
-
 				// Apply least-squares model fitting to the selected points.
 				// If it fails, break the for cycle since we have used all inliers for this step.
 				if (!estimator_.estimateModelNonminimal(points_, // The input data points
-					current_sample.get(),  // The selected sample
+					&inliers[0],  // The selected sample
 					inliers.size(), // The size of the sample
 					&models)) // The estimated model parameter
 					break;

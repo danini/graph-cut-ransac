@@ -117,21 +117,23 @@ public:
 
 		double mass_point_src[2], // Mass point in the first image
 			mass_point_dst[2]; // Mass point in the second image
+
 		// Initializing the mass point coordinates
 		mass_point_src[0] =
 			mass_point_src[1] =
 			mass_point_dst[0] =
 			mass_point_dst[1] =
-			0.0f;
+			0.0;
 
 		// Calculating the mass points in both images
 		for (size_t i = 0; i < sample_number; ++i)
 		{
-			if (sample[i] >= data.rows)
+			const int sample_idx = sample[i];
+			if (sample_idx >= data.rows)
 				return false;
 
 			// Get pointer of the current point
-			const double *d_idx = points_ptr + cols * sample[i];
+			const double *d_idx = points_ptr + cols * sample_idx;
 
 			// Add the coordinates to that of the mass points
 			mass_point_src[0] += *(d_idx);
