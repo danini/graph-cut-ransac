@@ -101,7 +101,7 @@ void detectFeatures(std::string scene_name_,
 		return;
 	}
 
-	printf("Detect SIFT features\n");
+	printf("Detect AKAZE features\n");
 	cv::Mat descriptors1, descriptors2;
 	std::vector<cv::KeyPoint> keypoints1, keypoints2;
 

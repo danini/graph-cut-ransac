@@ -18,6 +18,12 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 find_package(OpenCV 3.0 REQUIRED)
 
 # ==============================================================================
+# Find Eigen
+# ==============================================================================
+find_package(Eigen3 REQUIRED)
+set(EIGEN_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
+
+# ==============================================================================
 # Find OpenMP
 # ==============================================================================
 find_package(OpenMP)
@@ -79,11 +85,13 @@ target_link_libraries(${PROJECT_NAME}
 	${OpenCV_LIBS}
 )
 
+target_link_libraries (${PROJECT_NAME}
+	Eigen3::Eigen)
+
 # ==============================================================================
 # Structure: Applications
 # ==============================================================================
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
-
 
 # five_point
 file(GLOB_RECURSE HDRSSRCS_FIVE_POINT 
@@ -108,8 +116,12 @@ add_executable(SampleProject
 	src/homography_estimator.h
 	src/main.cpp)
 	
+target_link_libraries (SampleProject 
+	Eigen3::Eigen)
+	
 target_link_libraries(SampleProject 
 	${OpenCV_LIBS}
 	${PROJECT_NAME}
 )
+
 add_dependencies(SampleProject ${PROJECT_NAME})

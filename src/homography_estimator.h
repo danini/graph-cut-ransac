@@ -1,14 +1,15 @@
 #include "estimator.h"
 
 #include <opencv2/calib3d/calib3d.hpp>
+#include <Eigen/Eigen>
 
 struct Homography
 {
-	cv::Mat descriptor;
+	Eigen::Matrix3d descriptor;
 	Homography() {}
 	Homography(const Homography& other)
 	{
-		descriptor = other.descriptor.clone();
+		descriptor = other.descriptor;
 	}
 };
 
@@ -49,9 +50,9 @@ public:
 	{
 		if (sample_number < sampleSize())
 			return false;
-
+		
 		cv::Mat normalized_points(sample_number, data.cols, data.type()); // The normalized point coordinates
-		cv::Mat T1, T2; // The normalizing transformations in the 1st and 2nd images
+		Eigen::Matrix3d T1, T2; // The normalizing transformations in the 1st and 2nd images
 
 		// Normalize the point coordinates to achieve numerical stability when
 		// applying the least-squares model fitting.
@@ -70,7 +71,7 @@ public:
 			models);
 
 		// Denormalizing the estimated fundamental matrices
-		const cv::Mat T2_inverse = T2.inv();
+		const Eigen::Matrix3d T2_inverse = T2.inverse();
 		for (auto &model : *models)
 			model.descriptor = T2_inverse * model.descriptor * T1;
 		return true;
@@ -82,20 +83,19 @@ public:
 		return squaredResidual(point, model.descriptor);
 	}
 
-	double squaredResidual(const cv::Mat& point,
-		const cv::Mat& descriptor) const
+	inline double squaredResidual(const cv::Mat& point,
+		const Eigen::Matrix3d& descriptor) const
 	{
 		const double* s = reinterpret_cast<double *>(point.data);
-		const double* p = reinterpret_cast<double *>(descriptor.data);
 
 		const double x1 = *s;
 		const double y1 = *(s + 1);
 		const double x2 = *(s + 2);
 		const double y2 = *(s + 3);
 
-		const double t1 = *p * x1 + *(p + 1) * y1 + *(p + 2);
-		const double t2 = *(p + 3) * x1 + *(p + 4) * y1 + *(p + 5);
-		const double t3 = *(p + 6) * x1 + *(p + 7) * y1 + *(p + 8);
+		const double t1 = descriptor(0, 0) * x1 + descriptor(0, 1) * y1 + descriptor(0, 2);
+		const double t2 = descriptor(1, 0) * x1 + descriptor(1, 1) * y1 + descriptor(1, 2);
+		const double t3 = descriptor(2, 0) * x1 + descriptor(2, 1) * y1 + descriptor(2, 2);
 
 		const double d1 = x2 - (t1 / t3);
 		const double d2 = y2 - (t2 / t3);
@@ -109,19 +109,19 @@ public:
 		return residual(point, model.descriptor);
 	}
 
-	double residual(const cv::Mat& point, 
-		const cv::Mat& descriptor) const
+	inline double residual(const cv::Mat& point,
+		const Eigen::Matrix3d& descriptor) const
 	{
 		return sqrt(squaredResidual(point, descriptor));
 	}
 
-	bool normalizePoints(
+	inline bool normalizePoints(
 		const cv::Mat& data, // The data points
 		const int *sample, // The points to which the model will be fit
 		size_t sample_number,// The number of points
 		cv::Mat &normalized_points, // The normalized point coordinates
-		cv::Mat &T1, // The normalizing transformation in the first image
-		cv::Mat &T2) const // The normalizing transformation in the second image
+		Eigen::Matrix3d &T1, // The normalizing transformation in the first image
+		Eigen::Matrix3d &T2) const // The normalizing transformation in the second image
 	{
 		const size_t cols = data.cols;
 		double *normalized_points_ptr = reinterpret_cast<double *>(normalized_points.data);
@@ -202,30 +202,30 @@ public:
 		}
 
 		// Creating the normalizing transformations
-		T1 = (cv::Mat_<double>(3, 3) << ratio_src, 0, -ratio_src * mass_point_src[0],
+		T1 << ratio_src, 0, -ratio_src * mass_point_src[0],
 			0, ratio_src, -ratio_src * mass_point_src[1],
-			0, 0, 1);
+			0, 0, 1;
 
-		T2 = (cv::Mat_<double>(3, 3) << ratio_dst, 0, -ratio_dst * mass_point_dst[0],
+		T2 << ratio_dst, 0, -ratio_dst * mass_point_dst[0],
 			0, ratio_dst, -ratio_dst * mass_point_dst[1],
-			0, 0, 1);
+			0, 0, 1;
 		return true;
 	}
 
-	bool solverFourPoint(
+	inline bool solverFourPoint(
 		const cv::Mat& data_,
 		const int *sample_,
 		const size_t sample_number_,
 		std::vector<Homography>* models_) const
 	{
 		constexpr size_t equation_number = 2;
-		cv::Mat A(equation_number * sample_number_, 8, CV_64F);
-		cv::Mat inhomogeneous(equation_number * sample_number_, 1, CV_64F);
+		const size_t row_number = equation_number * sample_number_;
+		Eigen::MatrixXd coefficients(row_number, 8);
+		Eigen::MatrixXd inhomogeneous(row_number, 1);
 
 		constexpr size_t columns = 4;
-		double *A_ptr = reinterpret_cast<double *>(A.data);
-		double *b_ptr = reinterpret_cast<double *>(inhomogeneous.data);
 		const double *data_ptr = reinterpret_cast<double *>(data_.data);
+		size_t row_idx = 0;
 		
 		for (auto i = 0; i < sample_number_; ++i)
 		{
@@ -233,39 +233,41 @@ public:
 				data_ptr + i * columns :
 				data_ptr + sample_[i] * columns;
 
-			double x1 = point_ptr[0],
+			const double x1 = point_ptr[0],
 				y1 = point_ptr[1],
 				x2 = point_ptr[2],
 				y2 = point_ptr[3];
+			
+			coefficients(row_idx, 0) = -x1;
+			coefficients(row_idx, 1) = -y1;
+			coefficients(row_idx, 2) = -1;
+			coefficients(row_idx, 3) = 0;
+			coefficients(row_idx, 4) = 0;
+			coefficients(row_idx, 5) = 0;
+			coefficients(row_idx, 6) = x2 * x1;
+			coefficients(row_idx, 7) = x2 * y1;
+			inhomogeneous(row_idx) = -x2;
+			++row_idx;
 
-			(*A_ptr++) = -x1;
-			(*A_ptr++) = -y1;
-			(*A_ptr++) = -1;
-			(*A_ptr++) = 0;
-			(*A_ptr++) = 0;
-			(*A_ptr++) = 0;
-			(*A_ptr++) = x2 * x1;
-			(*A_ptr++) = x2 * y1;
-			(*b_ptr++) = -x2;
-
-			(*A_ptr++) = 0;
-			(*A_ptr++) = 0;
-			(*A_ptr++) = 0;
-			(*A_ptr++) = -x1;
-			(*A_ptr++) = -y1;
-			(*A_ptr++) = -1;
-			(*A_ptr++) = y2 * x1;
-			(*A_ptr++) = y2 * y1;
-			(*b_ptr++) = -y2;
+			coefficients(row_idx, 0) = 0;
+			coefficients(row_idx, 1) = 0;
+			coefficients(row_idx, 2) = 0;
+			coefficients(row_idx, 3) = -x1;
+			coefficients(row_idx, 4) = -y1;
+			coefficients(row_idx, 5) = -1;
+			coefficients(row_idx, 6) = y2 * x1;
+			coefficients(row_idx, 7) = y2 * y1;
+			inhomogeneous(row_idx) = -y2;
+			++row_idx;
 		}
 
-		cv::Mat h;
-		cv::solve(A, inhomogeneous, h, cv::DECOMP_SVD);
-		h.push_back(1.0);
-		cv::Mat H(3, 3, CV_64F, h.data);
-
+		Eigen::Matrix<double, 8, 1> h = 
+			coefficients.colPivHouseholderQr().solve(inhomogeneous);
+		
 		Homography model;
-		model.descriptor = H;
+		model.descriptor << h(0), h(1), h(2), 
+			h(3), h(4), h(5),
+			h(6), h(7), 1;
 		models_->emplace_back(model);
 		return true;
 	}

@@ -86,9 +86,7 @@ namespace theia
 		// Given a model and a data point, calculate the error. Users should implement
 		// this function appropriately for the task being solved.
 		virtual double residual(const Datum& data, const Model& model) const = 0;
-		virtual double residual(const Datum& data, const cv::Mat& model) const = 0;
 		virtual double squaredResidual(const Datum& data, const Model& model) const = 0;
-		virtual double squaredResidual(const Datum& data, const cv::Mat& model) const = 0;
 
 		// Compute the residuals of many data points. By default this is just a loop
 		// that calls residual() on each data point, but this function can be useful if
