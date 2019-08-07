@@ -227,7 +227,7 @@ public:
 		const double *data_ptr = reinterpret_cast<double *>(data_.data);
 		size_t row_idx = 0;
 		
-		for (auto i = 0; i < sample_number_; ++i)
+		for (size_t i = 0; i < sample_number_; ++i)
 		{
 			const double *point_ptr = sample_ == nullptr ?
 				data_ptr + i * columns :

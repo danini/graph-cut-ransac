@@ -93,15 +93,6 @@ target_link_libraries (${PROJECT_NAME}
 # ==============================================================================
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 
-# five_point
-file(GLOB_RECURSE HDRSSRCS_FIVE_POINT 
-	"src/five_point/*.h"
-	"src/five_point/*.cpp"
-)
-source_group(third_party\\five_point FILES
-	${HDRSSRCS_FIVE_POINT}
-)
-
 # estimators
 source_group("Estimators" FILES
 	src/essential_estimator.h
@@ -110,7 +101,6 @@ source_group("Estimators" FILES
 )
 
 add_executable(SampleProject
-	${HDRSSRCS_FIVE_POINT}
 	src/essential_estimator.h
 	src/fundamental_estimator.h
 	src/homography_estimator.h

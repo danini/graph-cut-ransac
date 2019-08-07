@@ -10,6 +10,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/features2d.hpp>
+#include <Eigen/Eigen>
 
 /*
 	Function declaration
@@ -43,6 +44,15 @@ void showImage(
 	int max_width_,
 	int max_height_,
 	bool wait_);
+
+template<typename T, int N, int M>
+bool loadMatrix(const std::string &path_,
+	Eigen::Matrix<T, N, M> &matrix_);
+
+void normalizeCorrespondences(const cv::Mat &points_,
+	const Eigen::Matrix3d &intrinsics_src_,
+	const Eigen::Matrix3d &intrinsics_dst_,
+	cv::Mat &normalized_points_);
 
 /*
 	Function definition
@@ -185,7 +195,9 @@ bool loadPointsFromFile(cv::Mat &points,
 	return true;
 }
 
-bool savePointsToFile(const cv::Mat &points, const char* file, const std::vector<int> *inliers)
+bool savePointsToFile(const cv::Mat &points, 
+	const char* file, 
+	const std::vector<int> *inliers)
 {
 	std::ofstream outfile(file, std::ios::out);
 
@@ -219,6 +231,36 @@ bool savePointsToFile(const cv::Mat &points, const char* file, const std::vector
 	return true;
 }
 
+template<typename T, int N, int M>
+bool loadMatrix(const std::string &path_,
+	Eigen::Matrix<T, N, M> &matrix_)
+{
+	std::ifstream infile(path_);
+
+	if (!infile.is_open())
+		return false;
+
+	size_t row = 0,
+		column = 0;
+	double element;
+
+	while (infile >> element)
+	{
+		matrix_(row, column) = element;
+		++column;
+		if (column >= M)
+		{
+			column = 0;
+			++row;
+		}
+	}
+
+	infile.close();
+
+	return row == N &&
+		column == 0;
+}
+
 void showImage(const cv::Mat &image_,
 	std::string window_name_,
 	int max_width_,
@@ -248,4 +290,48 @@ void showImage(const cv::Mat &image_,
 	cv::imshow(window_name_, image_);
 	if (wait_)
 		cv::waitKey(0);
+}
+
+void normalizeCorrespondences(const cv::Mat &points_,
+	const Eigen::Matrix3d &intrinsics_src_,
+	const Eigen::Matrix3d &intrinsics_dst_,
+	cv::Mat &normalized_points_)
+{
+	const double *points_ptr = reinterpret_cast<double *>(points_.data);
+	double *normalized_points_ptr = reinterpret_cast<double *>(normalized_points_.data);
+	const Eigen::Matrix3d inverse_intrinsics_src = intrinsics_src_.inverse(),
+		inverse_intrinsics_dst = intrinsics_dst_.inverse();
+
+	// Most likely, this is not the fastest solution, but it does
+	// not affect the speed of Graph-cut RANSAC, so not a crucial part of
+	// this example.
+	double x0, y0, x1, y1;
+	for (auto r = 0; r < points_.rows; ++r)
+	{
+		Eigen::Vector3d point_src,
+			point_dst,
+			normalized_point_src,
+			normalized_point_dst;
+
+		x0 = *(points_ptr++);
+		y0 = *(points_ptr++);
+		x1 = *(points_ptr++);
+		y1 = *(points_ptr++);
+
+		point_src << x0, y0, 1.0; // Homogeneous point in the first image
+		point_dst << x1, y1, 1.0; // Homogeneous point in the second image
+		
+		// Normalized homogeneous point in the first image
+		normalized_point_src = 
+			inverse_intrinsics_src * point_src;
+		// Normalized homogeneous point in the second image
+		normalized_point_dst = 
+			inverse_intrinsics_dst * point_dst;
+
+		// The second four columns contain the normalized coordinates.
+		*(normalized_points_ptr++) = normalized_point_src(0);
+		*(normalized_points_ptr++) = normalized_point_src(1);
+		*(normalized_points_ptr++) = normalized_point_dst(0);
+		*(normalized_points_ptr++) = normalized_point_dst(1);
+	}
 }

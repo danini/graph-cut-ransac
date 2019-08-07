@@ -309,7 +309,7 @@ public:
 
 	inline bool solverEightPoint(const cv::Mat& data,
 		const int *sample,
-		int sample_number,
+		size_t sample_number,
 		std::vector<FundamentalMatrix>* models) const
 	{
 		if (sample == nullptr)
@@ -330,10 +330,10 @@ public:
 			else
 				offset = cols * sample[i];
 			
-			double x0 = data_ptr[offset],
-				y0 = data_ptr[offset + 1],
-				x1 = data_ptr[offset + 2],
-				y1 = data_ptr[offset + 3];
+			x0 = data_ptr[offset];
+			y0 = data_ptr[offset + 1];
+			x1 = data_ptr[offset + 2];
+			y1 = data_ptr[offset + 3];
 
 			coefficients(i, 0) = x1 * x0;
 			coefficients(i, 1) = x1 * y0;
@@ -378,7 +378,7 @@ public:
 		const int cols = data.cols;
 		double c[4];
 		double t0, t1, t2;
-		int i, k, n;
+		int i, n;
 
 		// form a linear system: i-th row of A(=a) represents
 		// the equation: (m2[i], 1)'*F*(m1[i], 1) = 0

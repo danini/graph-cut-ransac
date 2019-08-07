@@ -50,7 +50,7 @@ struct Settings {
 		desired_fps(-1),
 		max_local_optimization_number(std::numeric_limits<size_t>::max()),
 		max_graph_cut_number(std::numeric_limits<size_t>::max()),
-		max_least_squares_iterations(std::numeric_limits<size_t>::max()),
+		max_least_squares_iterations(20),
 		min_iteration_number_before_lo(20),
 		min_iteration_number(20),
 		neighborhood_sphere_radius(20),
@@ -130,7 +130,8 @@ public:
 	inline int isScoreLess(const Score &s1_, // Input score
 		const Score &s2_) // Input score
 	{ 
-		return s1_.J < s2_.J; 
+		return s1_.J < s2_.J && 
+			s1_.I <= s2_.I;
 	}
 
 protected:
@@ -264,10 +265,10 @@ void GCRANSAC<ModelEstimator, Model>::run(
 		flann.radiusMatch(tmp_points, // The point set converted to floats
 			tmp_points, // The point set converted to floats
 			neighbours, // The estimated neighborhood graph
-			settings.neighborhood_sphere_radius); // The radius of the neighborhood ball
+			static_cast<float>(settings.neighborhood_sphere_radius)); // The radius of the neighborhood ball
 		 
 		// Count the edges in the neighborhood graph
-		for (auto i = 0; i < neighbours.size(); ++i)
+		for (size_t i = 0; i < neighbours.size(); ++i)
 			statistics.neighbor_number += static_cast<int>(neighbours[i].size()) - 1;
 	}
 	
@@ -329,7 +330,7 @@ void GCRANSAC<ModelEstimator, Model>::run(
 					points_, // All input points
 					temp_inner_inliers[inl_offset], // The inliers of the current model
 					truncated_threshold)) // The truncated inlier-outlier threshold
-			{				
+			{
 				inl_offset = (inl_offset + 1) % 2;
 				so_far_the_best_model = model; // The new so-far-the-best model
 				so_far_the_best_score = score; // The new so-far-the-best model's score
@@ -454,6 +455,7 @@ bool GCRANSAC<ModelEstimator, Model>::iteratedLeastSquaresFitting(
 	std::vector<int> tmp_inliers; // Inliers of the current model
 
 	// Iterated least-squares model fitting
+	Score best_score; // The score of the best estimated model
 	while (++iterations < settings.max_least_squares_iterations)
 	{
 		std::vector<Model> models; // Estimated models
@@ -492,7 +494,6 @@ bool GCRANSAC<ModelEstimator, Model>::iteratedLeastSquaresFitting(
 		}
 		else // If multiple models are estimated select the best (i.e. the one having the highest score) one
 		{
-			Score best_score; // The score of the best estimated model
 			bool updated = false; // A flag determining if the model is updated
 
 			// Evaluate all the estimated models to find the best
@@ -516,7 +517,7 @@ bool GCRANSAC<ModelEstimator, Model>::iteratedLeastSquaresFitting(
 					continue;
 
 				// Update the model if its score is higher than that of the current best
-				if (score.J > best_score.J)
+				if (score.I >= best_score.I)
 				{
 					updated = true; // Set a flag saying that the model is updated, so the process should continue
 					best_score = score; // Store the new score
@@ -714,7 +715,7 @@ Score GCRANSAC<ModelEstimator, Model>::getScore(const cv::Mat &points_, // The i
 	std::vector<Score> process_scores(settings.core_number);
 
 #pragma omp for
-  for (auto process = 0; process < settings.core_number; process++) {
+  for (size_t process = 0; process < settings.core_number; process++) {
 		if (store_inliers_) // If the inlier should be stored, occupy the memory for the inliers
 			process_inliers[process].reserve(step_size);
 		const int start_idx = process * step_size; // The starting point's index
@@ -744,7 +745,7 @@ Score GCRANSAC<ModelEstimator, Model>::getScore(const cv::Mat &points_, // The i
 	}
 
 	// Merge the results of the parallel threads
-	for (auto i = 0; i < settings.core_number; ++i)
+	for (size_t i = 0; i < settings.core_number; ++i)
 	{
 		score.I += process_scores[i].I;
 		score.J += process_scores[i].J;
@@ -837,7 +838,7 @@ void GCRANSAC<ModelEstimator, Model>::labeling(const cv::Mat &points_,
 				1.0 - squared_distance_1 / squared_truncated_threshold); // Truncated quadratic cost
 
 			// Iterate through  all neighbors
-			for (auto neighbor_idx = 0; neighbor_idx < neighbors_[point_idx].size(); ++neighbor_idx)
+			for (size_t neighbor_idx = 0; neighbor_idx < neighbors_[point_idx].size(); ++neighbor_idx)
 			{
 				actual_neighbor_idx = neighbors_[point_idx][neighbor_idx].trainIdx;
 				

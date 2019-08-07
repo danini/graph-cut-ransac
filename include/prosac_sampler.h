@@ -85,7 +85,7 @@ namespace theia
 			ransac_convergence_iterations_ = 100000;
 			kth_sample_number_ = 1;
 			
-			unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+			unsigned seed = static_cast<int>(std::chrono::system_clock::now().time_since_epoch().count());
 			util_generator.seed(seed);
 			return true;
 		}
@@ -104,18 +104,19 @@ namespace theia
 		{
 			// Set t_n according to the PROSAC paper's recommendation.
 			double t_n = ransac_convergence_iterations_;
+			const int point_number = static_cast<int>(data.size());
 			int n = this->min_num_samples_;
 			// From Equations leading up to Eq 3 in Chum et al.
 			for (auto i = 0; i < this->min_num_samples_; i++)
 			{
-				t_n *= static_cast<double>(n - i) / (data.size() - i);
+				t_n *= static_cast<double>(n - i) / (point_number - i);
 			}
 
 			double t_n_prime = 1.0;
 			// Choose min n such that T_n_prime >= t (Eq. 5).
 			for (auto t = 1; t <= kth_sample_number_; t++)
 			{
-				if (t > t_n_prime && n < data.size())
+				if (t > t_n_prime && n < point_number)
 				{
 					double t_n_plus1 =
 						(t_n * (n + 1.0)) / (n + 1.0 - this->min_num_samples_);
