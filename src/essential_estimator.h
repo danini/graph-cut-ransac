@@ -212,8 +212,8 @@ public:
 			return false;
 
 		// The eight point fundamental matrix fitting algorithm
-		if (!solverSteweniusFivePoint(data,
-			sample,
+		if (!solverSteweniusFivePoint(normalized_points,
+			nullptr,
 			M,
 			models))
 			return false;

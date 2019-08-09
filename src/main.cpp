@@ -7,6 +7,7 @@
 
 #include "GCRANSAC.h"
 #include "flann_neighborhood_graph.h"
+#include "grid_neighborhood_graph.h"
 #include "fundamental_estimator.h"
 #include "homography_estimator.h"
 #include "essential_estimator.h"
@@ -34,7 +35,7 @@ void testEssentialMatrixFitting(std::string source_path_,
 	const double confidence_,
 	const double inlier_outlier_threshold_,
 	const double spatial_coherence_weight_,
-	const double neighborhood_size_,
+	const size_t cell_number_in_neighborhood_graph_,
 	const int fps_);
 
 void testFundamentalMatrixFitting(std::string source_path_,
@@ -45,7 +46,7 @@ void testFundamentalMatrixFitting(std::string source_path_,
 	const double confidence_,
 	const double inlier_outlier_threshold_,
 	const double spatial_coherence_weight_,
-	const double neighborhood_size_,
+	const size_t cell_number_in_neighborhood_graph_,
 	const int fps_);
 
 void testHomographyFitting(std::string source_path_,
@@ -56,7 +57,7 @@ void testHomographyFitting(std::string source_path_,
 	const double confidence_,
 	const double inlier_outlier_threshold_,
 	const double spatial_coherence_weight_,
-	const double neighborhood_size_,
+	const size_t cell_number_in_neighborhood_graph_,
 	const int fps_);
 
 std::vector<std::string> getAvailableTestScenes(Problem problem_);
@@ -87,7 +88,7 @@ int main(int argc, const char* argv[])
 	const double inlier_outlier_threshold_fundamental_matrix = 2.00; // The used inlier-outlier threshold in GC-RANSAC for fundamental matrix estimation.
 	const double inlier_outlier_threshold_homography = 2.00; // The used inlier-outlier threshold in GC-RANSAC for homography estimation.
 	const double spatial_coherence_weight = 0.14; // The weight of the spatial coherence term in the graph-cut energy minimization.
-	const double neighborhood_size = 20.0; // The radius of the neighborhood ball for determining the neighborhoods.
+	const size_t cell_number_in_neighborhood_graph = 8; // The number of cells along each axis in the neighborhood graph.
 
 	printf("------------------------------------------------------------\nFundamental matrix fitting\n------------------------------------------------------------\n");
 	for (const std::string &scene : getAvailableTestScenes(Problem::FundamentalMatrixFitting))
@@ -117,7 +118,7 @@ int main(int argc, const char* argv[])
 			confidence, // The RANSAC confidence value
 			inlier_outlier_threshold_fundamental_matrix, // The used inlier-outlier threshold in GC-RANSAC.
 			spatial_coherence_weight, // The weight of the spatial coherence term in the graph-cut energy minimization.
-			neighborhood_size, // The radius of the neighborhood ball for determining the neighborhoods.
+			cell_number_in_neighborhood_graph, // The radius of the neighborhood ball for determining the neighborhoods.
 			fps); // The required FPS limit. If it is set to -1, the algorithm will not be interrupted before finishing.
 		printf("\n------------------------------------------------------------\n");
 	}
@@ -150,7 +151,7 @@ int main(int argc, const char* argv[])
 			confidence, // The RANSAC confidence value
 			inlier_outlier_threshold_homography, // The used inlier-outlier threshold in GC-RANSAC.
 			spatial_coherence_weight, // The weight of the spatial coherence term in the graph-cut energy minimization.
-			neighborhood_size, // The radius of the neighborhood ball for determining the neighborhoods.
+			cell_number_in_neighborhood_graph, // The radius of the neighborhood ball for determining the neighborhoods.
 			fps); // The required FPS limit. If it is set to -1, the algorithm will not be interrupted before finishing.
 		printf("\n------------------------------------------------------------\n");
 	}
@@ -189,7 +190,7 @@ int main(int argc, const char* argv[])
 			confidence, // The RANSAC confidence value
 			inlier_outlier_threshold_essential_matrix, // The used inlier-outlier threshold in GC-RANSAC.
 			spatial_coherence_weight, // The weight of the spatial coherence term in the graph-cut energy minimization.
-			neighborhood_size, // The radius of the neighborhood ball for determining the neighborhoods.
+			cell_number_in_neighborhood_graph, // The radius of the neighborhood ball for determining the neighborhoods.
 			fps); // The required FPS limit. If it is set to -1, the algorithm will not be interrupted before finishing.
 		printf("\n------------------------------------------------------------\n");
 	}
@@ -339,12 +340,12 @@ void testHomographyFitting(
 	const double confidence_,
 	const double inlier_outlier_threshold_,
 	const double spatial_coherence_weight_,
-	const double neighborhood_size_,
+	const size_t cell_number_in_neighborhood_graph_,
 	const int fps_)
 {
 	// Read the images
-	cv::Mat source_image = cv::imread(source_path_);
-	cv::Mat destination_image = cv::imread(destination_path_);
+	cv::Mat source_image = cv::imread(source_path_); // The source image
+	cv::Mat destination_image = cv::imread(destination_path_); // The destination image
 
 	if (source_image.empty()) // Check if the source image is loaded succesfully
 	{
@@ -363,22 +364,31 @@ void testHomographyFitting(
 	// Detect or load point correspondences using AKAZE 
 	cv::Mat points;
 	detectFeatures(
-		in_correspondence_path_,
-		source_image,
-		destination_image,
-		points);
+		in_correspondence_path_, // The path where the correspondences are read from or saved to.
+		source_image, // The source image
+		destination_image, // The destination image
+		points); // The detected point correspondences. Each row is of format "x1 y1 x2 y2"
 	
 	// Initialize the neighborhood used in Graph-cut RANSAC and, perhaps,
 	// in the sampler if NAPSAC or Progressive-NAPSAC sampling is applied.
-	FlannNeighborhoodGraph neighborhood(&points, 
-		neighborhood_size_);
+	std::chrono::time_point<std::chrono::system_clock> start, end; // Variables for time measurement
+	start = std::chrono::system_clock::now(); // The starting time of the neighborhood calculation
+	GridNeighborhoodGraph neighborhood(&points,
+		source_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
+		source_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_),
+		destination_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
+		destination_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_),
+		cell_number_in_neighborhood_graph_);
+	end = std::chrono::system_clock::now(); // The end time of the neighborhood calculation
+	std::chrono::duration<double> elapsed_seconds = end - start; // The elapsed time in seconds
+	printf("Neighborhood calculation time = %f secs\n", elapsed_seconds.count());
 
 	// Apply Graph-cut RANSAC
 	RobustHomographyEstimator estimator;
 	std::vector<int> inliers;
 	Homography model;
 
-	GCRANSAC<RobustHomographyEstimator> gcransac;
+	GCRANSAC<RobustHomographyEstimator, GridNeighborhoodGraph> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
 	gcransac.settings.threshold = inlier_outlier_threshold_; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
@@ -386,20 +396,19 @@ void testHomographyFitting(
 	gcransac.settings.max_local_optimization_number = 20; // The maximm number of local optimizations
 	gcransac.settings.max_iteration_number = 5000; // The maximum number of iterations
 	gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
-	gcransac.settings.neighborhood_sphere_radius = neighborhood_size_; // The radius of the neighborhood ball
+	gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
 	gcransac.settings.core_number = 4; // The number of parallel processes
 
 	// Start GC-RANSAC
-	std::chrono::time_point<std::chrono::system_clock> start, end;
 	start = std::chrono::system_clock::now();
 	gcransac.run(points,
 		estimator,
+		&neighborhood,
 		model);
 	end = std::chrono::system_clock::now();
 
 	// Calculate the processing time
-	std::chrono::duration<double> elapsed_seconds = end - start;
-	std::time_t end_time = std::chrono::system_clock::to_time_t(end);
+	elapsed_seconds = end - start;
 
 	// Get the statistics of the results
 	const RANSACStatistics &statistics = gcransac.getRansacStatistics();
@@ -443,7 +452,7 @@ void testFundamentalMatrixFitting(
 	const double confidence_,
 	const double inlier_outlier_threshold_,
 	const double spatial_coherence_weight_,
-	const double neighborhood_size_,
+	const size_t cell_number_in_neighborhood_graph_,
 	const int fps_)
 {
 	// Read the images
@@ -467,17 +476,31 @@ void testFundamentalMatrixFitting(
 	// Detect or load point correspondences using AKAZE 
 	cv::Mat points;
 	detectFeatures(
-		in_correspondence_path_,
-		source_image,
-		destination_image,
-		points);
+		in_correspondence_path_, // The path where the correspondences are read from or saved to.
+		source_image, // The source image
+		destination_image, // The destination image
+		points); // The detected point correspondences. Each row is of format "x1 y1 x2 y2"
+
+	// Initialize the neighborhood used in Graph-cut RANSAC and, perhaps,
+	// in the sampler if NAPSAC or Progressive-NAPSAC sampling is applied.
+	std::chrono::time_point<std::chrono::system_clock> start, end; // Variables for time measurement
+	start = std::chrono::system_clock::now(); // The starting time of the neighborhood calculation
+	GridNeighborhoodGraph neighborhood(&points,
+		source_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
+		source_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_),
+		destination_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
+		destination_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_),
+		cell_number_in_neighborhood_graph_);
+	end = std::chrono::system_clock::now(); // The end time of the neighborhood calculation
+	std::chrono::duration<double> elapsed_seconds = end - start; // The elapsed time in seconds
+	printf("Neighborhood calculation time = %f secs\n", elapsed_seconds.count());
 
 	// Apply Graph-cut RANSAC
 	FundamentalMatrixEstimator estimator;
 	std::vector<int> inliers;
 	FundamentalMatrix model;
 
-	GCRANSAC<FundamentalMatrixEstimator> gcransac;
+	GCRANSAC<FundamentalMatrixEstimator, GridNeighborhoodGraph> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
 	gcransac.settings.threshold = inlier_outlier_threshold_; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
@@ -485,20 +508,19 @@ void testFundamentalMatrixFitting(
 	gcransac.settings.max_local_optimization_number = 20; // The maximm number of local optimizations
 	gcransac.settings.max_iteration_number = 5000; // The maximum number of iterations
 	gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
-	gcransac.settings.neighborhood_sphere_radius = neighborhood_size_; // The radius of the neighborhood ball
+	gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
 	gcransac.settings.core_number = 4; // The number of parallel processes
 
 	// Start GC-RANSAC
-	std::chrono::time_point<std::chrono::system_clock> start, end;
 	start = std::chrono::system_clock::now();
 	gcransac.run(points,
 		estimator,
+		&neighborhood,
 		model);
 	end = std::chrono::system_clock::now();
 
 	// Calculate the processing time
-	std::chrono::duration<double> elapsed_seconds = end - start;
-	std::time_t end_time = std::chrono::system_clock::to_time_t(end);
+	elapsed_seconds = end - start;
 
 	// Get the statistics of the results
 	const RANSACStatistics &statistics = gcransac.getRansacStatistics();
@@ -509,7 +531,7 @@ void testFundamentalMatrixFitting(
 	printf("Applied number of local optimizations = %d\n", statistics.local_optimization_number);
 	printf("Applied number of graph-cuts = %d\n", statistics.graph_cut_number);
 	printf("Number of iterations = %d\n\n", statistics.iteration_number);
-
+	
 	// Draw the inlier matches to the images
 	cv::Mat match_image;
 	drawMatches(points,
@@ -544,7 +566,7 @@ void testEssentialMatrixFitting(
 	const double confidence_,
 	const double inlier_outlier_threshold_,
 	const double spatial_coherence_weight_,
-	const double neighborhood_size_,
+	const size_t cell_number_in_neighborhood_graph_,
 	const int fps_)
 {
 	// Read the images
@@ -568,10 +590,10 @@ void testEssentialMatrixFitting(
 	// Detect or load point correspondences using AKAZE 
 	cv::Mat points;
 	detectFeatures(
-		in_correspondence_path_,
-		source_image,
-		destination_image,
-		points);
+		in_correspondence_path_, // The path where the correspondences are read from or saved to.
+		source_image, // The source image
+		destination_image, // The destination image
+		points); // The detected point correspondences. Each row is of format "x1 y1 x2 y2"
 
 	// Load the intrinsic camera matrices
 	Eigen::Matrix3d intrinsics_src,
@@ -600,15 +622,27 @@ void testEssentialMatrixFitting(
 		intrinsics_dst,
 		normalized_points);
 
+	// Initialize the neighborhood used in Graph-cut RANSAC and, perhaps,
+	// in the sampler if NAPSAC or Progressive-NAPSAC sampling is applied.
+	std::chrono::time_point<std::chrono::system_clock> start, end; // Variables for time measurement
+	start = std::chrono::system_clock::now(); // The starting time of the neighborhood calculation
+	GridNeighborhoodGraph neighborhood(&points,
+		source_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
+		source_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_),
+		destination_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
+		destination_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_),
+		cell_number_in_neighborhood_graph_);
+	end = std::chrono::system_clock::now(); // The end time of the neighborhood calculation
+	std::chrono::duration<double> elapsed_seconds = end - start; // The elapsed time in seconds
+	printf("Neighborhood calculation time = %f secs\n", elapsed_seconds.count());
+
 	// Apply Graph-cut RANSAC
 	EssentialMatrixEstimator estimator(intrinsics_src,
 		intrinsics_dst);
 	std::vector<int> inliers;
 	EssentialMatrix model;
-
-	double inlier_outlier_threshold = 0.005;
-
-	GCRANSAC<EssentialMatrixEstimator> gcransac;
+	
+	GCRANSAC<EssentialMatrixEstimator, GridNeighborhoodGraph> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
 	gcransac.settings.threshold = inlier_outlier_threshold_; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
@@ -616,20 +650,19 @@ void testEssentialMatrixFitting(
 	gcransac.settings.max_local_optimization_number = 20; // The maximm number of local optimizations
 	gcransac.settings.max_iteration_number = 5000; // The maximum number of iterations
 	gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
-	gcransac.settings.neighborhood_sphere_radius = neighborhood_size_; // The radius of the neighborhood ball
+	gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
 	gcransac.settings.core_number = 4; // The number of parallel processes
 
 	// Start GC-RANSAC
-	std::chrono::time_point<std::chrono::system_clock> start, end;
 	start = std::chrono::system_clock::now();
 	gcransac.run(normalized_points,
 		estimator,
+		&neighborhood,
 		model);
 	end = std::chrono::system_clock::now();
 
 	// Calculate the processing time
-	std::chrono::duration<double> elapsed_seconds = end - start;
-	std::time_t end_time = std::chrono::system_clock::to_time_t(end);
+	elapsed_seconds = end - start;
 
 	// Get the statistics of the results
 	const RANSACStatistics &statistics = gcransac.getRansacStatistics();

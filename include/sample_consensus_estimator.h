@@ -111,14 +111,14 @@ namespace theia
 		double confidence;
 	};
 
-	template <class ModelEstimator> class SampleConsensusEstimator
+	template <class _ModelEstimator> class SampleConsensusEstimator
 	{
 	public:
-		typedef typename ModelEstimator::Datum Datum;
-		typedef typename ModelEstimator::Model Model;
+		typedef typename _ModelEstimator::Datum Datum;
+		typedef typename _ModelEstimator::Model Model;
 
 		SampleConsensusEstimator(const RansacParameters& ransac_params,
-			const ModelEstimator& estimator);
+			const _ModelEstimator& estimator);
 
 		virtual bool initialize()
 		{
@@ -169,16 +169,16 @@ namespace theia
 		const RansacParameters& ransac_params_;
 
 		// Estimator to use for generating models.
-		const ModelEstimator& estimator_;
+		const _ModelEstimator& estimator_;
 
 		std::vector<double> output_values_;
 	};
 
 	// --------------------------- Implementation --------------------------------//
 
-	template <class ModelEstimator>
-	SampleConsensusEstimator<ModelEstimator>::SampleConsensusEstimator(
-		const RansacParameters& ransac_params, const ModelEstimator& estimator)
+	template <class _ModelEstimator>
+	SampleConsensusEstimator<_ModelEstimator>::SampleConsensusEstimator(
+		const RansacParameters& ransac_params, const _ModelEstimator& estimator)
 		: ransac_params_(ransac_params), estimator_(estimator)
 	{
 		if (ransac_params.error_thresh <= 0)
@@ -193,8 +193,8 @@ namespace theia
 			std::cout << "Error failure_probability must be set greater than 0.0" << " @" << __LINE__ << std::endl;
 	}
 
-	template <class ModelEstimator>
-	bool SampleConsensusEstimator<ModelEstimator>::initialize(
+	template <class _ModelEstimator>
+	bool SampleConsensusEstimator<_ModelEstimator>::initialize(
 		Sampler<Datum>* sampler,
 		QualityMeasurement* quality_measurement)
 	{
@@ -213,8 +213,8 @@ namespace theia
 		return quality_measurement_->initialize();
 	}
 
-	template <class ModelEstimator>
-	int SampleConsensusEstimator<ModelEstimator>::ComputeMaxIterations(
+	template <class _ModelEstimator>
+	int SampleConsensusEstimator<_ModelEstimator>::ComputeMaxIterations(
 		const double min_sample_size,
 		const double inlier_ratio,
 		const double log_failure_prob) const
@@ -241,8 +241,8 @@ namespace theia
 		return std::min(num_iterations, ransac_params_.max_iterations);
 	}
 
-	template <class ModelEstimator>
-	bool SampleConsensusEstimator<ModelEstimator>::Estimate(
+	template <class _ModelEstimator>
+	bool SampleConsensusEstimator<_ModelEstimator>::Estimate(
 		const std::vector<Datum>& data,
 		Model* best_model,
 		RansacSummary* summary)

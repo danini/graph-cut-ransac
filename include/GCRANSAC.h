@@ -4,6 +4,8 @@
 #include "GCoptimization.h"
 #include "prosac_sampler.h"
 #include "uniform_random_generator.h"
+#include "model.h"
+#include "neighborhood_graph.h"
 
 /* RANSAC Scoring */
 struct Score {
@@ -87,7 +89,8 @@ struct RANSACStatistics
 	}
 };
 
-template <class ModelEstimator, class Model>
+template <class _ModelEstimator, 
+	class _NeighborhoodGraph>
 class GCRANSAC
 {
 public:
@@ -103,7 +106,8 @@ public:
 
 	// The main method applying Graph-Cut RANSAC to the input data points
 	void run(const cv::Mat &points_,  // Data points
-		ModelEstimator estimator_, // The model estimator
+		_ModelEstimator estimator_, // The model estimator
+		const _NeighborhoodGraph *neighborhood_graph_, // The initialized neighborhood graph
 		Model &obtained_model_);  // The output model
 
 	bool sample(const cv::Mat &points_, 
@@ -120,7 +124,7 @@ public:
 	// Return the score of a model_ w.r.t. the data points_ and the threshold_
 	Score getScore(const cv::Mat &points_, // The data points_
 		const Model &model_, // The current model_
-		const ModelEstimator &estimator_, // The model_ estimator_
+		const _ModelEstimator &estimator_, // The model_ estimator_
 		const double threshold_, // The threshold_ for model_ estimation
 		std::vector<int> &inliers_, // The inlier set
 		const Score &best_score_ = Score(), // The score of the current so-far-the-best model
@@ -146,6 +150,7 @@ protected:
 	double squared_truncated_threshold; // 9 / 4 * threshold_^2
 	int step_size; // Step size per processes
 	double log_probability; // The logarithm of 1 - confidence
+	const _NeighborhoodGraph *neighborhood_graph;
 
 	Graph<double, double, double> *graph; // The graph for graph-cut
 
@@ -160,7 +165,7 @@ protected:
 		int neighbor_number_, // The neighbor number in the graph
 		const std::vector<std::vector<cv::DMatch>> &neighbors_, // The neighborhood
 		Model &model_, // The current model_
-		ModelEstimator estimator_, // The model estimator
+		_ModelEstimator estimator_, // The model estimator
 		double lambda_, // The weight for the spatial coherence term
 		double threshold_, // The threshold_ for the inlier-outlier decision
 		std::vector<int> &inliers_, // The resulting inlier set
@@ -171,21 +176,21 @@ protected:
 		std::vector<int> &so_far_the_best_inliers_, // The input, than the resulting inlier set
 		Model &so_far_the_best_model_, // The current model
 		Score &so_far_the_best_score_, // The current score
-		const ModelEstimator &estimator_, // The model estimator
+		const _ModelEstimator &estimator_, // The model estimator
 		const int trial_number_); // The max trial number
 	
 	// Model fitting by the iterated least squares method
 	bool iteratedLeastSquaresFitting(
 		const cv::Mat &points_, // The input data points
-		const ModelEstimator &estimator_, // The model estimator
+		const _ModelEstimator &estimator_, // The model estimator
 		const double threshold_, // The inlier-outlier threshold
 		std::vector<int> &inliers_, // The resulting inlier set
 		Model &model_); // The estimated model
 };
 
 // Computes the desired iteration number for RANSAC w.r.t. to the current inlier number
-template <class ModelEstimator, class Model>
-int GCRANSAC<ModelEstimator, Model>::getIterationNumber(int inlier_number_, 
+template <class _ModelEstimator, class _NeighborhoodGraph>
+int GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::getIterationNumber(int inlier_number_, 
 	int point_number_, 
 	int sample_size_,  
 	double log_probability_)
@@ -201,10 +206,11 @@ int GCRANSAC<ModelEstimator, Model>::getIterationNumber(int inlier_number_,
 }
 
 // The main method applying Graph-Cut RANSAC to the input data points_
-template <class ModelEstimator, class Model>
-void GCRANSAC<ModelEstimator, Model>::run(
+template <class _ModelEstimator, class _NeighborhoodGraph>
+void GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::run(
 	const cv::Mat &points_,  // Data points
-	ModelEstimator estimator_, // The model estimator
+	_ModelEstimator estimator_, // The model estimator
+	const _NeighborhoodGraph *neighborhood_graph_, // The initialized neighborhood graph
 	Model &obtained_model_)  // The output model 
 {
 	/*
@@ -243,6 +249,7 @@ void GCRANSAC<ModelEstimator, Model>::run(
 	prosac_sampler = std::make_unique<theia::ProsacSampler<cv::Mat>>(estimator_.sampleSize());
 	prosac_sampler->initialize();
 
+	neighborhood_graph = neighborhood_graph_;
 	point_number = points_.rows; // Number of points in the dataset
 	truncated_threshold = 3.0 / 2.0 * settings.threshold; // The truncated least-squares threshold
 	squared_truncated_threshold = truncated_threshold * truncated_threshold; // The squared least-squares threshold
@@ -253,25 +260,7 @@ void GCRANSAC<ModelEstimator, Model>::run(
 	std::vector<int> pool(point_number);
 	for (auto i = 0; i < point_number; ++i)
 		pool[i] = i;
-	
-	// Compute the neighborhood graph
-	cv::FlannBasedMatcher flann(new cv::flann::KDTreeIndexParams(4), new cv::flann::SearchParams(6));
-	neighbours.resize(0);
-	if (settings.spatial_coherence_weight > 0.0) // Compute the neighborhood if the weight is not zero
-	{
-		// TODO: replace by nanoflann
-		cv::Mat tmp_points;
-		points_.convertTo(tmp_points, CV_32F); // OpenCV's FLANN dies if the points are doubles
-		flann.radiusMatch(tmp_points, // The point set converted to floats
-			tmp_points, // The point set converted to floats
-			neighbours, // The estimated neighborhood graph
-			static_cast<float>(settings.neighborhood_sphere_radius)); // The radius of the neighborhood ball
-		 
-		// Count the edges in the neighborhood graph
-		for (size_t i = 0; i < neighbours.size(); ++i)
-			statistics.neighbor_number += static_cast<int>(neighbours[i].size()) - 1;
-	}
-	
+		
 	// Initialize the starting time if there is a desired FPS set
 	if (settings.desired_fps > -1)
 		start = std::chrono::system_clock::now();
@@ -439,10 +428,10 @@ void GCRANSAC<ModelEstimator, Model>::run(
 	obtained_model_ = so_far_the_best_model;
 }
 
-template <class ModelEstimator, class Model>
-bool GCRANSAC<ModelEstimator, Model>::iteratedLeastSquaresFitting(
+template <class _ModelEstimator, class _NeighborhoodGraph>
+bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::iteratedLeastSquaresFitting(
 	const cv::Mat &points_,
-	const ModelEstimator &estimator_,
+	const _ModelEstimator &estimator_,
 	const double threshold_,
 	std::vector<int> &inliers_,
 	Model &model_)
@@ -536,8 +525,8 @@ bool GCRANSAC<ModelEstimator, Model>::iteratedLeastSquaresFitting(
 	return iterations > 1;
 }
 
-template <class ModelEstimator, class Model>
-bool GCRANSAC<ModelEstimator, Model>::sample(
+template <class _ModelEstimator, class _NeighborhoodGraph>
+bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::sample(
 	const cv::Mat &points_, // The input data points
 	const std::vector<int> &pool_, // The pool if indices determining which point can be selected
 	const std::vector<std::vector<cv::DMatch>> &neighbors_,
@@ -562,12 +551,12 @@ bool GCRANSAC<ModelEstimator, Model>::sample(
 	return true;
 }
 
-template <class ModelEstimator, class Model>
-bool GCRANSAC<ModelEstimator, Model>::graphCutLocalOptimization(const cv::Mat &points_, 
+template <class _ModelEstimator, class _NeighborhoodGraph>
+bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::graphCutLocalOptimization(const cv::Mat &points_, 
 	std::vector<int> &so_far_the_best_inliers_,
 	Model &so_far_the_best_model_,
 	Score &so_far_the_best_score_,
-	const ModelEstimator &estimator_, 
+	const _ModelEstimator &estimator_, 
 	const int trial_number_)
 {
 	const auto inlier_limit = estimator_.inlierLimit(); // Number of points used in the inner RANSAC
@@ -692,10 +681,10 @@ bool GCRANSAC<ModelEstimator, Model>::graphCutLocalOptimization(const cv::Mat &p
 }
 
 
-template <class ModelEstimator, class Model>
-Score GCRANSAC<ModelEstimator, Model>::getScore(const cv::Mat &points_, // The input data points
+template <class _ModelEstimator, class _NeighborhoodGraph>
+Score GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::getScore(const cv::Mat &points_, // The input data points
 	const Model &model_, // The current model parameters
-	const ModelEstimator &estimator_, // The model estimator
+	const _ModelEstimator &estimator_, // The model estimator
 	const double threshold_, // The inlier-outlier threshold
 	std::vector<int> &inliers_, // The selected inliers
 	const Score &best_score_, // The score of the current so-far-the-best model
@@ -788,12 +777,12 @@ Score GCRANSAC<ModelEstimator, Model>::getScore(const cv::Mat &points_, // The i
 }
 
 
-template <class ModelEstimator, class Model>
-void GCRANSAC<ModelEstimator, Model>::labeling(const cv::Mat &points_, 
+template <class _ModelEstimator, class _NeighborhoodGraph>
+void GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::labeling(const cv::Mat &points_, 
 	int neighbor_number_, 
 	const std::vector<std::vector<cv::DMatch>> &neighbors_,
 	Model &model_,
-	ModelEstimator estimator_,
+	_ModelEstimator estimator_,
 	double lambda_,
 	double threshold_,
 	std::vector<int> &inliers_,
@@ -838,9 +827,8 @@ void GCRANSAC<ModelEstimator, Model>::labeling(const cv::Mat &points_,
 				1.0 - squared_distance_1 / squared_truncated_threshold); // Truncated quadratic cost
 
 			// Iterate through  all neighbors
-			for (size_t neighbor_idx = 0; neighbor_idx < neighbors_[point_idx].size(); ++neighbor_idx)
+			for (size_t actual_neighbor_idx : neighborhood_graph->getNeighbors(point_idx))
 			{
-				actual_neighbor_idx = neighbors_[point_idx][neighbor_idx].trainIdx;
 				
 				if (actual_neighbor_idx == point_idx)
 					continue;
