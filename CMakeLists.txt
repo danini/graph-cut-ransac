@@ -5,6 +5,9 @@ project(GraphCutRANSAC LANGUAGES CXX)
 # indicate if OPENMP should be enabled
 option(USE_OPENMP "Use OPENMP" ON)
 
+# indicate if OPENMP should be enabled
+option(CREATE_SAMPLE_PROJECT "Create the Sample Project" ON)
+
 # ==============================================================================
 # Check C++17 support
 # ==============================================================================
@@ -50,12 +53,11 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 # Set header files for the library
 file(GLOB_RECURSE HDRS_GCRANSAC
 	"include/*.h"
-	"include/*.cpp"
 ) 
 
 # Set source files to be added to the library
 file(GLOB_RECURSE SRCS_GCRANSAC 
-	"src/*.cpp"
+	"include/*.cpp"
 )
 
 source_group(third_party\\GCOptimization FILES
@@ -91,27 +93,19 @@ target_link_libraries (${PROJECT_NAME}
 # ==============================================================================
 # Structure: Applications
 # ==============================================================================
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
+if (CREATE_SAMPLE_PROJECT)
+	set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 
-# estimators
-source_group("Estimators" FILES
-	src/essential_estimator.h
-	src/fundamental_estimator.h
-	src/homography_estimator.h
-)
+	add_executable(SampleProject
+		src/main.cpp)
+		
+	target_link_libraries (SampleProject 
+		Eigen3::Eigen)
+		
+	target_link_libraries(SampleProject 
+		${OpenCV_LIBS}
+		${PROJECT_NAME}
+	)
 
-add_executable(SampleProject
-	src/essential_estimator.h
-	src/fundamental_estimator.h
-	src/homography_estimator.h
-	src/main.cpp)
-	
-target_link_libraries (SampleProject 
-	Eigen3::Eigen)
-	
-target_link_libraries(SampleProject 
-	${OpenCV_LIBS}
-	${PROJECT_NAME}
-)
-
-add_dependencies(SampleProject ${PROJECT_NAME})
+	add_dependencies(SampleProject ${PROJECT_NAME})
+endif (CREATE_SAMPLE_PROJECT)
