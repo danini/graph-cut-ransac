@@ -1,12 +1,16 @@
 #include "estimator.h"
+#include "model.h"
 
 #include <opencv2/calib3d/calib3d.hpp>
 #include <Eigen/Eigen>
 
-struct Homography
+class Homography : public Model
 {
-	Eigen::Matrix3d descriptor;
-	Homography() {}
+public:
+	Homography() : 
+		Model(Eigen::MatrixXd(3,3))
+	{}
+
 	Homography(const Homography& other)
 	{
 		descriptor = other.descriptor;
@@ -14,7 +18,7 @@ struct Homography
 };
 
 // This is the estimator class for estimating a homography matrix between two images. A model estimation method and error calculation method are implemented
-class RobustHomographyEstimator : public theia::Estimator < cv::Mat, Homography >
+class RobustHomographyEstimator : public theia::Estimator < cv::Mat, Model >
 {
 protected:
 
@@ -33,7 +37,7 @@ public:
 	bool estimateModel(
 		const cv::Mat& data,
 		const int *sample,
-		std::vector<Homography>* models) const
+		std::vector<Model>* models) const
 	{
 		constexpr size_t M = 4;
 		solverFourPoint(data,
@@ -46,7 +50,7 @@ public:
 	bool estimateModelNonminimal(const cv::Mat& data,
 		const int *sample,
 		size_t sample_number,
-		std::vector<Homography>* models) const
+		std::vector<Model>* models) const
 	{
 		if (sample_number < sampleSize())
 			return false;
@@ -78,13 +82,13 @@ public:
 	}
 
 	double squaredResidual(const cv::Mat& point,
-		const Homography& model) const
+		const Model& model) const
 	{
 		return squaredResidual(point, model.descriptor);
 	}
 
 	inline double squaredResidual(const cv::Mat& point,
-		const Eigen::Matrix3d& descriptor) const
+		const Eigen::MatrixXd& descriptor) const
 	{
 		const double* s = reinterpret_cast<double *>(point.data);
 
@@ -104,13 +108,13 @@ public:
 	}
 
 	double residual(const cv::Mat& point, 
-		const Homography& model) const
+		const Model& model) const
 	{
 		return residual(point, model.descriptor);
 	}
 
 	inline double residual(const cv::Mat& point,
-		const Eigen::Matrix3d& descriptor) const
+		const Eigen::MatrixXd& descriptor) const
 	{
 		return sqrt(squaredResidual(point, descriptor));
 	}
@@ -216,7 +220,7 @@ public:
 		const cv::Mat& data_,
 		const int *sample_,
 		const size_t sample_number_,
-		std::vector<Homography>* models_) const
+		std::vector<Model>* models_) const
 	{
 		constexpr size_t equation_number = 2;
 		const size_t row_number = equation_number * sample_number_;
@@ -267,7 +271,7 @@ public:
 		Homography model;
 		model.descriptor << h(0), h(1), h(2), 
 			h(3), h(4), h(5),
-			h(6), h(7), 1;
+			h(6), h(7), 1.0;
 		models_->emplace_back(model);
 		return true;
 	}

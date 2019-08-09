@@ -6,13 +6,16 @@
 
 #include <unsupported/Eigen/Polynomials>
 #include <Eigen/Eigen>
+
 #include "estimator.h"
+#include "model.h"
 
-struct EssentialMatrix
+class EssentialMatrix : public Model
 {
-	Eigen::Matrix3d descriptor;
-
-	EssentialMatrix() {}
+public:
+	EssentialMatrix() :
+		Model(Eigen::MatrixXd(3, 3)) 
+	{}
 	EssentialMatrix(const EssentialMatrix& other)
 	{
 		descriptor = other.descriptor;
@@ -20,7 +23,7 @@ struct EssentialMatrix
 };
 
 // This is the estimator class for estimating a homography matrix between two images. A model estimation method and error calculation method are implemented
-class EssentialMatrixEstimator : public theia::Estimator < cv::Mat, EssentialMatrix >
+class EssentialMatrixEstimator : public theia::Estimator < cv::Mat, Model >
 {
 protected:
 	const Eigen::Matrix3d intrinsics_src,
@@ -48,7 +51,7 @@ public:
 
 	bool estimateModel(const cv::Mat& data,
 		const int *sample,
-		std::vector<EssentialMatrix>* models) const
+		std::vector<Model>* models) const
 	{
 		// Model calculation by the seven point algorithm
 		constexpr size_t sample_size = 5;
@@ -134,25 +137,25 @@ public:
 	}
 
 	double squaredResidual(const cv::Mat& point,
-		const EssentialMatrix& model) const
+		const Model& model) const
 	{
 		return squaredSampsonDistance(point, model.descriptor);
 	}
 
 	inline double squaredResidual(const cv::Mat& point,
-		const Eigen::Matrix3d& descriptor) const
+		const Eigen::MatrixXd& descriptor) const
 	{
 		return squaredSampsonDistance(point, descriptor);
 	}
 
 	double residual(const cv::Mat& point,
-		const EssentialMatrix& model) const
+		const Model& model) const
 	{
 		return residual(point, model.descriptor);
 	}
 
 	inline double residual(const cv::Mat& point,
-		const Eigen::Matrix3d& descriptor) const
+		const Eigen::MatrixXd& descriptor) const
 	{
 		return sampsonDistance(point, descriptor);
 	}
@@ -162,7 +165,7 @@ public:
 	// robust to degenerate solutions than the symmetric epipolar distance. Therefore,
 	// every so-far-the-best model is checked if it has enough inlier with symmetric
 	// epipolar distance as well. 
-	bool isValidModel(const EssentialMatrix& model,
+	bool isValidModel(const Model& model,
 		const cv::Mat& data,
 		const std::vector<int> &inliers,
 		const double threshold) const
@@ -187,7 +190,7 @@ public:
 		const cv::Mat& data,
 		const int *sample,
 		size_t sample_number,
-		std::vector<EssentialMatrix>* models) const
+		std::vector<Model>* models) const
 	{
 		// model calculation 
 		const size_t M = sample_number;
@@ -216,9 +219,9 @@ public:
 			return false;
 
 		// Denormalizing the estimated fundamental matrices
-		/*const Eigen::Matrix3d T2_transpose = T2.transpose();
+		const Eigen::Matrix3d T2_transpose = T2.transpose();
 		for (auto &model : *models)
-			model.descriptor = T2_transpose * model.descriptor * T1;*/
+			model.descriptor = T2_transpose * model.descriptor * T1;
 		return true;
 	}
 
@@ -322,7 +325,7 @@ public:
 	inline bool solverSteweniusFivePoint(const cv::Mat& data,
 		const int *sample,
 		size_t sample_number,
-		std::vector<EssentialMatrix>* models) const
+		std::vector<Model>* models) const
 	{
 		if (sample == nullptr)
 			sample_number = data.rows;
@@ -412,7 +415,7 @@ public:
 				continue;
 			}
 
-			Model model;
+			EssentialMatrix model;
 			model.descriptor = E_dst_src;
 			models->push_back(model);
 		}

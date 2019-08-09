@@ -6,13 +6,16 @@
 
 #include <unsupported/Eigen/Polynomials>
 #include <Eigen/Eigen>
+
 #include "estimator.h"
+#include "model.h"
 
-struct FundamentalMatrix
+class FundamentalMatrix : public Model
 {
-	Eigen::Matrix3d descriptor;
-
-	FundamentalMatrix() {}
+public:
+	FundamentalMatrix() :
+		Model(Eigen::MatrixXd(3, 3))
+	{}
 	FundamentalMatrix(const FundamentalMatrix& other)
 	{
 		descriptor = other.descriptor;
@@ -20,7 +23,7 @@ struct FundamentalMatrix
 };
 
 // This is the estimator class for estimating a homography matrix between two images. A model estimation method and error calculation method are implemented
-class FundamentalMatrixEstimator : public theia::Estimator < cv::Mat, FundamentalMatrix >
+class FundamentalMatrixEstimator : public theia::Estimator < cv::Mat, Model >
 {
 protected:
 
@@ -38,7 +41,7 @@ public:
 
 	bool estimateModel(const cv::Mat& data,
 		const int *sample,
-		std::vector<FundamentalMatrix>* models) const
+		std::vector<Model>* models) const
 	{
 		// Model calculation by the seven point algorithm
 		constexpr size_t M = 7;
@@ -85,7 +88,7 @@ public:
 	}
 
 	inline double symmetricEpipolarDistance(const cv::Mat& point,
-		const Eigen::Matrix3d& descriptor) const
+		const Eigen::MatrixXd& descriptor) const
 	{
 		const double* s = reinterpret_cast<double *>(point.data);
 		const double x1 = *s;
@@ -124,25 +127,25 @@ public:
 	}
 
 	double squaredResidual(const cv::Mat& point,
-		const FundamentalMatrix& model) const
+		const Model& model) const
 	{
 		return squaredSampsonDistance(point, model.descriptor);
 	}
 
 	inline double squaredResidual(const cv::Mat& point,
-		const Eigen::Matrix3d& descriptor) const
+		const Eigen::MatrixXd& descriptor) const
 	{
 		return squaredSampsonDistance(point, descriptor);
 	}
 
 	double residual(const cv::Mat& point,
-		const FundamentalMatrix& model) const
+		const Model& model) const
 	{
 		return residual(point, model.descriptor);
 	}
 
 	inline double residual(const cv::Mat& point,
-		const Eigen::Matrix3d& descriptor) const
+		const Eigen::MatrixXd& descriptor) const
 	{
 		return sampsonDistance(point, descriptor);
 	}
@@ -152,7 +155,7 @@ public:
 	// robust to degenerate solutions than the symmetric epipolar distance. Therefore,
 	// every so-far-the-best model is checked if it has enough inlier with symmetric
 	// epipolar distance as well. 
-	bool isValidModel(const FundamentalMatrix& model,
+	bool isValidModel(const Model& model,
 		const cv::Mat& data,
 		const std::vector<int> &inliers,
 		const double threshold) const
@@ -177,7 +180,7 @@ public:
 		const cv::Mat& data,
 		const int *sample,
 		size_t sample_number,
-		std::vector<FundamentalMatrix>* models) const
+		std::vector<Model>* models) const
 	{
 		// model calculation 
 		const size_t M = sample_number;
@@ -310,7 +313,7 @@ public:
 	inline bool solverEightPoint(const cv::Mat& data,
 		const int *sample,
 		size_t sample_number,
-		std::vector<FundamentalMatrix>* models) const
+		std::vector<Model>* models) const
 	{
 		if (sample == nullptr)
 			sample_number = data.rows;
@@ -360,7 +363,7 @@ public:
 		const Eigen::Matrix<double, 9, 1> &null_space =
 			svd.matrixV().rightCols<1>();
 
-		Model model;
+		FundamentalMatrix model;
 		model.descriptor << null_space(0), null_space(1), null_space(2),
 			null_space(3), null_space(4), null_space(5),
 			null_space(6), null_space(7), null_space(8);
@@ -371,7 +374,7 @@ public:
 	inline bool solverSevenPoint(const cv::Mat& data,
 		const int *sample,
 		int sample_number,
-		std::vector<FundamentalMatrix>* models) const
+		std::vector<Model>* models) const
 	{
 		Eigen::MatrixXd coefficients(sample_number, 9);
 		const double *data_ptr = reinterpret_cast<double *>(data.data);
@@ -485,7 +488,7 @@ public:
 				for (auto i = 0; i < 8; ++i)
 					f[i] = f1[i] * lambda + f2[i] * mu;
 
-				Model model;
+				FundamentalMatrix model;
 				model.descriptor << f[0], f[1], f[2],
 					f[3], f[4], f[5],
 					f[6], f[7], 1.0;

@@ -6,6 +6,7 @@
 #include <Eigen/Eigen>
 
 #include "GCRANSAC.h"
+#include "flann_neighborhood_graph.h"
 #include "fundamental_estimator.h"
 #include "homography_estimator.h"
 #include "essential_estimator.h"
@@ -366,13 +367,18 @@ void testHomographyFitting(
 		source_image,
 		destination_image,
 		points);
+	
+	// Initialize the neighborhood used in Graph-cut RANSAC and, perhaps,
+	// in the sampler if NAPSAC or Progressive-NAPSAC sampling is applied.
+	FlannNeighborhoodGraph neighborhood(&points, 
+		neighborhood_size_);
 
 	// Apply Graph-cut RANSAC
 	RobustHomographyEstimator estimator;
 	std::vector<int> inliers;
 	Homography model;
 
-	GCRANSAC<RobustHomographyEstimator, Homography> gcransac;
+	GCRANSAC<RobustHomographyEstimator> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
 	gcransac.settings.threshold = inlier_outlier_threshold_; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
@@ -471,7 +477,7 @@ void testFundamentalMatrixFitting(
 	std::vector<int> inliers;
 	FundamentalMatrix model;
 
-	GCRANSAC<FundamentalMatrixEstimator, FundamentalMatrix> gcransac;
+	GCRANSAC<FundamentalMatrixEstimator> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
 	gcransac.settings.threshold = inlier_outlier_threshold_; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
@@ -602,7 +608,7 @@ void testEssentialMatrixFitting(
 
 	double inlier_outlier_threshold = 0.005;
 
-	GCRANSAC<EssentialMatrixEstimator, EssentialMatrix> gcransac;
+	GCRANSAC<EssentialMatrixEstimator> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
 	gcransac.settings.threshold = inlier_outlier_threshold_; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
