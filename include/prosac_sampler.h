@@ -42,6 +42,7 @@
 #include <vector>
 
 #include "sampler.h"
+#include "uniform_random_generator.h"
 
 namespace theia
 {
@@ -52,38 +53,34 @@ namespace theia
 
 	// Prosac sampler used for PROSAC implemented according to "cv::Matching with PROSAC
 	// - Progressive Sampling Consensus" by Chum and cv::Matas.
-	template <class Datum> class ProsacSampler : public Sampler < Datum >
+	class ProsacSampler : public Sampler < cv::Mat, size_t >
 	{
 	public:
-		// Get a random double between lower and upper (inclusive).
-		double RandDouble(double lower, double upper)
+
+		// Get a random int between lower_ and upper_ (inclusive).
+		template<typename _ValueType>
+		_ValueType randomNumber(
+			_ValueType lower_,
+			_ValueType upper_)
 		{
-			std::uniform_real_distribution<double> distribution(lower, upper);
+			std::uniform_int_distribution<_ValueType> distribution(lower_, upper_);
 			return distribution(util_generator);
 		}
 
-		// Get a random int between lower and upper (inclusive).
-		int RandInt(int lower, int upper)
+		explicit ProsacSampler(const cv::Mat const *container_,
+			const size_t sample_size_) : 
+			sample_size(sample_size_),
+			Sampler(container_)
 		{
-			std::uniform_int_distribution<int> distribution(lower, upper);
-			return distribution(util_generator);
+			initialize(container);
 		}
 
-		// Gaussian Distribution with the corresponding mean and std dev.
-		double RandGaussian(double mean, double std_dev)
-		{
-			std::normal_distribution<double> distribution(mean, std_dev);
-			return distribution(util_generator);
-		}
-
-		explicit ProsacSampler(const int min_num_samples)
-			: Sampler<Datum>(min_num_samples) {}
 		~ProsacSampler() {}
 
-		bool initialize()
+		bool initialize(const cv::Mat const *container_)
 		{
-			ransac_convergence_iterations_ = 100000;
-			kth_sample_number_ = 1;
+			ransac_convergence_iterations = 100000;
+			kth_sample_number = 1;
 			
 			unsigned seed = static_cast<int>(std::chrono::system_clock::now().time_since_epoch().count());
 			util_generator.seed(seed);
@@ -93,194 +90,51 @@ namespace theia
 		// Set the sample such that you are sampling the kth prosac sample (Eq. 6).
 		void setSampleNumber(int k)
 		{
-			kth_sample_number_ = k;
+			kth_sample_number = k;
 		}
 
 		// Samples the input variable data and fills the std::vector subset with the prosac
 		// samples.
 		// NOTE: This assumes that data is in sorted order by quality where data[i] is
 		// of higher quality than data[j] for all i < j.
-		bool sample(const std::vector<Datum>& data, std::vector<Datum>* subset)
+		bool sample(const std::vector<size_t> &pool_,
+			size_t * const subset_,
+			size_t sample_size_)
 		{
 			// Set t_n according to the PROSAC paper's recommendation.
-			double t_n = ransac_convergence_iterations_;
-			const int point_number = static_cast<int>(data.size());
-			int n = this->min_num_samples_;
+			double t_n = ransac_convergence_iterations;
+			const int point_number = static_cast<int>(pool_.size());
+			int n = this->sample_size;
 			// From Equations leading up to Eq 3 in Chum et al.
-			for (auto i = 0; i < this->min_num_samples_; i++)
+			for (auto i = 0; i < this->sample_size; i++)
 			{
 				t_n *= static_cast<double>(n - i) / (point_number - i);
 			}
 
 			double t_n_prime = 1.0;
 			// Choose min n such that T_n_prime >= t (Eq. 5).
-			for (auto t = 1; t <= kth_sample_number_; t++)
+			for (auto t = 1; t <= kth_sample_number; t++)
 			{
 				if (t > t_n_prime && n < point_number)
 				{
 					double t_n_plus1 =
-						(t_n * (n + 1.0)) / (n + 1.0 - this->min_num_samples_);
-					t_n_prime += ceil(t_n_plus1 - t_n);
-					t_n = t_n_plus1;
-					n++;
-				}
-			}
-			subset->reserve(this->min_num_samples_);
-			if (t_n_prime < kth_sample_number_)
-			{
-				// Randomly sample m data points from the top n data points.
-				std::vector<int> random_numbers;
-				for (auto i = 0; i < this->min_num_samples_; i++)
-				{
-					// Generate a random number that has not already been used.
-					int rand_number;
-					while (std::find(random_numbers.begin(), random_numbers.end(),
-						(rand_number = RandInt(0, n - 1))) !=
-						random_numbers.end())
-					{
-					}
-
-					random_numbers.emplace_back(rand_number);
-
-					// Push the *unique* random index back.
-					subset->emplace_back(data[rand_number]);
-				}
-			}
-			else
-			{
-				std::vector<int> random_numbers;
-				// Randomly sample m-1 data points from the top n-1 data points.
-				for (auto i = 0; i < this->min_num_samples_ - 1; i++)
-				{
-					// Generate a random number that has not already been used.
-					int rand_number;
-					while (std::find(random_numbers.begin(), random_numbers.end(),
-						(rand_number = RandInt(0, n - 2))) !=
-						random_numbers.end())
-					{
-					}
-					random_numbers.emplace_back(rand_number);
-
-					// Push the *unique* random index back.
-					subset->emplace_back(data[rand_number]);
-				}
-				// Make the last point from the nth position.
-				subset->emplace_back(data[n]);
-			}
-			if (subset->size() != this->min_num_samples_)
-				std::cout << "Prosac subset is of incorrect " << "size!" << " @" << __LINE__ << std::endl;
-			kth_sample_number_++;
-			return true;
-		}
-
-		bool sample(const cv::Mat& data, std::vector<int>& subset)
-		{
-			// Set t_n according to the PROSAC paper's recommendation.
-			double t_n = ransac_convergence_iterations_;
-			int n = this->min_num_samples_;
-			// From Equations leading up to Eq 3 in Chum et al.
-			for (auto i = 0; i < this->min_num_samples_; i++)
-			{
-				t_n *= static_cast<double>(n - i) / (data.rows - i);
-			}
-
-			double t_n_prime = 1.0;
-			// Choose min n such that T_n_prime >= t (Eq. 5).
-			for (auto t = 1; t <= kth_sample_number_; t++)
-			{
-				if (t > t_n_prime && n < data.rows)
-				{
-					double t_n_plus1 =
-						(t_n * (n + 1.0)) / (n + 1.0 - this->min_num_samples_);
-					t_n_prime += ceil(t_n_plus1 - t_n);
-					t_n = t_n_plus1;
-					n++;
-				}
-			}
-			subset.reserve(this->min_num_samples_);
-			if (t_n_prime < kth_sample_number_)
-			{
-				// Randomly sample m data points from the top n data points.
-				std::vector<int> random_numbers;
-				for (auto i = 0; i < this->min_num_samples_; i++)
-				{
-					// Generate a random number that has not already been used.
-					int rand_number;
-					while (std::find(random_numbers.begin(), random_numbers.end(),
-						(rand_number = RandInt(0, n - 1))) !=
-						random_numbers.end())
-					{
-					}
-
-					random_numbers.emplace_back(rand_number);
-
-					// Push the *unique* random index back.
-					subset.emplace_back(rand_number);
-				}
-			}
-			else
-			{
-				std::vector<int> random_numbers;
-				// Randomly sample m-1 data points from the top n-1 data points.
-				for (auto i = 0; i < this->min_num_samples_ - 1; i++)
-				{
-					// Generate a random number that has not already been used.
-					int rand_number;
-					while (std::find(random_numbers.begin(), random_numbers.end(),
-						(rand_number = RandInt(0, n - 2))) !=
-						random_numbers.end())
-					{
-					}
-					random_numbers.emplace_back(rand_number);
-
-					// Push the *unique* random index back.
-					subset.emplace_back(rand_number);
-				}
-				// Make the last point from the nth position.
-				subset.emplace_back(n);
-			}
-			if (subset.size() != this->min_num_samples_)
-				std::cout << "Prosac subset is of incorrect " << "size!" << " @" << __LINE__ << std::endl;
-			kth_sample_number_++;
-			return true;
-		}
-		
-		bool sample(const cv::Mat& data, int * const subset)
-		{
-			// Set t_n according to the PROSAC paper's recommendation.
-			double t_n = ransac_convergence_iterations_;
-			int n = this->min_num_samples_;
-			// From Equations leading up to Eq 3 in Chum et al.
-			for (auto i = 0; i < this->min_num_samples_; i++)
-			{
-				t_n *= static_cast<double>(n - i) / (data.rows - i);
-			}
-
-			double t_n_prime = 1.0;
-			// Choose min n such that T_n_prime >= t (Eq. 5).
-			for (auto t = 1; t <= kth_sample_number_; t++)
-			{
-				if (t > t_n_prime && n < data.rows)
-				{
-					double t_n_plus1 =
-						(t_n * (n + 1.0)) / (n + 1.0 - this->min_num_samples_);
+						(t_n * (n + 1.0)) / (n + 1.0 - this->sample_size);
 					t_n_prime += ceil(t_n_plus1 - t_n);
 					t_n = t_n_plus1;
 					n++;
 				}
 			}
 
-			int current_sample_number = 0;
-			if (t_n_prime < kth_sample_number_)
+			if (t_n_prime < kth_sample_number)
 			{
 				// Randomly sample m data points from the top n data points.
 				std::vector<int> random_numbers;
-				for (auto i = 0; i < this->min_num_samples_; i++)
+				for (auto i = 0; i < this->sample_size; i++)
 				{
 					// Generate a random number that has not already been used.
 					int rand_number;
 					while (std::find(random_numbers.begin(), random_numbers.end(),
-						(rand_number = RandInt(0, n - 1))) !=
+						(rand_number = randomNumber<size_t>(0, n - 1))) !=
 						random_numbers.end())
 					{
 					}
@@ -288,42 +142,44 @@ namespace theia
 					random_numbers.emplace_back(rand_number);
 
 					// Push the *unique* random index back.
-					subset[current_sample_number++] = rand_number;
+					subset_[i] = pool_[rand_number];
+					//subset->emplace_back(data[rand_number]);
 				}
 			}
 			else
 			{
-				std::vector<int> random_numbers;
+				std::vector<size_t> random_numbers;
 				// Randomly sample m-1 data points from the top n-1 data points.
-				for (auto i = 0; i < this->min_num_samples_ - 1; i++)
+				for (auto i = 0; i < this->sample_size - 1; i++)
 				{
 					// Generate a random number that has not already been used.
 					int rand_number;
 					while (std::find(random_numbers.begin(), random_numbers.end(),
-						(rand_number = RandInt(0, n - 2))) !=
+						(rand_number = randomNumber<size_t>(0, n - 2))) !=
 						random_numbers.end())
 					{
 					}
 					random_numbers.emplace_back(rand_number);
 
 					// Push the *unique* random index back.
-					subset[current_sample_number++] = rand_number;
+					subset_[i] = pool_[rand_number];
+					//subset->emplace_back(data[rand_number]);
 				}
 				// Make the last point from the nth position.
-				subset[current_sample_number++] = n;
+				subset_[this->sample_size - 1] = pool_[n];
+				//subset->emplace_back(data[n]);
 			}
-			if (current_sample_number != this->min_num_samples_)
-				std::cout << "Prosac subset is of incorrect " << "size!" << " @" << __LINE__ << std::endl;
-			kth_sample_number_++;
+			kth_sample_number++;
 			return true;
 		}
-
 	private:
+		size_t sample_size;
+
 		// Number of iterations of PROSAC before it just acts like ransac.
-		int ransac_convergence_iterations_;
+		size_t ransac_convergence_iterations;
 
 		// The kth sample of prosac sampling.
-		int kth_sample_number_;
+		size_t kth_sample_number;
 	};
 
 }  // namespace theia

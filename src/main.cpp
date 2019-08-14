@@ -8,6 +8,8 @@
 #include "GCRANSAC.h"
 #include "flann_neighborhood_graph.h"
 #include "grid_neighborhood_graph.h"
+#include "uniform_sampler.h"
+#include "prosac_sampler.h"
 #include "fundamental_estimator.h"
 #include "homography_estimator.h"
 #include "essential_estimator.h"
@@ -399,10 +401,17 @@ void testHomographyFitting(
 	gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
 	gcransac.settings.core_number = 4; // The number of parallel processes
 
+	// Initialize the samplers
+	theia::ProsacSampler main_sampler(&points, 
+		estimator.sampleSize()); // The main sampler is used inside the local optimization
+	UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
+
 	// Start GC-RANSAC
 	start = std::chrono::system_clock::now();
 	gcransac.run(points,
 		estimator,
+		&main_sampler,
+		&local_optimization_sampler,
 		&neighborhood,
 		model);
 	end = std::chrono::system_clock::now();
@@ -500,6 +509,11 @@ void testFundamentalMatrixFitting(
 	std::vector<int> inliers;
 	FundamentalMatrix model;
 
+	// Initialize the samplers
+	theia::ProsacSampler main_sampler(&points,
+		estimator.sampleSize()); // The main sampler is used inside the local optimization
+	UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
+
 	GCRANSAC<FundamentalMatrixEstimator, GridNeighborhoodGraph> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
 	gcransac.settings.threshold = inlier_outlier_threshold_; // The inlier-outlier threshold
@@ -515,6 +529,8 @@ void testFundamentalMatrixFitting(
 	start = std::chrono::system_clock::now();
 	gcransac.run(points,
 		estimator,
+		&main_sampler,
+		&local_optimization_sampler,
 		&neighborhood,
 		model);
 	end = std::chrono::system_clock::now();
@@ -641,6 +657,11 @@ void testEssentialMatrixFitting(
 		intrinsics_dst);
 	std::vector<int> inliers;
 	EssentialMatrix model;
+
+	// Initialize the samplers
+	theia::ProsacSampler main_sampler(&points,
+		estimator.sampleSize()); // The main sampler is used inside the local optimization
+	UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
 	
 	GCRANSAC<EssentialMatrixEstimator, GridNeighborhoodGraph> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
@@ -657,6 +678,8 @@ void testEssentialMatrixFitting(
 	start = std::chrono::system_clock::now();
 	gcransac.run(normalized_points,
 		estimator,
+		&main_sampler,
+		&local_optimization_sampler,
 		&neighborhood,
 		model);
 	end = std::chrono::system_clock::now();

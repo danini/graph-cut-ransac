@@ -112,9 +112,9 @@ protected:
 	// via the cell coordinates.
 	std::unordered_map<GridCell, std::vector<size_t>> grid;
 
-	// The pointer to the cell (i.e. key in the grid) for each point.
+	// The pointer to the cell (i.e., key in the grid) for each point.
 	// It is faster to store them than to recreate the cell structure
-	// whenever needed.
+	// whenever is needed.
 	std::vector<const GridCell *> cells_of_points;
 
 public:
@@ -179,6 +179,14 @@ bool GridNeighborhoodGraph::initialize(const cv::Mat const *container_)
 	{
 		// Get the pointer of the cell.
 		const GridCell *cell = &element.first;
+
+		// Increase the edge number in the neighborhood graph.
+		// All possible pairs of points in each cell are neighbors,
+		// therefore, the neighbor number is "n choose 2" for the
+		// current cell.
+		const size_t n = element.second.size();
+		neighbor_number += n * (n - 1) / 2;
+
 		// Iterate through all points in the cell.
 		for (const size_t &point_idx : element.second)
 			cells_of_points[point_idx] = cell; // Store the cell pointer for each contained point.

@@ -3,11 +3,12 @@
 #include <random>
 #include <algorithm>
 
+template <typename _ValueType>
 class UniformRandomGenerator
 {
 protected:
 	std::mt19937 generator;
-	std::uniform_int_distribution<int> generate;
+	std::uniform_int_distribution<_ValueType> generate;
 
 public:
 	UniformRandomGenerator() {
@@ -23,13 +24,14 @@ public:
 		return generate(generator);
 	}
 
-	void resetGenerator(int min_range_,
-		int max_range_) {
-		generate = std::uniform_int_distribution<int>(min_range_, max_range_);
+	void resetGenerator(
+		_ValueType min_range_,
+		_ValueType max_range_) {
+		generate = std::uniform_int_distribution<_ValueType>(min_range_, max_range_);
 	}
 
-	inline void generateUniqueRandomSet(int * sample_,
-		unsigned int sample_size_)
+	inline void generateUniqueRandomSet(_ValueType * sample_,
+		size_t sample_size_)
 	{
 		for (size_t i = 0; i < sample_size_; i++)
 		{
@@ -43,9 +45,9 @@ public:
 		}
 	}
 
-	inline void generateUniqueRandomSet(int * sample_,
-		unsigned int sample_size_,
-		unsigned int max_) {
+	inline void generateUniqueRandomSet(_ValueType * sample_,
+		size_t sample_size_,
+		_ValueType max_) {
 		resetGenerator(0, max_);
 		for (size_t i = 0; i < sample_size_; i++) {
 			sample_[i] = generate(generator);

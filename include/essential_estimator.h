@@ -50,7 +50,7 @@ public:
 	}
 
 	bool estimateModel(const cv::Mat& data,
-		const int *sample,
+		const size_t *sample,
 		std::vector<Model>* models) const
 	{
 		// Model calculation by the seven point algorithm
@@ -167,7 +167,7 @@ public:
 	// epipolar distance as well. 
 	bool isValidModel(const Model& model,
 		const cv::Mat& data,
-		const std::vector<int> &inliers,
+		const std::vector<size_t> &inliers,
 		const double threshold) const
 	{
 		size_t inlier_number = 0; // Number of inlier if using symmetric epipolar distance
@@ -188,7 +188,7 @@ public:
 
 	bool estimateModelNonminimal(
 		const cv::Mat& data,
-		const int *sample,
+		const size_t *sample,
 		size_t sample_number,
 		std::vector<Model>* models) const
 	{
@@ -227,7 +227,7 @@ public:
 
 	inline bool normalizePoints(
 		const cv::Mat& data, // The data points
-		const int *sample, // The points to which the model will be fit
+		const size_t *sample, // The points to which the model will be fit
 		size_t sample_number,// The number of points
 		cv::Mat &normalized_points, // The normalized point coordinates
 		Eigen::Matrix3d &T1, // The normalizing transformation in the first image
@@ -323,7 +323,7 @@ public:
 	}
 
 	inline bool solverSteweniusFivePoint(const cv::Mat& data,
-		const int *sample,
+		const size_t *sample,
 		size_t sample_number,
 		std::vector<Model>* models) const
 	{
@@ -468,7 +468,7 @@ public:
 
 	inline int all_ori_valid(const Eigen::Matrix3d &F,
 		const cv::Mat &data,
-		const int *sample,
+		const size_t *sample,
 		int N) const
 	{
 		Eigen::Vector3d ec;

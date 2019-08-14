@@ -2,8 +2,7 @@
 
 #include <opencv2\highgui\highgui.hpp>
 #include "GCoptimization.h"
-#include "prosac_sampler.h"
-#include "uniform_random_generator.h"
+#include "sampler.h"
 #include "model.h"
 #include "neighborhood_graph.h"
 
@@ -28,7 +27,7 @@ struct Settings {
 		do_graph_cut, // Flag to decide of graph-cut is used in the local optimization
 		use_inlier_limit; // Flag to decide if an inlier limit is used in the local optimization to speed up the procedure
 
-	int desired_fps; // The desired FPS
+	size_t desired_fps; // The desired FPS
 
 	size_t max_local_optimization_number, // Maximum number of local optimizations
 		min_iteration_number_before_lo, // Minimum number of RANSAC iterations before applying local optimization
@@ -76,7 +75,7 @@ struct RANSACStatistics
 
 	double processing_time;
 
-	std::vector<int> inliers;
+	std::vector<size_t> inliers;
 
 	RANSACStatistics() :
 		graph_cut_number(0),
@@ -99,25 +98,18 @@ public:
 	GCRANSAC() :
 		time_limit(std::numeric_limits<double>::max())
 	{
-		if (random_generator == nullptr)
-			random_generator = std::make_unique<UniformRandomGenerator>();
 	}
 	~GCRANSAC() { }
 
 	// The main method applying Graph-Cut RANSAC to the input data points
 	void run(const cv::Mat &points_,  // Data points
 		_ModelEstimator estimator_, // The model estimator
+		theia::Sampler<cv::Mat, size_t> *main_sampler_, // The main sampler is used outside the local optimization
+		theia::Sampler<cv::Mat, size_t> *local_optimization_sampler_, // The local optimization sampler is used inside the local optimization
 		const _NeighborhoodGraph *neighborhood_graph_, // The initialized neighborhood graph
 		Model &obtained_model_);  // The output model
 
-	bool sample(const cv::Mat &points_, 
-		const std::vector<int> &pool_,
-		const std::vector<std::vector<cv::DMatch>> &neighbors_, 
-		int sample_number_, 
-		int *sample_,
-		bool use_prosac = true);
-
-	void setFPS(int fps_) { settings.desired_fps = fps_; time_limit = 1.0 / fps_; } // Set a desired FPS value
+	void setFPS(size_t fps_) { settings.desired_fps = fps_; time_limit = 1.0 / fps_; } // Set a desired FPS value
 
 	const RANSACStatistics &getRansacStatistics() { return statistics; }
 
@@ -126,7 +118,7 @@ public:
 		const Model &model_, // The current model_
 		const _ModelEstimator &estimator_, // The model_ estimator_
 		const double threshold_, // The threshold_ for model_ estimation
-		std::vector<int> &inliers_, // The inlier set
+		std::vector<size_t> &inliers_, // The inlier set
 		const Score &best_score_ = Score(), // The score of the current so-far-the-best model
 		const bool store_inliers_ = true); // Store the inliers_ or not
 
@@ -139,8 +131,6 @@ public:
 	}
 
 protected:
-	std::unique_ptr<theia::ProsacSampler<cv::Mat>> prosac_sampler; // The PROSAC sampler
-	std::unique_ptr<UniformRandomGenerator> random_generator; // The random generator for the sampling
 	double time_limit; // The desired time limit
 	std::vector<std::vector<cv::DMatch>> neighbours; // The neighborhood structure
 	RANSACStatistics statistics; // RANSAC statistics
@@ -151,58 +141,66 @@ protected:
 	int step_size; // Step size per processes
 	double log_probability; // The logarithm of 1 - confidence
 	const _NeighborhoodGraph *neighborhood_graph;
+	theia::Sampler<cv::Mat, size_t> *main_sampler; // The main sampler is used outside the local optimization
+	theia::Sampler<cv::Mat, size_t> *local_optimization_sampler; // The local optimization sampler is used inside the local optimization
 
 	Graph<double, double, double> *graph; // The graph for graph-cut
 
+	bool sample(const std::vector<size_t> &pool_,
+		size_t sample_number_,
+		size_t *sample_,
+		bool local_optimization = false);
+
 	// Computes the desired iteration number for RANSAC w.r.t. to the current inlier number
-	int getIterationNumber(int inlier_number_, // The inlier number
-		int point_number_, // The point number
-		int sample_size_, // The current_sample size
+	int getIterationNumber(size_t inlier_number_, // The inlier number
+		size_t point_number_, // The point number
+		size_t sample_size_, // The current_sample size
 		double log_probability_); // The logarithm of the desired probability
 
 	// Returns a labeling w.r.t. the current model and point set
 	void labeling(const cv::Mat &points_, // The input data points
-		int neighbor_number_, // The neighbor number in the graph
+		size_t neighbor_number_, // The neighbor number in the graph
 		const std::vector<std::vector<cv::DMatch>> &neighbors_, // The neighborhood
 		Model &model_, // The current model_
 		_ModelEstimator estimator_, // The model estimator
 		double lambda_, // The weight for the spatial coherence term
 		double threshold_, // The threshold_ for the inlier-outlier decision
-		std::vector<int> &inliers_, // The resulting inlier set
+		std::vector<size_t> &inliers_, // The resulting inlier set
 		double &energy_); // The resulting energy
 
 	// Apply the graph-cut optimization for GC-RANSAC
 	bool graphCutLocalOptimization(const cv::Mat &points_, // The input data points
-		std::vector<int> &so_far_the_best_inliers_, // The input, than the resulting inlier set
+		std::vector<size_t> &so_far_the_best_inliers_, // The input, than the resulting inlier set
 		Model &so_far_the_best_model_, // The current model
 		Score &so_far_the_best_score_, // The current score
 		const _ModelEstimator &estimator_, // The model estimator
-		const int trial_number_); // The max trial number
+		const size_t trial_number_); // The max trial number
 	
 	// Model fitting by the iterated least squares method
 	bool iteratedLeastSquaresFitting(
 		const cv::Mat &points_, // The input data points
 		const _ModelEstimator &estimator_, // The model estimator
 		const double threshold_, // The inlier-outlier threshold
-		std::vector<int> &inliers_, // The resulting inlier set
+		std::vector<size_t> &inliers_, // The resulting inlier set
 		Model &model_); // The estimated model
 };
 
 // Computes the desired iteration number for RANSAC w.r.t. to the current inlier number
 template <class _ModelEstimator, class _NeighborhoodGraph>
-int GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::getIterationNumber(int inlier_number_, 
-	int point_number_, 
-	int sample_size_,  
+int GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::getIterationNumber(
+	size_t inlier_number_,
+	size_t point_number_,
+	size_t sample_size_,
 	double log_probability_)
 {
 	const double q = pow(static_cast<double>(inlier_number_) / point_number_, sample_size_);
 	const double log2 = log(1 - q);
 
 	if (abs(log2) < std::numeric_limits<double>::epsilon())
-		return std::numeric_limits<int>::max();
+		return std::numeric_limits<size_t>::max();
 
 	const double iter = log_probability_ / log2;
-	return static_cast<int>(iter) + 1;
+	return static_cast<size_t>(iter) + 1;
 }
 
 // The main method applying Graph-Cut RANSAC to the input data points_
@@ -210,6 +208,8 @@ template <class _ModelEstimator, class _NeighborhoodGraph>
 void GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::run(
 	const cv::Mat &points_,  // Data points
 	_ModelEstimator estimator_, // The model estimator
+	theia::Sampler<cv::Mat, size_t> *main_sampler_, // The main sampler is used outside the local optimization
+	theia::Sampler<cv::Mat, size_t> *local_optimization_sampler_, // The local optimization sampler is used inside the local optimization
 	const _NeighborhoodGraph *neighborhood_graph_, // The initialized neighborhood graph
 	Model &obtained_model_)  // The output model 
 {
@@ -226,6 +226,8 @@ void GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::run(
 	statistics.neighbor_number = 0;
 	statistics.processing_time = 0.0;
 
+	main_sampler = main_sampler_;
+	local_optimization_sampler = local_optimization_sampler_;
 	step_size = points_.rows / settings.core_number;
 
 	// The size of a minimal sample used for the estimation
@@ -237,28 +239,23 @@ void GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::run(
 	auto max_iteration = 
 		getIterationNumber(1, points_.rows, sample_number, log_probability);
 
-	std::unique_ptr<int[]> current_sample(new int[sample_number]); // Minimal sample for model fitting
+	std::unique_ptr<size_t[]> current_sample(new size_t[sample_number]); // Minimal sample for model fitting
 	bool do_local_optimization = false; // Flag to show if local optimization should be applied
 
 	size_t inl_offset = 0; // Index to show which inlier vector is currently in use
 	Model so_far_the_best_model; // The current so-far-the-best model parameters
 	Score so_far_the_best_score; // The score of the current so-far-the-best model
-	std::vector<std::vector<int>> temp_inner_inliers(2); // The inliers of the current and previous best models 
-
-	// The PROSAC sampler
-	prosac_sampler = std::make_unique<theia::ProsacSampler<cv::Mat>>(estimator_.sampleSize());
-	prosac_sampler->initialize();
-
-	neighborhood_graph = neighborhood_graph_;
+	std::vector<std::vector<size_t>> temp_inner_inliers(2); // The inliers of the current and previous best models 
+	
+	neighborhood_graph = neighborhood_graph_; // The neighborhood graph used for the graph-cut local optimization
 	point_number = points_.rows; // Number of points in the dataset
 	truncated_threshold = 3.0 / 2.0 * settings.threshold; // The truncated least-squares threshold
 	squared_truncated_threshold = truncated_threshold * truncated_threshold; // The squared least-squares threshold
 	sqr_threshold_2 = 2.0 * settings.threshold * settings.threshold; // Two times squared least-squares threshold
-	random_generator->resetGenerator(0, point_number); // Initializing the used random generator
 
 	// Initialize the pool for sampling
-	std::vector<int> pool(point_number);
-	for (auto i = 0; i < point_number; ++i)
+	std::vector<size_t> pool(point_number);
+	for (size_t i = 0; i < point_number; ++i)
 		pool[i] = i;
 		
 	// Initialize the starting time if there is a desired FPS set
@@ -286,9 +283,7 @@ void GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::run(
 		while (++unsuccessful_model_generations < settings.max_unsuccessful_model_generations)
 		{
 			// If the sampling is not successful, try again.
-			if (!sample(points_, // All points
-				pool, // The current pool from which the points are chosen
-				neighbours, // The neighborhood structure
+			if (!sample(pool, // The current pool from which the points are chosen
 				sample_number, // Number of points to select
 				current_sample.get())) // The current sample
 				continue;
@@ -433,7 +428,7 @@ bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::iteratedLeastSquaresFitting(
 	const cv::Mat &points_,
 	const _ModelEstimator &estimator_,
 	const double threshold_,
-	std::vector<int> &inliers_,
+	std::vector<size_t> &inliers_,
 	Model &model_)
 {
 	const size_t sample_size = estimator_.sampleSize(); // The minimal sample size
@@ -441,7 +436,7 @@ bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::iteratedLeastSquaresFitting(
 		return false;
 
 	size_t iterations = 0; // Number of least-squares iterations
-	std::vector<int> tmp_inliers; // Inliers of the current model
+	std::vector<size_t> tmp_inliers; // Inliers of the current model
 
 	// Iterated least-squares model fitting
 	Score best_score; // The score of the best estimated model
@@ -527,43 +522,37 @@ bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::iteratedLeastSquaresFitting(
 
 template <class _ModelEstimator, class _NeighborhoodGraph>
 bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::sample(
-	const cv::Mat &points_, // The input data points
-	const std::vector<int> &pool_, // The pool if indices determining which point can be selected
-	const std::vector<std::vector<cv::DMatch>> &neighbors_,
-	int sample_number_,
-	int *sample_,
-	bool use_prosac)
+	const std::vector<size_t> &pool_, // The pool if indices determining which point can be selected
+	size_t sample_number_,
+	size_t *sample_,
+	bool local_optimization_)
 {
-	if (use_prosac) // Apply PROSAC sampler when sampling from the whole point set
-	{
-		prosac_sampler->sample(
-			points_, // All data points
-			sample_); // The currently selected sample
-	}
-	else // Apply uniform random sampling otherwise
-	{
-		random_generator->generateUniqueRandomSet(sample_,
-			sample_number_,
-			pool_.size() - 1);
-		for (auto sample_idx = 0; sample_idx < sample_number_; ++sample_idx)
-			sample_[sample_idx] = pool_[sample_[sample_idx]];
-	}
-	return true;
+	// Use a different sampler when the algorithm is inside the local optimization
+	if (local_optimization_)
+		return local_optimization_sampler->sample(pool_, // The pool of indices
+			sample_, // The selected sample
+			sample_number_); // The number of points to be selected
+
+	// Apply the main sampler if the algorithm is not inside the local optimization
+	return main_sampler->sample(pool_, // The pool of indices
+		sample_, // The selected sample
+		sample_number_); // The number of points to be selected
 }
 
 template <class _ModelEstimator, class _NeighborhoodGraph>
-bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::graphCutLocalOptimization(const cv::Mat &points_, 
-	std::vector<int> &so_far_the_best_inliers_,
+bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::graphCutLocalOptimization(
+	const cv::Mat &points_, 
+	std::vector<size_t> &so_far_the_best_inliers_,
 	Model &so_far_the_best_model_,
 	Score &so_far_the_best_score_,
 	const _ModelEstimator &estimator_, 
-	const int trial_number_)
+	const size_t trial_number_)
 {
 	const auto inlier_limit = estimator_.inlierLimit(); // Number of points used in the inner RANSAC
 	Score max_score = so_far_the_best_score_; // The current best score
 	Model best_model = so_far_the_best_model_; // The current best model
 	std::vector<Model> models; // The estimated models' parameters
-	std::vector<int> best_inliers, // Inliers of the best model
+	std::vector<size_t> best_inliers, // Inliers of the best model
 		inliers; // The inliers of the current model
 	bool updated; // A flag to see if the model is updated
 	double energy; // The energy after applying the graph-cut algorithm
@@ -595,10 +584,10 @@ bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::graphCutLocalOptimization(co
 			energy); // The energy after the procedure
 
 		// Number of points (i.e. the sample size) used in the inner RANSAC
-		size_t sample_size = static_cast<int>(MIN(inlier_limit, inliers.size()));
+		size_t sample_size = static_cast<size_t>(MIN(inlier_limit, inliers.size()));
 		
 		// The current sample used in the inner RANSAC
-		std::unique_ptr<int[]> current_sample(new int[sample_size]);
+		std::unique_ptr<size_t[]> current_sample(new size_t[sample_size]);
 
 		// Run an inner RANSAC on the inliers coming from the graph-cut algorithm
 		for (auto trial = 0; trial < trial_number_; ++trial)
@@ -607,12 +596,10 @@ bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::graphCutLocalOptimization(co
 			models.resize(0);
 			if (sample_size < inliers.size()) // If there are more inliers available than the minimum number, sample randomly.
 			{
-				sample(points_, // The input data points
-					inliers, // The inliers used for the selection
-					neighbours, // The neighborhood structure
+				sample(inliers, // The inliers used for the selection
 					sample_size, // The size of the minimal sample
 					current_sample.get(), // The selected sample
-					false); // Don't use PROSAC sampling when doing an inner RANSAC
+					true); // A flag telling the function that it is called from the local optimization
 
 				// Apply least-squares model fitting to the selected points.
 				// If it fails, continue the for cycle and, thus, the sampling.
@@ -638,7 +625,7 @@ bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::graphCutLocalOptimization(co
 			// Select the best model from the estimated set
 			for (const auto &model : models)
 			{
-				std::vector<int> tmp_inliers;
+				std::vector<size_t> tmp_inliers;
 
 				// Calculate the score of the current model
 				Score score = getScore(points_, // The input data points
@@ -682,11 +669,12 @@ bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::graphCutLocalOptimization(co
 
 
 template <class _ModelEstimator, class _NeighborhoodGraph>
-Score GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::getScore(const cv::Mat &points_, // The input data points
+Score GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::getScore(
+	const cv::Mat &points_, // The input data points
 	const Model &model_, // The current model parameters
 	const _ModelEstimator &estimator_, // The model estimator
 	const double threshold_, // The inlier-outlier threshold
-	std::vector<int> &inliers_, // The selected inliers
+	std::vector<size_t> &inliers_, // The selected inliers
 	const Score &best_score_, // The score of the current so-far-the-best model
 	const bool store_inliers_) // A flag determining if the inliers should be stored
 {
@@ -696,7 +684,7 @@ Score GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::getScore(const cv::Mat &poi
 	
 #ifdef USE_OPENMP // If OpenMP is available for parallel processing
 	// Containers for the parallel threads
-	std::vector<std::vector<int>> process_inliers;
+	std::vector<std::vector<size_t>> process_inliers;
 	if (store_inliers_) // If the inlier should be stored, set the container sizes
 		process_inliers.resize(settings.core_number);
 
@@ -704,11 +692,11 @@ Score GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::getScore(const cv::Mat &poi
 	std::vector<Score> process_scores(settings.core_number);
 
 #pragma omp for
-  for (size_t process = 0; process < settings.core_number; process++) {
+	for (size_t process = 0; process < settings.core_number; process++) {
 		if (store_inliers_) // If the inlier should be stored, occupy the memory for the inliers
 			process_inliers[process].reserve(step_size);
-		const int start_idx = process * step_size; // The starting point's index
-		const int end_idx = MIN(points_.rows - 1, (process + 1) * step_size); // The last point's index
+		const size_t start_idx = process * step_size; // The starting point's index
+		const size_t end_idx = MIN(points_.rows - 1, (process + 1) * step_size); // The last point's index
 		
 		double squared_residual; // The point-to-model residual
 		// Iterate through all points, calculate the residuals and store the points as inliers if needed.
@@ -738,12 +726,16 @@ Score GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::getScore(const cv::Mat &poi
 	{
 		score.I += process_scores[i].I;
 		score.J += process_scores[i].J;
+	}
 
-		if (store_inliers_)
+	// Copy the inliers only if the score is higher than that of the so-far-the-best
+	if (store_inliers_ &
+		score.J >= best_score_.J)
+	{
+		for (size_t i = 0; i < settings.core_number; ++i)
 			copy(process_inliers[i].begin(), process_inliers[i].end(), back_inserter(inliers_));
 	}
 #else // If there is no parallel processing
-
 	double squared_residual; // The point-to-model residual
 	// Iterate through all points, calculate the residuals and store the points as inliers if needed.
 	for (auto point_idx = 0; point_idx < point_number; ++point_idx)
@@ -769,7 +761,6 @@ Score GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::getScore(const cv::Mat &poi
 		if (point_number - point_idx + score.I < best_score_.I)
 			return Score();
 	}
-
 #endif
 
 	// Return the final score
@@ -778,14 +769,15 @@ Score GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::getScore(const cv::Mat &poi
 
 
 template <class _ModelEstimator, class _NeighborhoodGraph>
-void GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::labeling(const cv::Mat &points_, 
-	int neighbor_number_, 
+void GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::labeling(
+	const cv::Mat &points_, 
+	size_t neighbor_number_,
 	const std::vector<std::vector<cv::DMatch>> &neighbors_,
 	Model &model_,
 	_ModelEstimator estimator_,
 	double lambda_,
 	double threshold_,
-	std::vector<int> &inliers_,
+	std::vector<size_t> &inliers_,
 	double &energy_)
 {
 	// Initializing the problem graph for the graph-cut algorithm.
@@ -816,7 +808,6 @@ void GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::labeling(const cv::Mat &poin
 		double squared_distance_1, squared_distance_2;
 		double energy1, energy2, energy_sum;
 		double e00, e01 = 1.0, e10 = 1.0, e11;
-		int actual_neighbor_idx;
 
 		// Iterate through all points and set their edges
 		for (auto point_idx = 0; point_idx < points_.rows; ++point_idx)
@@ -859,7 +850,7 @@ void GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::labeling(const cv::Mat &poin
 	// Run the standard st-graph-cut algorithm
 	problem_graph->minimize();
 
-	// Select the inliers, i.e. the points labeled as SINK.
+	// Select the inliers, i.e., the points labeled as SINK.
 	inliers_.reserve(points_.rows);
 	for (auto point_idx = 0; point_idx < points_.rows; ++point_idx)
 		if (problem_graph->what_segment(point_idx) == Graph<double, double, double>::SINK)

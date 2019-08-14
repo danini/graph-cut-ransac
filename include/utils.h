@@ -17,7 +17,7 @@
 */
 void drawMatches(
 	const cv::Mat &points_,
-	const std::vector<int> &inliers_,
+	const std::vector<size_t> &inliers_,
 	const cv::Mat &image1_,
 	const cv::Mat &image2_,
 	cv::Mat &out_image_,
@@ -26,7 +26,7 @@ void drawMatches(
 bool savePointsToFile(
 	const cv::Mat &points_,
 	const char* file_,
-	const std::vector<int> *inliers_ = NULL);
+	const std::vector<size_t> *inliers_ = NULL);
 
 bool loadPointsFromFile(
 	cv::Mat &points_,
@@ -41,11 +41,11 @@ void detectFeatures(
 void showImage(
 	const cv::Mat &image_,
 	std::string window_name_,
-	int max_width_,
-	int max_height_,
+	size_t max_width_,
+	size_t max_height_,
 	bool wait_);
 
-template<typename T, int N, int M>
+template<typename T, size_t N, size_t M>
 bool loadMatrix(const std::string &path_,
 	Eigen::Matrix<T, N, M> &matrix_);
 
@@ -60,7 +60,7 @@ void normalizeCorrespondences(const cv::Mat &points_,
 
 void drawMatches(
 	const cv::Mat &points_,
-	const std::vector<int> &inliers_,
+	const std::vector<size_t> &inliers_,
 	const cv::Mat &image_src_,
 	const cv::Mat &image_dst_,
 	cv::Mat &out_image_,
@@ -197,12 +197,12 @@ bool loadPointsFromFile(cv::Mat &points,
 
 bool savePointsToFile(const cv::Mat &points, 
 	const char* file, 
-	const std::vector<int> *inliers)
+	const std::vector<size_t> *inliers)
 {
 	std::ofstream outfile(file, std::ios::out);
 
 	double *points_ptr = reinterpret_cast<double*>(points.data);
-	const int M = points.cols;
+	const size_t M = points.cols;
 
 	if (inliers == NULL)
 	{
@@ -219,7 +219,7 @@ bool savePointsToFile(const cv::Mat &points,
 		outfile << inliers->size() << std::endl;
 		for (size_t i = 0; i < inliers->size(); ++i)
 		{
-			const int offset = inliers->at(i) * M;
+			const size_t offset = inliers->at(i) * M;
 			for (auto j = 0; j < M; ++j)
 				outfile << *(points_ptr + offset + j) << " ";
 			outfile << std::endl;
@@ -231,7 +231,7 @@ bool savePointsToFile(const cv::Mat &points,
 	return true;
 }
 
-template<typename T, int N, int M>
+template<typename T, size_t N, size_t M>
 bool loadMatrix(const std::string &path_,
 	Eigen::Matrix<T, N, M> &matrix_)
 {
@@ -263,8 +263,8 @@ bool loadMatrix(const std::string &path_,
 
 void showImage(const cv::Mat &image_,
 	std::string window_name_,
-	int max_width_,
-	int max_height_,
+	size_t max_width_,
+	size_t max_height_,
 	bool wait_)
 {
 	// Resizing the window to fit into the screen if needed

@@ -36,7 +36,7 @@ public:
 
 	bool estimateModel(
 		const cv::Mat& data,
-		const int *sample,
+		const size_t *sample,
 		std::vector<Model>* models) const
 	{
 		constexpr size_t M = 4;
@@ -48,7 +48,7 @@ public:
 	}
 
 	bool estimateModelNonminimal(const cv::Mat& data,
-		const int *sample,
+		const size_t *sample,
 		size_t sample_number,
 		std::vector<Model>* models) const
 	{
@@ -121,7 +121,7 @@ public:
 
 	inline bool normalizePoints(
 		const cv::Mat& data, // The data points
-		const int *sample, // The points to which the model will be fit
+		const size_t *sample, // The points to which the model will be fit
 		size_t sample_number,// The number of points
 		cv::Mat &normalized_points, // The normalized point coordinates
 		Eigen::Matrix3d &T1, // The normalizing transformation in the first image
@@ -218,7 +218,7 @@ public:
 
 	inline bool solverFourPoint(
 		const cv::Mat& data_,
-		const int *sample_,
+		const size_t *sample_,
 		const size_t sample_number_,
 		std::vector<Model>* models_) const
 	{
