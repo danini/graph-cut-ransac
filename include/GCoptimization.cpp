@@ -8,7 +8,7 @@
 #include <vector>
 #include <iostream>
 #include <algorithm>
-#include <ppl.h>
+#include <cfloat>
 
 // will leave this one just for the laughs :)
 //#define olga_assert(expr) assert(!(expr))
@@ -474,7 +474,7 @@ template <typename DataCostT>
 void GCoptimization::updateLabelingDataCosts()
 {
 	DataCostT* dc = (DataCostT*)m_datacostFn;
-	for (auto i = 0; i < m_num_sites; ++i)
+	for (size_t i = 0; i < m_num_sites; ++i)
 		m_labelingDataCosts[i] = dc->compute(i,m_labeling[i]);
 }
 
@@ -1444,7 +1444,7 @@ GCoptimizationGridGraph::GCoptimizationGridGraph(SiteID width, SiteID height,Lab
 	assert( (width > 1) && (height > 1) && (num_labels > 1 ));
 
 	m_weightedGraph = 0;
-	for (auto  i = 0; i < 4; i ++ )	m_unityWeights[i] = 1;
+	for (size_t  i = 0; i < 4; i ++ )	m_unityWeights[i] = 1;
 
 	m_width  = width;
 	m_height = height;
@@ -1717,7 +1717,7 @@ void GCoptimizationGeneralGraph::setAllNeighbors(SiteID *numNeighbors,SiteID **n
 		handleError("Already set up neighborhood system.");
 	m_numNeighbors     = numNeighbors;
 	m_numNeighborsTotal = 0;
-	for (auto site = 0; site < m_num_sites; site++ ) m_numNeighborsTotal += m_numNeighbors[site];
+	for (size_t site = 0; site < m_num_sites; site++ ) m_numNeighborsTotal += m_numNeighbors[site];
 	m_neighborsIndexes = neighborsIndexes;
 	m_neighborsWeights = neighborsWeights;
 }
@@ -1833,7 +1833,7 @@ void GCoptimization::DataCostFnSparse::set(LabelID l, const SparseDataCost* cost
 	//
 	const SparseDataCost* end  = next+count;
 	SiteID prev_site = -1;
-	for (auto i = 0; i < m_buckets_per_label; ++i) {
+	for (size_t i = 0; i < m_buckets_per_label; ++i) {
 		b[i].begin = b[i].predict = next;
 		SiteID end_site = (i+1)*cSitesPerBucket;
 		while (next < end && next->site < end_site) {
