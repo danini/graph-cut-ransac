@@ -4,89 +4,8 @@
 #include "GCoptimization.h"
 #include "sampler.h"
 #include "model.h"
+#include "types.h"
 #include "neighborhood_graph.h"
-
-/* RANSAC Scoring */
-struct Score {
-	/* number of inliers_, rectangular gain function */
-	unsigned I;
-	/* MSAC scoring, truncated quadratic gain function */
-	double J;
-
-	Score() :
-		I(0),
-		J(0.0)
-	{
-
-	}
-};
-
-struct Settings {
-	bool do_final_iterated_least_squares, // Flag to decide a final iterated least-squares fitting is needed to polish the output model parameters.
-		do_local_optimization, // Flag to decide if local optimization is needed
-		do_graph_cut, // Flag to decide of graph-cut is used in the local optimization
-		use_inlier_limit; // Flag to decide if an inlier limit is used in the local optimization to speed up the procedure
-
-	size_t desired_fps; // The desired FPS
-
-	size_t max_local_optimization_number, // Maximum number of local optimizations
-		min_iteration_number_before_lo, // Minimum number of RANSAC iterations before applying local optimization
-		min_iteration_number, // Minimum number of RANSAC iterations
-		max_iteration_number, // Maximum number of RANSAC iterations
-		max_unsuccessful_model_generations, // Maximum number of unsuccessful model generations
-		max_least_squares_iterations, // Maximum number of iterated least-squares iterations
-		max_graph_cut_number, // Maximum number of graph-cuts applied in each iteration
-		core_number; // Number of parallel threads
-
-	double confidence, // Required confidence in the result
-		neighborhood_sphere_radius, // The radius of the ball used for creating the neighborhood graph
-		threshold, // The inlier-outlier threshold
-		spatial_coherence_weight; // The weight of the spatial coherence term
-	
-	Settings() : 
-		do_final_iterated_least_squares(true),
-		do_local_optimization(true),
-		do_graph_cut(true),
-		use_inlier_limit(false),
-		desired_fps(-1),
-		max_local_optimization_number(std::numeric_limits<size_t>::max()),
-		max_graph_cut_number(std::numeric_limits<size_t>::max()),
-		max_least_squares_iterations(20),
-		min_iteration_number_before_lo(20),
-		min_iteration_number(20),
-		neighborhood_sphere_radius(20),
-		max_iteration_number(std::numeric_limits<size_t>::max()),
-		max_unsuccessful_model_generations(100),
-		core_number(1),
-		spatial_coherence_weight(0.14),
-		threshold(2.0),
-		confidence(0.95)
-	{
-
-	}
-};
-
-struct RANSACStatistics
-{
-	size_t graph_cut_number,
-		local_optimization_number,
-		iteration_number,
-		neighbor_number;
-
-	double processing_time;
-
-	std::vector<size_t> inliers;
-
-	RANSACStatistics() :
-		graph_cut_number(0),
-		local_optimization_number(0),
-		iteration_number(0),
-		neighbor_number(0),
-		processing_time(0.0)
-	{
-
-	}
-};
 
 template <class _ModelEstimator, 
 	class _NeighborhoodGraph>
@@ -220,6 +139,8 @@ void GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::run(
 	std::chrono::time_point<std::chrono::system_clock> start, end;
 	std::chrono::duration<double> elapsed_seconds;
 
+	statistics.main_sampler_name = main_sampler_->getName();
+	statistics.local_optimizer_sampler_name = local_optimization_sampler_->getName();
 	statistics.iteration_number = 0;
 	statistics.graph_cut_number = 0;
 	statistics.local_optimization_number = 0;
@@ -259,8 +180,7 @@ void GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::run(
 		pool[i] = i;
 		
 	// Initialize the starting time if there is a desired FPS set
-	if (settings.desired_fps > -1)
-		start = std::chrono::system_clock::now();
+	start = std::chrono::system_clock::now();
 
 	/*
 		The main RANSAC iteration
@@ -366,6 +286,16 @@ void GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::run(
 		}
 	}
 
+	// If the best model has only minimal number of points, the model
+	// is not considered to be found. 
+	if (so_far_the_best_score.I <= sample_number)
+	{
+		end = std::chrono::system_clock::now(); // The current time
+		elapsed_seconds = end - start; // Time elapsed since the algorithm started
+		statistics.processing_time = elapsed_seconds.count();
+		return;
+	}
+
 	// Apply a final local optimization if it hasn't been applied yet
 	if (settings.do_local_optimization && 
 		statistics.local_optimization_number == 0)
@@ -421,6 +351,10 @@ void GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::run(
 	// Return the inlier set and the estimated model parameters
 	statistics.inliers.swap(temp_inner_inliers[inl_offset]);
 	obtained_model_ = so_far_the_best_model;
+
+	end = std::chrono::system_clock::now(); // The current time
+	elapsed_seconds = end - start; // Time elapsed since the algorithm started
+	statistics.processing_time = elapsed_seconds.count();
 }
 
 template <class _ModelEstimator, class _NeighborhoodGraph>
@@ -691,7 +625,7 @@ Score GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::getScore(
 	// Scores for the parallel threads
 	std::vector<Score> process_scores(settings.core_number);
 
-#pragma omp for
+#pragma omp parallel for schedule(dynamic)
 	for (size_t process = 0; process < settings.core_number; process++) {
 		if (store_inliers_) // If the inlier should be stored, occupy the memory for the inliers
 			process_inliers[process].reserve(step_size);
