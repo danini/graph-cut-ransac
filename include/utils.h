@@ -12,6 +12,8 @@
 #include <opencv2/features2d.hpp>
 #include <Eigen/Eigen>
 
+#include "types.h"
+
 /*
 	Function declaration
 */
@@ -53,6 +55,12 @@ void normalizeCorrespondences(const cv::Mat &points_,
 	const Eigen::Matrix3d &intrinsics_src_,
 	const Eigen::Matrix3d &intrinsics_dst_,
 	cv::Mat &normalized_points_);
+
+void saveStatisticsToFile(const RANSACStatistics &statistics_,
+	const std::string &source_path_,
+	const std::string &destination_path_,
+	const std::string &filename_,
+	const int mode_ = std::fstream::app);
 
 /*
 	Function definition
@@ -334,4 +342,30 @@ void normalizeCorrespondences(const cv::Mat &points_,
 		*(normalized_points_ptr++) = normalized_point_dst(0);
 		*(normalized_points_ptr++) = normalized_point_dst(1);
 	}
+}
+
+void saveStatisticsToFile(
+	const RANSACStatistics &statistics_,
+	const std::string &source_path_,
+	const std::string &destination_path_,
+	const std::string &filename_,
+	const int mode_)
+{
+	std::ofstream file(filename_, mode_);
+
+	if (!file.is_open())
+	{
+		fprintf(stderr, "A problem occured when saving the statistics to file '%s'.\n", filename_);
+		return;
+	}
+
+	file << source_path_ << ";"
+		<< destination_path_ << ";"
+		<< statistics_.iteration_number << ";"
+		<< statistics_.processing_time << ";"
+		<< statistics_.inliers.size() << ";"
+		<< statistics_.main_sampler_name << ";"
+		<< statistics_.local_optimizer_sampler_name
+		<< std::endl;
+	file.close();
 }
