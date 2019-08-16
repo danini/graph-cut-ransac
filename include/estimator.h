@@ -57,36 +57,36 @@ namespace theia
 		virtual ~Estimator() {}
 
 		// Get the minimum number of samples needed to generate a model.
-		virtual size_t sampleSize() const = 0;
-		virtual size_t inlierLimit() const = 0;
+		inline virtual size_t sampleSize() const = 0;
+		inline virtual size_t inlierLimit() const = 0;
 
 		// Given a set of data points, estimate the model. Users should implement this
 		// function appropriately for the task being solved. Returns true for
 		// successful model estimation (and outputs model), false for failed
 		// estimation. Typically, this is a minimal set, but it is not required to be.
-		virtual bool estimateModel(const Datum& data,
+		inline virtual bool estimateModel(const Datum& data,
 			const size_t *sample, 
 			std::vector<Model>* model) const = 0;
 
 		// Estimate a model from a non-minimal sampling of the data. E.g. for a line,
 		// use SVD on a set of points instead of constructing a line from two points.
 		// By default, this simply implements the minimal case.
-		virtual bool estimateModelNonminimal(const Datum& data,
+		inline virtual bool estimateModelNonminimal(const Datum& data,
 			const size_t *sample,
 			size_t sample_number,
 			std::vector<Model>* model) const = 0;
 
 		// Refine the model based on an updated subset of data, and a pre-computed
 		// model. Can be optionally implemented.
-		virtual bool refineModel(const std::vector<Datum>& data, Model* model) const 
+		inline virtual bool refineModel(const std::vector<Datum>& data, Model* model) const
 		{
 			return true;
 		}
 
 		// Given a model and a data point, calculate the error. Users should implement
 		// this function appropriately for the task being solved.
-		virtual double residual(const Datum& data, const Model& model) const = 0;
-		virtual double squaredResidual(const Datum& data, const Model& model) const = 0;
+		inline virtual double residual(const Datum& data, const Model& model) const = 0;
+		inline virtual double squaredResidual(const Datum& data, const Model& model) const = 0;
 
 		// Compute the residuals of many data points. By default this is just a loop
 		// that calls residual() on each data point, but this function can be useful if
@@ -138,11 +138,11 @@ namespace theia
 
 		// Enable a quick check to see if the model is valid. This can be a geometric
 		// check or some other verification of the model structure.
-		virtual bool isValidModel(const Model& model) const { return true; }
+		inline virtual bool isValidModel(const Model& model) const { return true; }
 
 		// Enable a quick check to see if the model is valid. This can be a geometric
 		// check or some other verification of the model structure.
-		virtual bool isValidModel(const Model& model,
+		inline virtual bool isValidModel(const Model& model,
 			const Datum& data,
 			const std::vector<size_t> &inliers,
 			const double threshold) const

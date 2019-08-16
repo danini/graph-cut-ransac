@@ -41,15 +41,15 @@ public:
 	{}
 	~EssentialMatrixEstimator() {}
 
-	size_t sampleSize() const {
+	inline size_t sampleSize() const {
 		return 5;
 	}
 
-	size_t inlierLimit() const {
+	inline size_t inlierLimit() const {
 		return 7 * sampleSize();
 	}
 
-	bool estimateModel(const cv::Mat& data,
+	inline bool estimateModel(const cv::Mat& data,
 		const size_t *sample,
 		std::vector<Model>* models) const
 	{
@@ -136,7 +136,7 @@ public:
 		return abs(0.5 * (d1 + d2));
 	}
 
-	double squaredResidual(const cv::Mat& point,
+	inline double squaredResidual(const cv::Mat& point,
 		const Model& model) const
 	{
 		return squaredSampsonDistance(point, model.descriptor);
@@ -148,7 +148,7 @@ public:
 		return squaredSampsonDistance(point, descriptor);
 	}
 
-	double residual(const cv::Mat& point,
+	inline double residual(const cv::Mat& point,
 		const Model& model) const
 	{
 		return residual(point, model.descriptor);
@@ -186,7 +186,7 @@ public:
 		return false;
 	}
 
-	bool estimateModelNonminimal(
+	inline bool estimateModelNonminimal(
 		const cv::Mat& data,
 		const size_t *sample,
 		size_t sample_number,

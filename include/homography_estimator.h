@@ -26,15 +26,15 @@ public:
 	RobustHomographyEstimator() {}
 	~RobustHomographyEstimator() {}
 
-	size_t sampleSize() const {
+	inline size_t sampleSize() const {
 		return 4;
 	}
 
-	size_t inlierLimit() const {
+	inline size_t inlierLimit() const {
 		return 7 * sampleSize();
 	}
 
-	bool estimateModel(
+	inline bool estimateModel(
 		const cv::Mat& data,
 		const size_t *sample,
 		std::vector<Model>* models) const
@@ -47,7 +47,7 @@ public:
 		return true;
 	}
 
-	bool estimateModelNonminimal(const cv::Mat& data,
+	inline bool estimateModelNonminimal(const cv::Mat& data,
 		const size_t *sample,
 		size_t sample_number,
 		std::vector<Model>* models) const
@@ -81,7 +81,7 @@ public:
 		return true;
 	}
 
-	double squaredResidual(const cv::Mat& point,
+	inline double squaredResidual(const cv::Mat& point,
 		const Model& model) const
 	{
 		return squaredResidual(point, model.descriptor);
@@ -107,7 +107,7 @@ public:
 		return d1 * d1 + d2 * d2;
 	}
 
-	double residual(const cv::Mat& point, 
+	inline double residual(const cv::Mat& point,
 		const Model& model) const
 	{
 		return residual(point, model.descriptor);

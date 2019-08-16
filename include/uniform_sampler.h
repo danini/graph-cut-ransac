@@ -14,10 +14,12 @@ public:
 	explicit UniformSampler(const cv::Mat const *container_)
 		: Sampler(container_)
 	{
-		initialize(container_);
+		initialized = initialize(container_);
 	}
 
 	~UniformSampler() {}
+
+	const std::string getName() const { return "Uniform Sampler"; }
 
 	// Initializes any non-trivial variables and sets up sampler if
 	// necessary. Must be called before sample is called.
@@ -25,7 +27,7 @@ public:
 
 	// Samples the input variable data and fills the std::vector subset with the
 	// samples.
-	bool sample(const std::vector<size_t> &pool_,
+	inline bool sample(const std::vector<size_t> &pool_,
 		size_t * const subset_,
 		size_t sample_size_);
 };
@@ -38,7 +40,7 @@ bool UniformSampler::initialize(const cv::Mat const *container_)
 	return true;
 }
 
-bool UniformSampler::sample(
+inline bool UniformSampler::sample(
 	const std::vector<size_t> &pool_,
 	size_t * const subset_,
 	size_t sample_size_)

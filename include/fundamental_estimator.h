@@ -31,15 +31,15 @@ public:
 	FundamentalMatrixEstimator() {}
 	~FundamentalMatrixEstimator() {}
 
-	size_t sampleSize() const {
+	inline size_t sampleSize() const {
 		return 7;
 	}
 
-	size_t inlierLimit() const {
+	inline size_t inlierLimit() const {
 		return 49;
 	}
 
-	bool estimateModel(const cv::Mat& data,
+	inline bool estimateModel(const cv::Mat& data,
 		const size_t *sample,
 		std::vector<Model>* models) const
 	{
@@ -126,7 +126,7 @@ public:
 		return abs(0.5 * (d1 + d2));
 	}
 
-	double squaredResidual(const cv::Mat& point,
+	inline double squaredResidual(const cv::Mat& point,
 		const Model& model) const
 	{
 		return squaredSampsonDistance(point, model.descriptor);
@@ -138,7 +138,7 @@ public:
 		return squaredSampsonDistance(point, descriptor);
 	}
 
-	double residual(const cv::Mat& point,
+	inline double residual(const cv::Mat& point,
 		const Model& model) const
 	{
 		return residual(point, model.descriptor);
@@ -155,7 +155,7 @@ public:
 	// robust to degenerate solutions than the symmetric epipolar distance. Therefore,
 	// every so-far-the-best model is checked if it has enough inlier with symmetric
 	// epipolar distance as well. 
-	bool isValidModel(const Model& model,
+	inline bool isValidModel(const Model& model,
 		const cv::Mat& data,
 		const std::vector<size_t> &inliers,
 		const double threshold) const
@@ -176,7 +176,7 @@ public:
 		return false;
 	}
 
-	bool estimateModelNonminimal(
+	inline bool estimateModelNonminimal(
 		const cv::Mat& data,
 		const size_t *sample,
 		size_t sample_number,

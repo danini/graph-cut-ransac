@@ -97,7 +97,7 @@ namespace std {
 	};
 }
 
-class GridNeighborhoodGraph : NeighborhoodGraph<cv::Mat>
+class GridNeighborhoodGraph : public NeighborhoodGraph<cv::Mat>
 {
 protected:
 	double cell_width_source_image, // The width of a cell in the source image.
