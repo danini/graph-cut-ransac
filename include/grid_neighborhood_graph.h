@@ -137,7 +137,7 @@ public:
 	}
 
 	bool initialize(const cv::Mat const *container_);
-	const std::vector<size_t> &getNeighbors(size_t point_idx_) const;
+	inline const std::vector<size_t> &getNeighbors(size_t point_idx_) const;
 };
 
 bool GridNeighborhoodGraph::initialize(const cv::Mat const *container_)
@@ -195,7 +195,7 @@ bool GridNeighborhoodGraph::initialize(const cv::Mat const *container_)
 	return neighbor_number > 0;
 }
 
-const std::vector<size_t> &GridNeighborhoodGraph::getNeighbors(size_t point_idx_) const
+inline const std::vector<size_t> &GridNeighborhoodGraph::getNeighbors(size_t point_idx_) const
 {
 	// Get the pointer of the cell in which the point is.
 	const GridCell *cell = cells_of_points[point_idx_];

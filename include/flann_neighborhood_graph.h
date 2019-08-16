@@ -43,7 +43,7 @@ public:
 	}
 
 	bool initialize(const cv::Mat const *container_);
-	const std::vector<size_t> &getNeighbors(size_t point_idx_) const;
+	inline const std::vector<size_t> &getNeighbors(size_t point_idx_) const;
 };
 
 bool FlannNeighborhoodGraph::initialize(const cv::Mat const *container_) 
@@ -85,7 +85,7 @@ bool FlannNeighborhoodGraph::initialize(const cv::Mat const *container_)
 	return neighbor_number > 0;
 }
 
-const std::vector<size_t> &FlannNeighborhoodGraph::getNeighbors(size_t point_idx_) const
+inline const std::vector<size_t> &FlannNeighborhoodGraph::getNeighbors(size_t point_idx_) const
 {
 	return neighbours[point_idx_];
 }

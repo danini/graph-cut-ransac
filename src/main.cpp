@@ -1,6 +1,5 @@
-
-
 #include <vector>
+#include <thread>
 #include "utils.h"
 #include <opencv2/core/core.hpp>
 #include <Eigen/Eigen>
@@ -10,6 +9,7 @@
 #include "grid_neighborhood_graph.h"
 #include "uniform_sampler.h"
 #include "prosac_sampler.h"
+#include "progressive_napsac_sampler.h"
 #include "fundamental_estimator.h"
 #include "homography_estimator.h"
 #include "essential_estimator.h"
@@ -27,35 +27,38 @@ enum Problem {
 	HomographyFitting
 };
 
-void testEssentialMatrixFitting(std::string source_path_,
-	std::string destination_path_,
-	std::string source_intrinsics_path_,
-	std::string destination_intrinsics_path_,
-	std::string out_correspondence_path_,
-	std::string in_correspondence_path_,
-	std::string output_match_image_path_,
+void testEssentialMatrixFitting(
+	const std::string &source_path_,
+	const std::string &destination_path_,
+	const std::string &source_intrinsics_path_,
+	const std::string &destination_intrinsics_path_,
+	const std::string &out_correspondence_path_,
+	const std::string &in_correspondence_path_,
+	const std::string &output_match_image_path_,
 	const double confidence_,
 	const double inlier_outlier_threshold_,
 	const double spatial_coherence_weight_,
 	const size_t cell_number_in_neighborhood_graph_,
 	const int fps_);
 
-void testFundamentalMatrixFitting(std::string source_path_,
-	std::string destination_path_,
-	std::string out_correspondence_path_,
-	std::string in_correspondence_path_,
-	std::string output_match_image_path_,
+void testFundamentalMatrixFitting(
+	const std::string &source_path_,
+	const std::string &destination_path_,
+	const std::string &out_correspondence_path_,
+	const std::string &in_correspondence_path_,
+	const std::string &output_match_image_path_,
 	const double confidence_,
 	const double inlier_outlier_threshold_,
 	const double spatial_coherence_weight_,
 	const size_t cell_number_in_neighborhood_graph_,
 	const int fps_);
 
-void testHomographyFitting(std::string source_path_,
-	std::string destination_path_,
-	std::string out_correspondence_path_,
-	std::string in_correspondence_path_,
-	std::string output_match_image_path_,
+void testHomographyFitting(
+	const std::string &source_path_,
+	const std::string &destination_path_,
+	const std::string &out_correspondence_path_,
+	const std::string &in_correspondence_path_,
+	const std::string &output_match_image_path_,
 	const double confidence_,
 	const double inlier_outlier_threshold_,
 	const double spatial_coherence_weight_,
@@ -334,11 +337,11 @@ bool initializeScene(const std::string &scene_name_,
 }
 
 void testHomographyFitting(
-	std::string source_path_,
-	std::string destination_path_,
-	std::string out_correspondence_path_,
-	std::string in_correspondence_path_,
-	std::string output_match_image_path_,
+	const std::string &source_path_,
+	const std::string &destination_path_,
+	const std::string &out_correspondence_path_,
+	const std::string &in_correspondence_path_,
+	const std::string &output_match_image_path_,
 	const double confidence_,
 	const double inlier_outlier_threshold_,
 	const double spatial_coherence_weight_,
@@ -349,14 +352,14 @@ void testHomographyFitting(
 	cv::Mat source_image = cv::imread(source_path_); // The source image
 	cv::Mat destination_image = cv::imread(destination_path_); // The destination image
 
-	if (source_image.empty()) // Check if the source image is loaded succesfully
+	if (source_image.empty()) // Check if the source image is loaded successfully
 	{
 		printf("An error occured while loading image '%s'\n",
 			source_path_.c_str());
 		return;
 	}
 
-	if (destination_image.empty()) // Check if the destination image is loaded succesfully
+	if (destination_image.empty()) // Check if the destination image is loaded successfully
 	{
 		printf("An error occured while loading image '%s'\n",
 			destination_path_.c_str());
@@ -385,6 +388,13 @@ void testHomographyFitting(
 	std::chrono::duration<double> elapsed_seconds = end - start; // The elapsed time in seconds
 	printf("Neighborhood calculation time = %f secs\n", elapsed_seconds.count());
 
+	// Checking if the neighborhood graph is initialized successfully.
+	if (!neighborhood.isInitialized())
+	{
+		fprintf(stderr, "The neighborhood graph is not initialized successfully.\n");
+		return;
+	}
+
 	// Apply Graph-cut RANSAC
 	RobustHomographyEstimator estimator;
 	std::vector<int> inliers;
@@ -395,35 +405,46 @@ void testHomographyFitting(
 	gcransac.settings.threshold = inlier_outlier_threshold_; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
 	gcransac.settings.confidence = confidence_; // The required confidence in the results
-	gcransac.settings.max_local_optimization_number = 20; // The maximm number of local optimizations
+	gcransac.settings.max_local_optimization_number = 50; // The maximm number of local optimizations
 	gcransac.settings.max_iteration_number = 5000; // The maximum number of iterations
 	gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
 	gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
-	gcransac.settings.core_number = 4; // The number of parallel processes
+	gcransac.settings.core_number = std::thread::hardware_concurrency(); // The number of parallel processes
 
 	// Initialize the samplers
-	theia::ProsacSampler main_sampler(&points, 
-		estimator.sampleSize()); // The main sampler is used inside the local optimization
+	// The main sampler is used inside the local optimization
+	ProgressiveNapsacSampler main_sampler(&points,
+		{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
+							// (source_image_width / 16) * (source_image_height / 16)  * (destination_image_width / 16)  (destination_image_height / 16), etc.
+		estimator.sampleSize(), // The size of a minimal sample
+		static_cast<double>(source_image.cols), // The width of the source image
+		static_cast<double>(source_image.rows), // The height of the source image
+		static_cast<double>(destination_image.cols), // The width of the destination image
+		static_cast<double>(destination_image.rows));  // The height of the destination image
+
 	UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
 
+	// Checking if the samplers are initialized successfully.
+	if (!main_sampler.isInitialized() ||
+		!local_optimization_sampler.isInitialized())
+	{
+		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
+		return;
+	}
+
 	// Start GC-RANSAC
-	start = std::chrono::system_clock::now();
 	gcransac.run(points,
 		estimator,
 		&main_sampler,
 		&local_optimization_sampler,
 		&neighborhood,
 		model);
-	end = std::chrono::system_clock::now();
-
-	// Calculate the processing time
-	elapsed_seconds = end - start;
 
 	// Get the statistics of the results
 	const RANSACStatistics &statistics = gcransac.getRansacStatistics();
 
 	// Write statistics
-	printf("Elapsed time = %f secs\n", elapsed_seconds.count());
+	printf("Elapsed time = %f secs\n", statistics.processing_time);
 	printf("Inlier number = %d\n", static_cast<int>(statistics.inliers.size()));
 	printf("Applied number of local optimizations = %d\n", statistics.local_optimization_number);
 	printf("Applied number of graph-cuts = %d\n", statistics.graph_cut_number);
@@ -449,15 +470,15 @@ void testHomographyFitting(
 		"Inlier correspondences",
 		1600,
 		1200,
-		true);	
+		true);
 }
 
 void testFundamentalMatrixFitting(
-	std::string source_path_,
-	std::string destination_path_,
-	std::string out_correspondence_path_,
-	std::string in_correspondence_path_,
-	std::string output_match_image_path_,
+	const std::string &source_path_,
+	const std::string &destination_path_,
+	const std::string &out_correspondence_path_,
+	const std::string &in_correspondence_path_,
+	const std::string &output_match_image_path_,
 	const double confidence_,
 	const double inlier_outlier_threshold_,
 	const double spatial_coherence_weight_,
@@ -468,14 +489,14 @@ void testFundamentalMatrixFitting(
 	cv::Mat source_image = cv::imread(source_path_);
 	cv::Mat destination_image = cv::imread(destination_path_);
 
-	if (source_image.empty()) // Check if the source image is loaded succesfully
+	if (source_image.empty()) // Check if the source image is loaded successfully
 	{
 		printf("An error occured while loading image '%s'\n",
 			source_path_.c_str());
 		return;
 	}
 
-	if (destination_image.empty()) // Check if the destination image is loaded succesfully
+	if (destination_image.empty()) // Check if the destination image is loaded successfully
 	{
 		printf("An error occured while loading image '%s'\n",
 			destination_path_.c_str());
@@ -504,45 +525,62 @@ void testFundamentalMatrixFitting(
 	std::chrono::duration<double> elapsed_seconds = end - start; // The elapsed time in seconds
 	printf("Neighborhood calculation time = %f secs\n", elapsed_seconds.count());
 
+	// Checking if the neighborhood graph is initialized successfully.
+	if (!neighborhood.isInitialized())
+	{
+		fprintf(stderr, "The neighborhood graph is not initialized successfully.\n");
+		return;
+	}
+
 	// Apply Graph-cut RANSAC
 	FundamentalMatrixEstimator estimator;
 	std::vector<int> inliers;
 	FundamentalMatrix model;
 
 	// Initialize the samplers
-	theia::ProsacSampler main_sampler(&points,
-		estimator.sampleSize()); // The main sampler is used inside the local optimization
+	// The main sampler is used inside the local optimization
+	ProgressiveNapsacSampler main_sampler(&points,
+		{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
+							// (source_image_width / 16) * (source_image_height / 16)  * (destination_image_width / 16)  (destination_image_height / 16), etc.
+		estimator.sampleSize(), // The size of a minimal sample
+		static_cast<double>(source_image.cols), // The width of the source image
+		static_cast<double>(source_image.rows), // The height of the source image
+		static_cast<double>(destination_image.cols), // The width of the destination image
+		static_cast<double>(destination_image.rows));  // The height of the destination image
 	UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
+
+	// Checking if the samplers are initialized successfully.
+	if (!main_sampler.isInitialized() ||
+		!local_optimization_sampler.isInitialized())
+	{
+		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
+		return;
+	}
 
 	GCRANSAC<FundamentalMatrixEstimator, GridNeighborhoodGraph> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
 	gcransac.settings.threshold = inlier_outlier_threshold_; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
 	gcransac.settings.confidence = confidence_; // The required confidence in the results
-	gcransac.settings.max_local_optimization_number = 20; // The maximm number of local optimizations
+	gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
 	gcransac.settings.max_iteration_number = 5000; // The maximum number of iterations
 	gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
 	gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
-	gcransac.settings.core_number = 4; // The number of parallel processes
+	gcransac.settings.core_number = std::thread::hardware_concurrency(); // The number of parallel processes
 
 	// Start GC-RANSAC
-	start = std::chrono::system_clock::now();
 	gcransac.run(points,
 		estimator,
 		&main_sampler,
 		&local_optimization_sampler,
 		&neighborhood,
 		model);
-	end = std::chrono::system_clock::now();
-
-	// Calculate the processing time
-	elapsed_seconds = end - start;
 
 	// Get the statistics of the results
 	const RANSACStatistics &statistics = gcransac.getRansacStatistics();
 
 	// Write statistics
-	printf("Elapsed time = %f secs\n", elapsed_seconds.count());
+	printf("Elapsed time = %f secs\n", statistics.processing_time);
 	printf("Inlier number = %d\n", static_cast<int>(statistics.inliers.size()));
 	printf("Applied number of local optimizations = %d\n", statistics.local_optimization_number);
 	printf("Applied number of graph-cuts = %d\n", statistics.graph_cut_number);
@@ -572,13 +610,13 @@ void testFundamentalMatrixFitting(
 }
 
 void testEssentialMatrixFitting(
-	std::string source_path_,
-	std::string destination_path_,
-	std::string source_intrinsics_path_,
-	std::string destination_intrinsics_path_,
-	std::string out_correspondence_path_,
-	std::string in_correspondence_path_,
-	std::string output_match_image_path_,
+	const std::string &source_path_,
+	const std::string &destination_path_,
+	const std::string &source_intrinsics_path_,
+	const std::string &destination_intrinsics_path_,
+	const std::string &out_correspondence_path_,
+	const std::string &in_correspondence_path_,
+	const std::string &output_match_image_path_,
 	const double confidence_,
 	const double inlier_outlier_threshold_,
 	const double spatial_coherence_weight_,
@@ -589,14 +627,14 @@ void testEssentialMatrixFitting(
 	cv::Mat source_image = cv::imread(source_path_);
 	cv::Mat destination_image = cv::imread(destination_path_);
 
-	if (source_image.empty()) // Check if the source image is loaded succesfully
+	if (source_image.empty()) // Check if the source image is loaded successfully
 	{
 		printf("An error occured while loading image '%s'\n",
 			source_path_.c_str());
 		return;
 	}
 
-	if (destination_image.empty()) // Check if the destination image is loaded succesfully
+	if (destination_image.empty()) // Check if the destination image is loaded successfully
 	{
 		printf("An error occured while loading image '%s'\n",
 			destination_path_.c_str());
@@ -652,6 +690,13 @@ void testEssentialMatrixFitting(
 	std::chrono::duration<double> elapsed_seconds = end - start; // The elapsed time in seconds
 	printf("Neighborhood calculation time = %f secs\n", elapsed_seconds.count());
 
+	// Checking if the neighborhood graph is initialized successfully.
+	if (!neighborhood.isInitialized())
+	{
+		fprintf(stderr, "The neighborhood graph is not initialized successfully.\n");
+		return;
+	}
+
 	// Apply Graph-cut RANSAC
 	EssentialMatrixEstimator estimator(intrinsics_src,
 		intrinsics_dst);
@@ -659,39 +704,49 @@ void testEssentialMatrixFitting(
 	EssentialMatrix model;
 
 	// Initialize the samplers
-	theia::ProsacSampler main_sampler(&points,
-		estimator.sampleSize()); // The main sampler is used inside the local optimization
+	// The main sampler is used inside the local optimization
+	ProgressiveNapsacSampler main_sampler(&points,
+		{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
+							// (source_image_width / 16) * (source_image_height / 16)  * (destination_image_width / 16)  (destination_image_height / 16), etc.
+		estimator.sampleSize(), // The size of a minimal sample
+		static_cast<double>(source_image.cols), // The width of the source image
+		static_cast<double>(source_image.rows), // The height of the source image
+		static_cast<double>(destination_image.cols), // The width of the destination image
+		static_cast<double>(destination_image.rows));  // The height of the destination image
 	UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
+
+	// Checking if the samplers are initialized successfully.
+	if (!main_sampler.isInitialized() ||
+		!local_optimization_sampler.isInitialized())
+	{
+		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
+		return;
+	}
 	
 	GCRANSAC<EssentialMatrixEstimator, GridNeighborhoodGraph> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
 	gcransac.settings.threshold = inlier_outlier_threshold_; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
 	gcransac.settings.confidence = confidence_; // The required confidence in the results
-	gcransac.settings.max_local_optimization_number = 20; // The maximm number of local optimizations
+	gcransac.settings.max_local_optimization_number = 50; // The maximm number of local optimizations
 	gcransac.settings.max_iteration_number = 5000; // The maximum number of iterations
 	gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
 	gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
-	gcransac.settings.core_number = 4; // The number of parallel processes
+	gcransac.settings.core_number = std::thread::hardware_concurrency(); // The number of parallel processes
 
 	// Start GC-RANSAC
-	start = std::chrono::system_clock::now();
 	gcransac.run(normalized_points,
 		estimator,
 		&main_sampler,
 		&local_optimization_sampler,
 		&neighborhood,
 		model);
-	end = std::chrono::system_clock::now();
-
-	// Calculate the processing time
-	elapsed_seconds = end - start;
 
 	// Get the statistics of the results
 	const RANSACStatistics &statistics = gcransac.getRansacStatistics();
 
-	// Write statistics
-	printf("Elapsed time = %f secs\n", elapsed_seconds.count());
+	// Print the statistics
+	printf("Elapsed time = %f secs\n", statistics.processing_time);
 	printf("Inlier number = %d\n", static_cast<int>(statistics.inliers.size()));
 	printf("Applied number of local optimizations = %d\n", statistics.local_optimization_number);
 	printf("Applied number of graph-cuts = %d\n", statistics.graph_cut_number);

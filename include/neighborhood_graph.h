@@ -31,7 +31,7 @@ public:
 	virtual bool initialize(const _DataContainer const *container_) = 0;
 
 	// Returns the neighbors of the current point in the graph.
-	virtual const std::vector<size_t> &getNeighbors(size_t point_idx_) const = 0;
+	inline virtual const std::vector<size_t> &getNeighbors(size_t point_idx_) const = 0;
 	
 	// Returns the number of edges in the neighborhood graph.
 	size_t getNeighborNumber() const { return neighbor_number; }
