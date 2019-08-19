@@ -54,7 +54,6 @@ protected:
 	std::vector<std::vector<cv::DMatch>> neighbours; // The neighborhood structure
 	RANSACStatistics statistics; // RANSAC statistics
 	int point_number; // The point number
-	double sqr_threshold_2; // 2 * threshold_^2
 	double truncated_threshold; // 3 / 2 * threshold_
 	double squared_truncated_threshold; // 9 / 4 * threshold_^2
 	int step_size; // Step size per processes
@@ -172,7 +171,6 @@ void GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::run(
 	point_number = points_.rows; // Number of points in the dataset
 	truncated_threshold = 3.0 / 2.0 * settings.threshold; // The truncated least-squares threshold
 	squared_truncated_threshold = truncated_threshold * truncated_threshold; // The squared least-squares threshold
-	sqr_threshold_2 = 2.0 * settings.threshold * settings.threshold; // Two times squared least-squares threshold
 
 	// Initialize the pool for sampling
 	std::vector<size_t> pool(point_number);
@@ -633,7 +631,7 @@ Score GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::getScore(
 		const size_t end_idx = MIN(points_.rows - 1, (process + 1) * step_size); // The last point's index
 		
 		double squared_residual; // The point-to-model residual
-		// Iterate through all points, calculate the residuals and store the points as inliers if needed.
+		// Iterate through all points, calculate the squared_residuals and store the points as inliers if needed.
 		for (auto point_idx = start_idx; point_idx < end_idx; ++point_idx)
 		{
 			// Calculate the point-to-model residual
@@ -671,7 +669,7 @@ Score GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::getScore(
 	}
 #else // If there is no parallel processing
 	double squared_residual; // The point-to-model residual
-	// Iterate through all points, calculate the residuals and store the points as inliers if needed.
+	// Iterate through all points, calculate the squared_residuals and store the points as inliers if needed.
 	for (auto point_idx = 0; point_idx < point_number; ++point_idx)
 	{
 		// Calculate the point-to-model residual
@@ -729,12 +727,14 @@ void GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::labeling(
 		tmp_energy;
 
 	// Estimate the vertex capacities
-	for (auto i = 0; i < points_.rows; ++i)
+	std::vector<double> squared_residuals(points_.rows);
+	for (size_t i = 0; i < points_.rows; ++i)
 	{
 		tmp_squared_distance = estimator_.squaredResidual(points_.row(i), 
 			model_.descriptor);
-		tmp_energy = 1.0 - tmp_squared_distance / sqr_threshold_2;
+		tmp_energy = 1.0 - tmp_squared_distance / squared_truncated_threshold;
 		problem_graph->add_term1(i, tmp_energy, 0);
+		squared_residuals[i] = tmp_squared_distance;
 	}
 
 	if (lambda_ > 0)
@@ -746,20 +746,17 @@ void GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::labeling(
 		// Iterate through all points and set their edges
 		for (auto point_idx = 0; point_idx < points_.rows; ++point_idx)
 		{
-			squared_distance_1 = estimator_.squaredResidual(points_.row(point_idx), 
-				model_.descriptor);
+			squared_distance_1 = squared_residuals[point_idx];
 			energy1 = MAX(0, 
 				1.0 - squared_distance_1 / squared_truncated_threshold); // Truncated quadratic cost
 
 			// Iterate through  all neighbors
 			for (size_t actual_neighbor_idx : neighborhood_graph->getNeighbors(point_idx))
-			{
-				
+			{				
 				if (actual_neighbor_idx == point_idx)
 					continue;
 
-				squared_distance_2 = estimator_.squaredResidual(points_.row(actual_neighbor_idx), 
-					model_.descriptor);
+				squared_distance_2 = squared_residuals[actual_neighbor_idx];
 				energy2 = MAX(0, 
 					1.0 - squared_distance_2 / squared_truncated_threshold); // Truncated quadratic cost
 				energy_sum = energy1 + energy2;

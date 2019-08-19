@@ -98,7 +98,7 @@ namespace theia
 		{
 			std::vector<double> residuals(data.size());
 #ifdef USE_OPENMP
-#pragma omp parallel for
+#pragma omp for
 #endif
 			for (size_t i = 0; i < data.size(); i++) 
 			{
@@ -116,18 +116,12 @@ namespace theia
 			std::vector<int> inliers;
 			inliers.reserve(data.size());
 
-			vector<bool> isInlier(data.size(), false); 
-#ifdef _WIN32
-			concurrency::parallel_for(0, (int)data.size(), [&](int i)
-#else
+			std::vector<bool> isInlier(data.size(), false);
+#ifdef USE_OPENMP
+#pragma omp for
+#endif
 			for (int i = 0; i < data.size(); i++)
-#endif
-			{
 				isInlier[i] = residual(data[i], model) < error_threshold;
-			}
-#ifdef _WIN32
-			);
-#endif
 
 			for (int i = 0; i < data.size(); ++i)
 				if (isInlier[i])

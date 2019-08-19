@@ -162,7 +162,7 @@ public:
 	{
 		size_t inlier_number = 0; // Number of inlier if using symmetric epipolar distance
 		const Eigen::Matrix3d &descriptor = model.descriptor; // The decriptor of the current model
-		static const size_t M = sampleSize(); // Size of a minimal sample
+		const size_t M = sampleSize(); // Size of a minimal sample
 
 		// Iterate through the inliers determined by Sampson distance
 		for (const auto &idx : inliers)
@@ -210,8 +210,28 @@ public:
 		// Denormalizing the estimated fundamental matrices
 		const Eigen::Matrix3d T2_transpose = T2.transpose();
 		for (auto &model : *models)
+		{
 			model.descriptor = T2_transpose * model.descriptor * T1;
+			enforceRankTwoConstraint(model);
+
+			model.descriptor = model.descriptor / model.descriptor.norm();
+			if (model.descriptor(2, 2) < 0)
+				model.descriptor = -model.descriptor;
+		}
 		return true;
+	}
+
+	inline void enforceRankTwoConstraint(Model &model_) const
+	{
+		Eigen::JacobiSVD<Eigen::MatrixXd> svd(
+			model_.descriptor,
+			Eigen::ComputeThinU | Eigen::ComputeThinV);
+
+		Eigen::Matrix3d diagonal = svd.singularValues().asDiagonal();
+		diagonal(2, 2) = 0.0;
+
+		model_.descriptor = 
+			svd.matrixU() * diagonal * svd.matrixV().transpose();
 	}
 
 	inline bool normalizePoints(
@@ -228,12 +248,13 @@ public:
 
 		double mass_point_src[2], // Mass point in the first image
 			mass_point_dst[2]; // Mass point in the second image
+
 		// Initializing the mass point coordinates
 		mass_point_src[0] =
 			mass_point_src[1] =
 			mass_point_dst[0] =
 			mass_point_dst[1] =
-			0.0f;
+			0.0;
 
 		// Calculating the mass points in both images
 		for (size_t i = 0; i < sample_number; ++i)

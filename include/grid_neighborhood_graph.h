@@ -2,6 +2,7 @@
 
 #include "neighborhood_graph.h"
 #include <vector>
+#include <unordered_map>
 #include <opencv2/core/core.hpp>
 #include <Eigen/Eigen>
 #include "estimator.h"
