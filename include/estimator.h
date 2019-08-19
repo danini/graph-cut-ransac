@@ -100,7 +100,7 @@ namespace theia
 #ifdef USE_OPENMP
 #pragma omp for
 #endif
-			for (size_t i = 0; i < data.size(); i++) 
+			for (auto i = 0; i < data.size(); i++) 
 			{
 				residuals[i] = residual(data[i], model);
 			}
