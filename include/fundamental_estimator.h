@@ -55,6 +55,13 @@ public:
 	inline double squaredSampsonDistance(const cv::Mat& point,
 		const Eigen::Matrix3d& descriptor) const
 	{
+		const double residual = sampsonDistance(point, descriptor);
+		return residual * residual;
+	}
+
+	inline double sampsonDistance(const cv::Mat& point,
+		const Eigen::Matrix3d& descriptor) const
+	{
 		const double* s = reinterpret_cast<double *>(point.data);
 		const double x1 = *s;
 		const double y1 = *(s + 1);
@@ -81,12 +88,6 @@ public:
 		return r * r / (rxc * rxc + ryc * ryc + rx * rx + ry * ry);
 	}
 
-	inline double sampsonDistance(const cv::Mat& point,
-		const Eigen::Matrix3d& descriptor) const
-	{
-		return sqrt(squaredSampsonDistance(point, descriptor));
-	}
-
 	inline double symmetricEpipolarDistance(const cv::Mat& point,
 		const Eigen::MatrixXd& descriptor) const
 	{
@@ -106,24 +107,16 @@ public:
 		const double f32 = descriptor(2, 1);
 		const double f33 = descriptor(2, 2);
 
-		const double l1 = f11 * x2 + f21 * y2 + f31;
-		const double l2 = f12 * x2 + f22 * y2 + f32;
-		const double l3 = f13 * x2 + f23 * y2 + f33;
+		const double rxc = f11 * x2 + f21 * y2 + f31;
+		const double ryc = f12 * x2 + f22 * y2 + f32;
+		const double rwc = f13 * x2 + f23 * y2 + f33;
+		const double r = (x1 * rxc + y1 * ryc + rwc);
+		const double rx = f11 * x1 + f12 * y1 + f13;
+		const double ry = f21 * x1 + f22 * y1 + f23;
+		const double a = rxc * rxc + ryc * ryc;
+		const double b = rx * rx + ry * ry;
 
-		const double t1 = f11 * x1 + f12 * y1 + f13;
-		const double t2 = f21 * x1 + f22 * y1 + f23;
-		const double t3 = f31 * x1 + f32 * y1 + f33;
-
-		const double a1 = l1 * x1 + l2 * y1 + l3;
-		const double a2 = sqrt(l1 * l1 + l2 * l2);
-
-		const double b1 = t1 * x2 + t2 * y1 + t3;
-		const double b2 = sqrt(t1 * t1 + t2 * t2);
-
-		const double d1 = a1 / a2;
-		const double d2 = b1 / b2;
-
-		return abs(0.5 * (d1 + d2));
+		return r * r * (a + b) / (a * b);
 	}
 
 	inline double squaredResidual(const cv::Mat& point,
