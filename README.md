@@ -23,4 +23,4 @@ Next to the executable, copy the `data` folder and, also, create a `results` fol
 
 # Acknowledgements
 
-When using the algorithm, please cite `Barath, Daniel, and Jiří Matas. "Graph-cut RANSAC." Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. 2018`.
+When using the algorithm, please cite `Barath, Daniel, and Matas, Jiří. "Graph-cut RANSAC." Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. 2018`.
