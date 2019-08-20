@@ -623,7 +623,7 @@ Score GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::getScore(
 	// Scores for the parallel threads
 	std::vector<Score> process_scores(settings.core_number);
 
-#pragma omp parallel for schedule(dynamic)
+#pragma omp for
 	for (auto process = 0; process < settings.core_number; process++) {
 		if (store_inliers_) // If the inlier should be stored, occupy the memory for the inliers
 			process_inliers[process].reserve(step_size);

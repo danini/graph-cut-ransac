@@ -93,7 +93,7 @@ int main(int argc, const char* argv[])
 	const double confidence = 0.99; // The RANSAC confidence value
 	const int fps = -1; // The required FPS limit. If it is set to -1, the algorithm will not be interrupted before finishing.
 	const double inlier_outlier_threshold_essential_matrix = 0.001; // The used inlier-outlier threshold in GC-RANSAC for essential matrix estimation.
-	const double inlier_outlier_threshold_fundamental_matrix = 0.0003; // The used adaptive inlier-outlier threshold in GC-RANSAC for fundamental matrix estimation.
+	const double inlier_outlier_threshold_fundamental_matrix = 0.0005; // The used adaptive inlier-outlier threshold in GC-RANSAC for fundamental matrix estimation.
 	const double inlier_outlier_threshold_homography = 2.00; // The used inlier-outlier threshold in GC-RANSAC for homography estimation.
 	const double spatial_coherence_weight = 0.14; // The weight of the spatial coherence term in the graph-cut energy minimization.
 	const size_t cell_number_in_neighborhood_graph = 8; // The number of cells along each axis in the neighborhood graph.
@@ -564,9 +564,7 @@ void testFundamentalMatrixFitting(
 		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
 		return;
 	}
-
-	//inlier_outlier_threshold_
-
+	
 	GCRANSAC<FundamentalMatrixEstimator, GridNeighborhoodGraph> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
 	gcransac.settings.threshold = inlier_outlier_threshold_ * max_image_diagonal; // The inlier-outlier threshold
@@ -738,7 +736,7 @@ void testEssentialMatrixFitting(
 	gcransac.settings.threshold = inlier_outlier_threshold_; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
 	gcransac.settings.confidence = confidence_; // The required confidence in the results
-	gcransac.settings.max_local_optimization_number = 50; // The maximm number of local optimizations
+	gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
 	gcransac.settings.max_iteration_number = 5000; // The maximum number of iterations
 	gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
 	gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
