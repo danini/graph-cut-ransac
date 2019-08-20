@@ -1,29 +1,30 @@
+#pragma once
+
+#include <math.h>
+#include <random>
+#include <vector>
+
+#include <unsupported/Eigen/Polynomials>
+#include <Eigen/Eigen>
+
 #include "estimator.h"
 #include "model.h"
 
-#include <opencv2/calib3d/calib3d.hpp>
-#include <Eigen/Eigen>
-
-class Homography : public Model
-{
-public:
-	Homography() : 
-		Model(Eigen::MatrixXd(3,3))
-	{}
-
-	Homography(const Homography& other)
-	{
-		descriptor = other.descriptor;
-	}
-};
+#include "solver_homography_four_point.h"
 
 // This is the estimator class for estimating a homography matrix between two images. A model estimation method and error calculation method are implemented
+template<class _MinimalSolverEngine, class _NonMinimalSolverEngine>
 class RobustHomographyEstimator : public theia::Estimator < cv::Mat, Model >
 {
 protected:
+	const std::shared_ptr<const _MinimalSolverEngine> minimal_solver;
+	const std::shared_ptr<const _NonMinimalSolverEngine> non_minimal_solver;
 
 public:
-	RobustHomographyEstimator() {}
+	RobustHomographyEstimator() :
+		minimal_solver(std::make_shared<const _MinimalSolverEngine>()),
+		non_minimal_solver(std::make_shared<const _NonMinimalSolverEngine>())
+	{}
 	~RobustHomographyEstimator() {}
 
 	inline size_t sampleSize() const {
@@ -40,11 +41,10 @@ public:
 		std::vector<Model>* models) const
 	{
 		constexpr size_t M = 4;
-		solverFourPoint(data,
+		return minimal_solver->estimateModel(data,
 			sample,
 			M,
-			models);
-		return true;
+			*models);
 	}
 
 	inline bool estimateModelNonminimal(const cv::Mat& data,
@@ -69,10 +69,11 @@ public:
 			return false;
 
 		// The four point fundamental matrix fitting algorithm
-		solverFourPoint(normalized_points,
+		if (!non_minimal_solver->estimateModel(normalized_points,
 			nullptr,
 			sample_number,
-			models);
+			*models))
+			return false;
 
 		// Denormalizing the estimated fundamental matrices
 		const Eigen::Matrix3d T2_inverse = T2.inverse();
@@ -215,65 +216,4 @@ public:
 			0, 0, 1;
 		return true;
 	}
-
-	inline bool solverFourPoint(
-		const cv::Mat& data_,
-		const size_t *sample_,
-		const size_t sample_number_,
-		std::vector<Model>* models_) const
-	{
-		constexpr size_t equation_number = 2;
-		const size_t row_number = equation_number * sample_number_;
-		Eigen::MatrixXd coefficients(row_number, 8);
-		Eigen::MatrixXd inhomogeneous(row_number, 1);
-
-		constexpr size_t columns = 4;
-		const double *data_ptr = reinterpret_cast<double *>(data_.data);
-		size_t row_idx = 0;
-		
-		for (size_t i = 0; i < sample_number_; ++i)
-		{
-			const double *point_ptr = sample_ == nullptr ?
-				data_ptr + i * columns :
-				data_ptr + sample_[i] * columns;
-
-			const double x1 = point_ptr[0],
-				y1 = point_ptr[1],
-				x2 = point_ptr[2],
-				y2 = point_ptr[3];
-			
-			coefficients(row_idx, 0) = -x1;
-			coefficients(row_idx, 1) = -y1;
-			coefficients(row_idx, 2) = -1;
-			coefficients(row_idx, 3) = 0;
-			coefficients(row_idx, 4) = 0;
-			coefficients(row_idx, 5) = 0;
-			coefficients(row_idx, 6) = x2 * x1;
-			coefficients(row_idx, 7) = x2 * y1;
-			inhomogeneous(row_idx) = -x2;
-			++row_idx;
-
-			coefficients(row_idx, 0) = 0;
-			coefficients(row_idx, 1) = 0;
-			coefficients(row_idx, 2) = 0;
-			coefficients(row_idx, 3) = -x1;
-			coefficients(row_idx, 4) = -y1;
-			coefficients(row_idx, 5) = -1;
-			coefficients(row_idx, 6) = y2 * x1;
-			coefficients(row_idx, 7) = y2 * y1;
-			inhomogeneous(row_idx) = -y2;
-			++row_idx;
-		}
-
-		Eigen::Matrix<double, 8, 1> h = 
-			coefficients.colPivHouseholderQr().solve(inhomogeneous);
-		
-		Homography model;
-		model.descriptor << h(0), h(1), h(2), 
-			h(3), h(4), h(5),
-			h(6), h(7), 1.0;
-		models_->emplace_back(model);
-		return true;
-	}
-
 };

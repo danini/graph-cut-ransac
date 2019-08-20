@@ -1,5 +1,6 @@
 #pragma once
 
+#include <opencv2/core/core.hpp>
 #include <vector>
 #include <Eigen/Eigen>
 #include "estimator.h"
@@ -31,5 +32,42 @@ public:
 	Model() : finalizable(true)
 	{
 
+	}
+};
+
+class FundamentalMatrix : public Model
+{
+public:
+	FundamentalMatrix() :
+		Model(Eigen::MatrixXd(3, 3))
+	{}
+	FundamentalMatrix(const FundamentalMatrix& other)
+	{
+		descriptor = other.descriptor;
+	}
+};
+
+class EssentialMatrix : public Model
+{
+public:
+	EssentialMatrix() :
+		Model(Eigen::MatrixXd(3, 3))
+	{}
+	EssentialMatrix(const EssentialMatrix& other)
+	{
+		descriptor = other.descriptor;
+	}
+};
+
+class Homography : public Model
+{
+public:
+	Homography() :
+		Model(Eigen::MatrixXd(3, 3))
+	{}
+
+	Homography(const Homography& other)
+	{
+		descriptor = other.descriptor;
 	}
 };

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <opencv2\highgui\highgui.hpp>
 #include "GCoptimization.h"
 #include "sampler.h"
 #include "model.h"
@@ -22,7 +21,7 @@ public:
 
 	// The main method applying Graph-Cut RANSAC to the input data points
 	void run(const cv::Mat &points_,  // Data points
-		_ModelEstimator estimator_, // The model estimator
+		const _ModelEstimator &estimator_, // The model estimator
 		theia::Sampler<cv::Mat, size_t> *main_sampler_, // The main sampler is used outside the local optimization
 		theia::Sampler<cv::Mat, size_t> *local_optimization_sampler_, // The local optimization sampler is used inside the local optimization
 		const _NeighborhoodGraph *neighborhood_graph_, // The initialized neighborhood graph
@@ -33,7 +32,7 @@ public:
 	const RANSACStatistics &getRansacStatistics() { return statistics; }
 
 	// Return the score of a model_ w.r.t. the data points_ and the threshold_
-	Score getScore(const cv::Mat &points_, // The data points_
+	inline Score getScore(const cv::Mat &points_, // The data points_
 		const Model &model_, // The current model_
 		const _ModelEstimator &estimator_, // The model_ estimator_
 		const double threshold_, // The threshold_ for model_ estimation
@@ -64,7 +63,7 @@ protected:
 
 	Graph<double, double, double> *graph; // The graph for graph-cut
 
-	bool sample(const std::vector<size_t> &pool_,
+	inline bool sample(const std::vector<size_t> &pool_,
 		size_t sample_number_,
 		size_t *sample_,
 		bool local_optimization = false);
@@ -125,7 +124,7 @@ int GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::getIterationNumber(
 template <class _ModelEstimator, class _NeighborhoodGraph>
 void GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::run(
 	const cv::Mat &points_,  // Data points
-	_ModelEstimator estimator_, // The model estimator
+	const _ModelEstimator &estimator_, // The model estimator
 	theia::Sampler<cv::Mat, size_t> *main_sampler_, // The main sampler is used outside the local optimization
 	theia::Sampler<cv::Mat, size_t> *local_optimization_sampler_, // The local optimization sampler is used inside the local optimization
 	const _NeighborhoodGraph *neighborhood_graph_, // The initialized neighborhood graph
@@ -453,7 +452,7 @@ bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::iteratedLeastSquaresFitting(
 }
 
 template <class _ModelEstimator, class _NeighborhoodGraph>
-bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::sample(
+inline bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::sample(
 	const std::vector<size_t> &pool_, // The pool if indices determining which point can be selected
 	size_t sample_number_,
 	size_t *sample_,
@@ -601,7 +600,7 @@ bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::graphCutLocalOptimization(
 
 
 template <class _ModelEstimator, class _NeighborhoodGraph>
-Score GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::getScore(
+inline Score GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::getScore(
 	const cv::Mat &points_, // The input data points
 	const Model &model_, // The current model parameters
 	const _ModelEstimator &estimator_, // The model estimator

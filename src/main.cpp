@@ -14,13 +14,15 @@
 #include "homography_estimator.h"
 #include "essential_estimator.h"
 
+#include "solver_fundamental_matrix_seven_point.h"
+#include "solver_fundamental_matrix_eight_point.h"
+#include "solver_homography_four_point.h"
+#include "solver_essential_matrix_five_point_stewenius.h"
+
 #include <ctime>
 #include <direct.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-
-// TODO
-#include <ppl.h>
 
 struct stat info;
 
@@ -92,7 +94,7 @@ int main(int argc, const char* argv[])
 
 	const double confidence = 0.99; // The RANSAC confidence value
 	const int fps = -1; // The required FPS limit. If it is set to -1, the algorithm will not be interrupted before finishing.
-	const double inlier_outlier_threshold_essential_matrix = 0.001; // The used inlier-outlier threshold in GC-RANSAC for essential matrix estimation.
+	const double inlier_outlier_threshold_essential_matrix = 0.0003; // The used inlier-outlier threshold in GC-RANSAC for essential matrix estimation.
 	const double inlier_outlier_threshold_fundamental_matrix = 0.0005; // The used adaptive inlier-outlier threshold in GC-RANSAC for fundamental matrix estimation.
 	const double inlier_outlier_threshold_homography = 2.00; // The used inlier-outlier threshold in GC-RANSAC for homography estimation.
 	const double spatial_coherence_weight = 0.14; // The weight of the spatial coherence term in the graph-cut energy minimization.
@@ -399,11 +401,11 @@ void testHomographyFitting(
 	}
 
 	// Apply Graph-cut RANSAC
-	RobustHomographyEstimator estimator;
+	RobustHomographyEstimator<solver::HomographyFourPointSolver, solver::HomographyFourPointSolver> estimator;
 	std::vector<int> inliers;
 	Homography model;
 
-	GCRANSAC<RobustHomographyEstimator, GridNeighborhoodGraph> gcransac;
+	GCRANSAC<RobustHomographyEstimator<solver::HomographyFourPointSolver, solver::HomographyFourPointSolver>, GridNeighborhoodGraph> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
 	gcransac.settings.threshold = inlier_outlier_threshold_; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
@@ -539,9 +541,9 @@ void testFundamentalMatrixFitting(
 	// adaptively for each image pair. 
 	const double max_image_diagonal =
 		sqrt(pow(MAX(source_image.cols, destination_image.cols), 2) + pow(MAX(source_image.rows, destination_image.rows), 2));
-
+	
 	// Apply Graph-cut RANSAC
-	FundamentalMatrixEstimator estimator;
+	FundamentalMatrixEstimator<solver::FundamentalMatrixSevenPointSolver, solver::FundamentalMatrixEightPointSolver> estimator;
 	std::vector<int> inliers;
 	FundamentalMatrix model;
 
@@ -565,7 +567,7 @@ void testFundamentalMatrixFitting(
 		return;
 	}
 	
-	GCRANSAC<FundamentalMatrixEstimator, GridNeighborhoodGraph> gcransac;
+	GCRANSAC<FundamentalMatrixEstimator<solver::FundamentalMatrixSevenPointSolver, solver::FundamentalMatrixEightPointSolver>, GridNeighborhoodGraph> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
 	gcransac.settings.threshold = inlier_outlier_threshold_ * max_image_diagonal; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
@@ -706,7 +708,7 @@ void testEssentialMatrixFitting(
 	}
 
 	// Apply Graph-cut RANSAC
-	EssentialMatrixEstimator estimator(intrinsics_src,
+	EssentialMatrixEstimator<solver::EssentialMatrixFivePointSteweniusSolver, solver::EssentialMatrixFivePointSteweniusSolver> estimator(intrinsics_src,
 		intrinsics_dst);
 	std::vector<int> inliers;
 	EssentialMatrix model;
@@ -731,7 +733,7 @@ void testEssentialMatrixFitting(
 		return;
 	}
 	
-	GCRANSAC<EssentialMatrixEstimator, GridNeighborhoodGraph> gcransac;
+	GCRANSAC<EssentialMatrixEstimator<solver::EssentialMatrixFivePointSteweniusSolver, solver::EssentialMatrixFivePointSteweniusSolver>, GridNeighborhoodGraph> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
 	gcransac.settings.threshold = inlier_outlier_threshold_; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term

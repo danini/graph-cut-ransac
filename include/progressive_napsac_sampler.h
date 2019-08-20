@@ -73,7 +73,7 @@ public:
 
 	// Samples the input variable data and fills the std::vector subset with the
 	// samples.
-	bool sample(const std::vector<size_t> &pool_,
+	inline bool sample(const std::vector<size_t> &pool_,
 		size_t * const subset_,
 		size_t sample_size_);
 };

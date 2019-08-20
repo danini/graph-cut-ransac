@@ -1,6 +1,6 @@
-#include <iostream>
+#pragma once
+
 #include <math.h>
-#include <chrono>
 #include <random>
 #include <vector>
 
@@ -10,22 +10,14 @@
 #include "estimator.h"
 #include "model.h"
 
-class EssentialMatrix : public Model
-{
-public:
-	EssentialMatrix() :
-		Model(Eigen::MatrixXd(3, 3)) 
-	{}
-	EssentialMatrix(const EssentialMatrix& other)
-	{
-		descriptor = other.descriptor;
-	}
-};
-
 // This is the estimator class for estimating a homography matrix between two images. A model estimation method and error calculation method are implemented
+template<class _MinimalSolverEngine, class _NonMinimalSolverEngine>
 class EssentialMatrixEstimator : public theia::Estimator < cv::Mat, Model >
 {
 protected:
+	const std::shared_ptr<const _MinimalSolverEngine> minimal_solver;
+	const std::shared_ptr<const _NonMinimalSolverEngine> non_minimal_solver;
+
 	const Eigen::Matrix3d intrinsics_src,
 		intrinsics_dst,
 		intrinsics_src_inverse,
@@ -37,7 +29,9 @@ public:
 		intrinsics_src(intrinsics_src_),
 		intrinsics_dst(intrinsics_dst_),
 		intrinsics_src_inverse(intrinsics_src_.inverse()),
-		intrinsics_dst_inverse_transpose(intrinsics_dst_.inverse().transpose())
+		intrinsics_dst_inverse_transpose(intrinsics_dst_.inverse().transpose()),
+		minimal_solver(std::make_shared<const _MinimalSolverEngine>()),
+		non_minimal_solver(std::make_shared<const _NonMinimalSolverEngine>())
 	{}
 	~EssentialMatrixEstimator() {}
 
@@ -56,84 +50,87 @@ public:
 		// Model calculation by the seven point algorithm
 		constexpr size_t sample_size = 5;
 
-		return solverSteweniusFivePoint(data, 
-			sample, 
-			sample_size, 
-			models);
+		minimal_solver->estimateModel(data,
+			sample,
+			sample_size,
+			*models);
+
+		/* Orientation constraint check */
+		for (short model_idx = models->size() - 1; model_idx >= 0; --model_idx)
+			if (!all_ori_valid(models->at(model_idx).descriptor,
+				data,
+				sample,
+				sample_size))
+				models->erase(models->begin() + model_idx);
+
+		return models->size() > 0;
 	}
 
 	inline double squaredSampsonDistance(const cv::Mat& point,
 		const Eigen::Matrix3d& descriptor) const
 	{
-		const double* point_ptr = reinterpret_cast<double *>(point.data);
-		const double x1 = point_ptr[0];
-		const double y1 = point_ptr[1];
-		const double x2 = point_ptr[2];
-		const double y2 = point_ptr[3];
-
-		const double f11 = descriptor(0, 0);
-		const double f12 = descriptor(0, 1);
-		const double f13 = descriptor(0, 2);
-		const double f21 = descriptor(1, 0);
-		const double f22 = descriptor(1, 1);
-		const double f23 = descriptor(1, 2);
-		const double f31 = descriptor(2, 0);
-		const double f32 = descriptor(2, 1);
-		const double f33 = descriptor(2, 2);
-
-		double rxc = f11 * x2 + f21 * y2 + f31;
-		double ryc = f12 * x2 + f22 * y2 + f32;
-		double rwc = f13 * x2 + f23 * y2 + f33;
-		double r = (x1 * rxc + y1 * ryc + rwc);
-		double rx = f11 * x1 + f12 * y1 + f13;
-		double ry = f21 * x1 + f22 * y1 + f23;
-
-		return r * r / (rxc * rxc + ryc * ryc + rx * rx + ry * ry);
+		const double residual = sampsonDistance(point, descriptor);
+		return residual * residual;
 	}
 
 	inline double sampsonDistance(const cv::Mat& point,
 		const Eigen::Matrix3d& descriptor) const
 	{
-		return sqrt(squaredSampsonDistance(point, descriptor));
+		const double* s = reinterpret_cast<double *>(point.data);
+		const double x1 = *s;
+		const double y1 = *(s + 1);
+		const double x2 = *(s + 2);
+		const double y2 = *(s + 3);
+
+		const double e11 = descriptor(0, 0);
+		const double e12 = descriptor(0, 1);
+		const double e13 = descriptor(0, 2);
+		const double e21 = descriptor(1, 0);
+		const double e22 = descriptor(1, 1);
+		const double e23 = descriptor(1, 2);
+		const double e31 = descriptor(2, 0);
+		const double e32 = descriptor(2, 1);
+		const double e33 = descriptor(2, 2);
+
+		double rxc = e11 * x2 + e21 * y2 + e31;
+		double ryc = e12 * x2 + e22 * y2 + e32;
+		double rwc = e13 * x2 + e23 * y2 + e33;
+		double r = (x1 * rxc + y1 * ryc + rwc);
+		double rx = e11 * x1 + e12 * y1 + e13;
+		double ry = e21 * x1 + e22 * y1 + e23;
+
+		return r * r / (rxc * rxc + ryc * ryc + rx * rx + ry * ry);
 	}
 
 	inline double symmetricEpipolarDistance(const cv::Mat& point,
-		const Eigen::Matrix3d& descriptor) const
+		const Eigen::MatrixXd& descriptor) const
 	{
-		const double* point_ptr = reinterpret_cast<double *>(point.data);
-		const double x1 = point_ptr[0];
-		const double y1 = point_ptr[1];
-		const double x2 = point_ptr[2];
-		const double y2 = point_ptr[3];
+		const double* s = reinterpret_cast<double *>(point.data);
+		const double x1 = *s;
+		const double y1 = *(s + 1);
+		const double x2 = *(s + 2);
+		const double y2 = *(s + 3);
 
-		const double f11 = descriptor(0, 0);
-		const double f12 = descriptor(0, 1);
-		const double f13 = descriptor(0, 2);
-		const double f21 = descriptor(1, 0);
-		const double f22 = descriptor(1, 1);
-		const double f23 = descriptor(1, 2);
-		const double f31 = descriptor(2, 0);
-		const double f32 = descriptor(2, 1);
-		const double f33 = descriptor(2, 2);
+		const double e11 = descriptor(0, 0);
+		const double e12 = descriptor(0, 1);
+		const double e13 = descriptor(0, 2);
+		const double e21 = descriptor(1, 0);
+		const double e22 = descriptor(1, 1);
+		const double e23 = descriptor(1, 2);
+		const double e31 = descriptor(2, 0);
+		const double e32 = descriptor(2, 1);
+		const double e33 = descriptor(2, 2);
 
-		const double l1 = f11 * x2 + f21 * y2 + f31;
-		const double l2 = f12 * x2 + f22 * y2 + f32;
-		const double l3 = f13 * x2 + f23 * y2 + f33;
+		const double rxc = e11 * x2 + e21 * y2 + e31;
+		const double ryc = e12 * x2 + e22 * y2 + e32;
+		const double rwc = e13 * x2 + e23 * y2 + e33;
+		const double r = (x1 * rxc + y1 * ryc + rwc);
+		const double rx = e11 * x1 + e12 * y1 + e13;
+		const double ry = e21 * x1 + e22 * y1 + e23;
+		const double a = rxc * rxc + ryc * ryc;
+		const double b = rx * rx + ry * ry;
 
-		const double t1 = f11 * x1 + f12 * y1 + f13;
-		const double t2 = f21 * x1 + f22 * y1 + f23;
-		const double t3 = f31 * x1 + f32 * y1 + f33;
-
-		const double a1 = l1 * x1 + l2 * y1 + l3;
-		const double a2 = sqrt(l1 * l1 + l2 * l2);
-
-		const double b1 = t1 * x2 + t2 * y1 + t3;
-		const double b2 = sqrt(t1 * t1 + t2 * t2);
-
-		const double d1 = a1 / a2;
-		const double d2 = b1 / b2;
-
-		return abs(0.5 * (d1 + d2));
+		return r * r * (a + b) / (a * b);
 	}
 
 	inline double squaredResidual(const cv::Mat& point,
@@ -212,11 +209,19 @@ public:
 			return false;
 
 		// The eight point fundamental matrix fitting algorithm
-		if (!solverSteweniusFivePoint(normalized_points,
+		if (!non_minimal_solver->estimateModel(normalized_points,
 			nullptr,
 			M,
-			models))
+			*models))
 			return false;
+		
+		/* Orientation constraint check */
+		for (short model_idx = models->size() - 1; model_idx >= 0; --model_idx)
+			if (!all_ori_valid(models->at(model_idx).descriptor,
+				data,
+				sample,
+				M))
+				models->erase(models->begin() + model_idx);
 
 		// Denormalizing the estimated fundamental matrices
 		const Eigen::Matrix3d T2_transpose = T2.transpose();
@@ -322,127 +327,6 @@ public:
 		return true;
 	}
 
-	inline bool solverSteweniusFivePoint(const cv::Mat& data,
-		const size_t *sample,
-		size_t sample_number,
-		std::vector<Model>* models) const
-	{
-		if (sample == nullptr)
-			sample_number = data.rows;
-
-		Eigen::MatrixXd coefficients(sample_number, 9);
-		const double *data_ptr = reinterpret_cast<double *>(data.data);
-		const int cols = data.cols;
-
-		// Step 1. Create the nx9 matrix containing epipolar constraints.
-		//   Essential matrix is a linear combination of the 4 vectors spanning the null space of this
-		//   matrix.
-		double x0, y0, x1, y1;
-		for (size_t i = 0; i < sample_number; i++)
-		{
-			int offset;
-			if (sample == nullptr)
-				offset = cols * i;
-			else
-				offset = cols * sample[i];
-
-			x0 = data_ptr[offset];
-			y0 = data_ptr[offset + 1];
-			x1 = data_ptr[offset + 2];
-			y1 = data_ptr[offset + 3];
-
-			coefficients.row(i) << 
-				x1 * x0, y1 * x0, x0, x1 * y0, y1 * y0, y0, x1, y1, 1.0;
-		}
-
-		// Extract the null space from a minimal sampling (using LU) or non-minimal sampling (using SVD).
-		Eigen::Matrix<double, 9, 4> nullSpace;
-
-		if (sample_number == 5) {
-			const Eigen::FullPivLU<Eigen::MatrixXd> lu(coefficients);
-			if (lu.dimensionOfKernel() != 4) {
-				return false;
-			}
-			nullSpace = lu.kernel();
-		}
-		else {
-			const Eigen::JacobiSVD<Eigen::MatrixXd> svd(
-				coefficients.transpose() * coefficients, Eigen::ComputeFullV);
-			nullSpace = svd.matrixV().rightCols<4>();
-		}
-
-		const Eigen::Matrix<double, 1, 4> nullSpaceMatrix[3][3] = {
-			{nullSpace.row(0), nullSpace.row(3), nullSpace.row(6)},
-			{nullSpace.row(1), nullSpace.row(4), nullSpace.row(7)},
-			{nullSpace.row(2), nullSpace.row(5), nullSpace.row(8)} };
-
-		// Step 2. Expansion of the epipolar constraints on the determinant and trace.
-		const Eigen::Matrix<double, 10, 20> constraintMatrix = buildConstraintMatrix(nullSpaceMatrix);
-
-		// Step 3. Eliminate part of the matrix to isolate polynomials in z.
-		Eigen::FullPivLU<Eigen::Matrix<double, 10, 10>> c_lu(constraintMatrix.block<10, 10>(0, 0));
-		const Eigen::Matrix<double, 10, 10> eliminatedMatrix = c_lu.solve(constraintMatrix.block<10, 10>(0, 10));
-
-		Eigen::Matrix<double, 10, 10> actionMatrix = Eigen::Matrix<double, 10, 10>::Zero();
-		actionMatrix.block<3, 10>(0, 0) = eliminatedMatrix.block<3, 10>(0, 0);
-		actionMatrix.row(3) = eliminatedMatrix.row(4);
-		actionMatrix.row(4) = eliminatedMatrix.row(5);
-		actionMatrix.row(5) = eliminatedMatrix.row(7);
-		actionMatrix(6, 0) = -1.0;
-		actionMatrix(7, 1) = -1.0;
-		actionMatrix(8, 3) = -1.0;
-		actionMatrix(9, 6) = -1.0;
-
-		Eigen::EigenSolver<Eigen::Matrix<double, 10, 10>> eigensolver(actionMatrix);
-		const Eigen::VectorXcd& eigenvalues = eigensolver.eigenvalues();
-
-		// Now that we have x, y, and z we need to substitute them back into the null space to get a valid
-		// essential matrix solution.
-		for (size_t i = 0; i < 10; i++) {
-			// Only consider real solutions.
-			if (eigenvalues(i).imag() != 0) {
-				continue;
-			}
-			Eigen::Matrix3d E_dst_src;
-			Eigen::Map<Eigen::Matrix<double, 9, 1>>(E_dst_src.data()) =
-				nullSpace * eigensolver.eigenvectors().col(i).tail<4>().real();
-
-			/* Orientation constraint */
-			if (!all_ori_valid(E_dst_src,
-				data,
-				sample,
-				sample_number)) {
-				continue;
-			}
-
-			EssentialMatrix model;
-			model.descriptor = E_dst_src;
-			models->push_back(model);
-		}
-
-		return models->size() > 0;
-	}
-
-	inline Eigen::Matrix<double, 1, 10> multiplyDegOnePoly(
-		const Eigen::RowVector4d& a,
-		const Eigen::RowVector4d& b) const;
-
-	inline Eigen::Matrix<double, 1, 20> multiplyDegTwoDegOnePoly(
-		const Eigen::Matrix<double, 1, 10>& a,
-		const Eigen::RowVector4d& b) const;
-
-	inline Eigen::Matrix<double, 10, 20> buildConstraintMatrix(
-		const Eigen::Matrix<double, 1, 4> nullSpace[3][3]) const;
-
-	inline Eigen::Matrix<double, 9, 20> getTraceConstraint(
-		const Eigen::Matrix<double, 1, 4> nullSpace[3][3]) const;
-
-	inline Eigen::Matrix<double, 1, 10>
-		computeEETranspose(const Eigen::Matrix<double, 1, 4> nullSpace[3][3], int i, int j) const;
-
-	inline Eigen::Matrix<double, 1, 20> getDeterminantConstraint(
-		const Eigen::Matrix<double, 1, 4> nullSpace[3][3]) const;
-
 	/************** oriented epipolar constraints ******************/
 	inline void epipole(Eigen::Vector3d &ec,
 		const Eigen::Matrix3d &F) const
@@ -497,146 +381,3 @@ public:
 		return 1;
 	}
 };
-
-// Multiply two degree one polynomials of variables x, y, z.
-// E.g. p1 = a[0]x + a[1]y + a[2]z + a[3]
-// Output order: x^2 xy y^2 xz yz z^2 x y z 1 (GrevLex)
-inline Eigen::Matrix<double, 1, 10> EssentialMatrixEstimator::multiplyDegOnePoly(
-	const Eigen::RowVector4d& a,
-	const Eigen::RowVector4d& b) const {
-	Eigen::Matrix<double, 1, 10> output;
-	// x^2
-	output(0) = a(0) * b(0);
-	// xy
-	output(1) = a(0) * b(1) + a(1) * b(0);
-	// y^2
-	output(2) = a(1) * b(1);
-	// xz
-	output(3) = a(0) * b(2) + a(2) * b(0);
-	// yz
-	output(4) = a(1) * b(2) + a(2) * b(1);
-	// z^2
-	output(5) = a(2) * b(2);
-	// x
-	output(6) = a(0) * b(3) + a(3) * b(0);
-	// y
-	output(7) = a(1) * b(3) + a(3) * b(1);
-	// z
-	output(8) = a(2) * b(3) + a(3) * b(2);
-	// 1
-	output(9) = a(3) * b(3);
-	return output;
-}
-
-// Multiply a 2 deg poly (in x, y, z) and a one deg poly in GrevLex order.
-// x^3 x^2y xy^2 y^3 x^2z xyz y^2z xz^2 yz^2 z^3 x^2 xy y^2 xz yz z^2 x y z 1
-inline Eigen::Matrix<double, 1, 20> EssentialMatrixEstimator::multiplyDegTwoDegOnePoly(
-	const Eigen::Matrix<double, 1, 10>& a,
-	const Eigen::RowVector4d& b) const {
-	Eigen::Matrix<double, 1, 20> output;
-	// x^3
-	output(0) = a(0) * b(0);
-	// x^2y
-	output(1) = a(0) * b(1) + a(1) * b(0);
-	// xy^2
-	output(2) = a(1) * b(1) + a(2) * b(0);
-	// y^3
-	output(3) = a(2) * b(1);
-	// x^2z
-	output(4) = a(0) * b(2) + a(3) * b(0);
-	// xyz
-	output(5) = a(1) * b(2) + a(3) * b(1) + a(4) * b(0);
-	// y^2z
-	output(6) = a(2) * b(2) + a(4) * b(1);
-	// xz^2
-	output(7) = a(3) * b(2) + a(5) * b(0);
-	// yz^2
-	output(8) = a(4) * b(2) + a(5) * b(1);
-	// z^3
-	output(9) = a(5) * b(2);
-	// x^2
-	output(10) = a(0) * b(3) + a(6) * b(0);
-	// xy
-	output(11) = a(1) * b(3) + a(6) * b(1) + a(7) * b(0);
-	// y^2
-	output(12) = a(2) * b(3) + a(7) * b(1);
-	// xz
-	output(13) = a(3) * b(3) + a(6) * b(2) + a(8) * b(0);
-	// yz
-	output(14) = a(4) * b(3) + a(7) * b(2) + a(8) * b(1);
-	// z^2
-	output(15) = a(5) * b(3) + a(8) * b(2);
-	// x
-	output(16) = a(6) * b(3) + a(9) * b(0);
-	// y
-	output(17) = a(7) * b(3) + a(9) * b(1);
-	// z
-	output(18) = a(8) * b(3) + a(9) * b(2);
-	// 1
-	output(19) = a(9) * b(3);
-	return output;
-}
-
-inline Eigen::Matrix<double, 1, 20> EssentialMatrixEstimator::getDeterminantConstraint(
-	const Eigen::Matrix<double, 1, 4> nullSpace[3][3]) const {
-	// Singularity constraint.
-	return multiplyDegTwoDegOnePoly(
-		multiplyDegOnePoly(nullSpace[0][1], nullSpace[1][2]) -
-		multiplyDegOnePoly(nullSpace[0][2], nullSpace[1][1]),
-		nullSpace[2][0]) +
-		multiplyDegTwoDegOnePoly(
-			multiplyDegOnePoly(nullSpace[0][2], nullSpace[1][0]) -
-			multiplyDegOnePoly(nullSpace[0][0], nullSpace[1][2]),
-			nullSpace[2][1]) +
-		multiplyDegTwoDegOnePoly(
-			multiplyDegOnePoly(nullSpace[0][0], nullSpace[1][1]) -
-			multiplyDegOnePoly(nullSpace[0][1], nullSpace[1][0]),
-			nullSpace[2][2]);
-}
-
-// Shorthand for multiplying the Essential matrix with its transpose.
-inline Eigen::Matrix<double, 1, 10> EssentialMatrixEstimator::computeEETranspose(
-	const Eigen::Matrix<double, 1, 4> nullSpace[3][3],
-	int i,
-	int j) const {
-	return multiplyDegOnePoly(nullSpace[i][0], nullSpace[j][0]) +
-		multiplyDegOnePoly(nullSpace[i][1], nullSpace[j][1]) +
-		multiplyDegOnePoly(nullSpace[i][2], nullSpace[j][2]);
-}
-
-// Builds the trace constraint: EEtE - 1/2 trace(EEt)E = 0
-inline Eigen::Matrix<double, 9, 20> EssentialMatrixEstimator::getTraceConstraint(
-	const Eigen::Matrix<double, 1, 4> nullSpace[3][3]) const {
-	Eigen::Matrix<double, 9, 20> traceConstraint;
-
-	// Compute EEt.
-	Eigen::Matrix<double, 1, 10> eet[3][3];
-	for (int i = 0; i < 3; i++) {
-		for (int j = 0; j < 3; j++) {
-			eet[i][j] = 2 * computeEETranspose(nullSpace, i, j);
-		}
-	}
-
-	// Compute the trace.
-	const Eigen::Matrix<double, 1, 10> trace = eet[0][0] + eet[1][1] + eet[2][2];
-
-	// Multiply EEt with E.
-	for (auto i = 0; i < 3; i++) {
-		for (auto j = 0; j < 3; j++) {
-			traceConstraint.row(3 * i + j) = multiplyDegTwoDegOnePoly(eet[i][0], nullSpace[0][j]) +
-				multiplyDegTwoDegOnePoly(eet[i][1], nullSpace[1][j]) +
-				multiplyDegTwoDegOnePoly(eet[i][2], nullSpace[2][j]) -
-				0.5 * multiplyDegTwoDegOnePoly(trace, nullSpace[i][j]);
-		}
-	}
-
-	return traceConstraint;
-}
-
-inline Eigen::Matrix<double, 10, 20> EssentialMatrixEstimator::buildConstraintMatrix(
-	const Eigen::Matrix<double, 1, 4> nullSpace[3][3]) const {
-	Eigen::Matrix<double, 10, 20> constraintMatrix;
-	constraintMatrix.block<9, 20>(0, 0) = getTraceConstraint(nullSpace);
-	constraintMatrix.row(9) = getDeterminantConstraint(nullSpace);
-	return constraintMatrix;
-}
