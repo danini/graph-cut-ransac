@@ -27,8 +27,8 @@ public:
 	{}
 	~RobustHomographyEstimator() {}
 
-	inline size_t sampleSize() const {
-		return 4;
+	constexpr size_t sampleSize() const {
+		return _MinimalSolverEngine::sampleSize();
 	}
 
 	inline size_t inlierLimit() const {

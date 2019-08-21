@@ -18,54 +18,56 @@ protected:
 	const std::shared_ptr<const _MinimalSolverEngine> minimal_solver;
 	const std::shared_ptr<const _NonMinimalSolverEngine> non_minimal_solver;
 
-	const Eigen::Matrix3d intrinsics_src,
-		intrinsics_dst,
-		intrinsics_src_inverse,
-		intrinsics_dst_inverse_transpose;
+	const Eigen::Matrix3d intrinsics_src, // The intrinsic parameters of the source camera
+		intrinsics_dst; // The intrinsic parameters of the destination camera
 
 public:
-	EssentialMatrixEstimator(Eigen::Matrix3d intrinsics_src_,
-		Eigen::Matrix3d intrinsics_dst_) :
+	EssentialMatrixEstimator(Eigen::Matrix3d intrinsics_src_, // The intrinsic parameters of the source camera
+		Eigen::Matrix3d intrinsics_dst_) : // The intrinsic parameters of the destination camera
 		intrinsics_src(intrinsics_src_),
 		intrinsics_dst(intrinsics_dst_),
-		intrinsics_src_inverse(intrinsics_src_.inverse()),
-		intrinsics_dst_inverse_transpose(intrinsics_dst_.inverse().transpose()),
 		minimal_solver(std::make_shared<const _MinimalSolverEngine>()),
 		non_minimal_solver(std::make_shared<const _NonMinimalSolverEngine>())
 	{}
 	~EssentialMatrixEstimator() {}
 
-	inline size_t sampleSize() const {
-		return 5;
+	// The size of a minimal sample required for the estimation
+	constexpr size_t sampleSize() const {
+		return _MinimalSolverEngine::sampleSize();
 	}
 
+	// The size of a sample when doing inner RANSAC on a non-minimal sample
 	inline size_t inlierLimit() const {
 		return 7 * sampleSize();
 	}
 
-	inline bool estimateModel(const cv::Mat& data,
-		const size_t *sample,
-		std::vector<Model>* models) const
+	// Estimating the essential matrix from a minimal sample
+	inline bool estimateModel(const cv::Mat& data, // The data points
+		const size_t *sample, // The selected sample which will be used for estimation
+		std::vector<Model>* models) const // The estimated model parameters
 	{
-		// Model calculation by the seven point algorithm
-		constexpr size_t sample_size = 5;
+		constexpr size_t sample_size = 5; // The size of a minimal sample
 
-		minimal_solver->estimateModel(data,
-			sample,
-			sample_size,
-			*models);
+		// Estimating the model parameters by the solver engine
+		if (!minimal_solver->estimateModel(data, // The data points
+			sample, // The selected sample which will be used for estimation
+			sample_size, // The size of a minimal sample required for the estimation
+			*models)) // The estimated model parameters
+			return false;
 
 		/* Orientation constraint check */
 		for (short model_idx = models->size() - 1; model_idx >= 0; --model_idx)
 			if (!all_ori_valid(models->at(model_idx).descriptor,
-				data,
-				sample,
-				sample_size))
-				models->erase(models->begin() + model_idx);
+				data, // The data points
+				sample, // The selected sample which will be used for estimation
+				sample_size)) // The size of a minimal sample required for the estimation
+				models->erase(models->begin() + model_idx); // Delete the model if the orientation constraint does not hold
 
+		// Return true, if at least one model is kept
 		return models->size() > 0;
 	}
 
+	// The squared sampson distance between a point correspondence and an essential matrix
 	inline double squaredSampsonDistance(const cv::Mat& point,
 		const Eigen::Matrix3d& descriptor) const
 	{
@@ -73,6 +75,7 @@ public:
 		return residual * residual;
 	}
 
+	// The sampson distance between a point correspondence and an essential matrix
 	inline double sampsonDistance(const cv::Mat& point,
 		const Eigen::Matrix3d& descriptor) const
 	{
@@ -102,6 +105,7 @@ public:
 		return r * r / (rxc * rxc + ryc * ryc + rx * rx + ry * ry);
 	}
 
+	// The symmetric epipolar distance between a point correspondence and an essential matrix
 	inline double symmetricEpipolarDistance(const cv::Mat& point,
 		const Eigen::MatrixXd& descriptor) const
 	{
@@ -133,24 +137,28 @@ public:
 		return r * r * (a + b) / (a * b);
 	}
 
+	// The squared residual function used for deciding which points are inliers
 	inline double squaredResidual(const cv::Mat& point,
 		const Model& model) const
 	{
 		return squaredSampsonDistance(point, model.descriptor);
 	}
 
+	// The squared residual function used for deciding which points are inliers
 	inline double squaredResidual(const cv::Mat& point,
 		const Eigen::MatrixXd& descriptor) const
 	{
 		return squaredSampsonDistance(point, descriptor);
 	}
 
+	// The residual function used for deciding which points are inliers
 	inline double residual(const cv::Mat& point,
 		const Model& model) const
 	{
 		return residual(point, model.descriptor);
 	}
 
+	// The residual function used for deciding which points are inliers
 	inline double residual(const cv::Mat& point,
 		const Eigen::MatrixXd& descriptor) const
 	{

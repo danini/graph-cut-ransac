@@ -17,6 +17,11 @@ namespace solver
 		{
 		}
 
+		static constexpr size_t sampleSize() 
+		{
+			return 5;
+		}
+
 		inline bool estimateModel(
 			const cv::Mat& data_,
 			const size_t *sample_,

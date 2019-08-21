@@ -25,6 +25,13 @@ namespace solver
 		{
 		}
 
+		// The minimum number of points required for the estimation
+		static constexpr size_t sampleSize()
+		{
+			return 0;
+		}
+
+		// Estimate the model parameters from the given point sample
 		virtual inline bool estimateModel(
 			const cv::Mat& data_,
 			const size_t *sample_,

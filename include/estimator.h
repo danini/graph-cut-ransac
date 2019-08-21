@@ -57,7 +57,6 @@ namespace theia
 		virtual ~Estimator() {}
 
 		// Get the minimum number of samples needed to generate a model.
-		inline virtual size_t sampleSize() const = 0;
 		inline virtual size_t inlierLimit() const = 0;
 
 		// Given a set of data points, estimate the model. Users should implement this
