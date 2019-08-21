@@ -29,12 +29,14 @@ public:
 
 	~FundamentalMatrixEstimator() {}
 
-	constexpr size_t sampleSize() const {
+	// The size of a minimal sample required for the estimation
+	static constexpr size_t sampleSize() {
 		return _MinimalSolverEngine::sampleSize();
 	}
 
+	// The size of a sample when doing inner RANSAC on a non-minimal sample
 	inline size_t inlierLimit() const {
-		return 49;
+		return 7 * sampleSize();
 	}
 
 	inline bool estimateModel(const cv::Mat& data,

@@ -32,7 +32,7 @@ public:
 	~EssentialMatrixEstimator() {}
 
 	// The size of a minimal sample required for the estimation
-	constexpr size_t sampleSize() const {
+	static constexpr size_t sampleSize() {
 		return _MinimalSolverEngine::sampleSize();
 	}
 
