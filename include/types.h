@@ -3,6 +3,27 @@
 #include <vector>
 #include <numeric>
 
+#include "fundamental_estimator.h"
+#include "homography_estimator.h"
+#include "essential_estimator.h"
+
+#include "solver_fundamental_matrix_seven_point.h"
+#include "solver_fundamental_matrix_eight_point.h"
+#include "solver_homography_four_point.h"
+#include "solver_essential_matrix_five_point_stewenius.h"
+
+typedef FundamentalMatrixEstimator<solver::FundamentalMatrixSevenPointSolver, // The solver used for fitting a model to a minimal sample
+	solver::FundamentalMatrixEightPointSolver> // The solver used for fitting a model to a non-minimal sample
+	DefaultFundamentalMatrixEstimator;
+
+typedef RobustHomographyEstimator<solver::HomographyFourPointSolver, // The solver used for fitting a model to a minimal sample
+	solver::HomographyFourPointSolver> // The solver used for fitting a model to a non-minimal sample
+	DefaultHomographyEstimator;
+
+typedef EssentialMatrixEstimator<solver::EssentialMatrixFivePointSteweniusSolver, // The solver used for fitting a model to a minimal sample
+	solver::EssentialMatrixFivePointSteweniusSolver> // The solver used for fitting a model to a non-minimal sample
+	DefaultEssentialMatrixEstimator;
+
 /* RANSAC Scoring */
 struct Score {
 	/* number of inliers_, rectangular gain function */

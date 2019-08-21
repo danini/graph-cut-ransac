@@ -401,11 +401,11 @@ void testHomographyFitting(
 	}
 
 	// Apply Graph-cut RANSAC
-	RobustHomographyEstimator<solver::HomographyFourPointSolver, solver::HomographyFourPointSolver> estimator;
+	DefaultHomographyEstimator estimator;
 	std::vector<int> inliers;
 	Homography model;
 
-	GCRANSAC<RobustHomographyEstimator<solver::HomographyFourPointSolver, solver::HomographyFourPointSolver>, GridNeighborhoodGraph> gcransac;
+	GCRANSAC<DefaultHomographyEstimator, GridNeighborhoodGraph> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
 	gcransac.settings.threshold = inlier_outlier_threshold_; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
@@ -543,7 +543,7 @@ void testFundamentalMatrixFitting(
 		sqrt(pow(MAX(source_image.cols, destination_image.cols), 2) + pow(MAX(source_image.rows, destination_image.rows), 2));
 	
 	// Apply Graph-cut RANSAC
-	FundamentalMatrixEstimator<solver::FundamentalMatrixSevenPointSolver, solver::FundamentalMatrixEightPointSolver> estimator;
+	DefaultFundamentalMatrixEstimator estimator;
 	std::vector<int> inliers;
 	FundamentalMatrix model;
 
@@ -567,7 +567,7 @@ void testFundamentalMatrixFitting(
 		return;
 	}
 	
-	GCRANSAC<FundamentalMatrixEstimator<solver::FundamentalMatrixSevenPointSolver, solver::FundamentalMatrixEightPointSolver>, GridNeighborhoodGraph> gcransac;
+	GCRANSAC<DefaultFundamentalMatrixEstimator, GridNeighborhoodGraph> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
 	gcransac.settings.threshold = inlier_outlier_threshold_ * max_image_diagonal; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
@@ -708,7 +708,7 @@ void testEssentialMatrixFitting(
 	}
 
 	// Apply Graph-cut RANSAC
-	EssentialMatrixEstimator<solver::EssentialMatrixFivePointSteweniusSolver, solver::EssentialMatrixFivePointSteweniusSolver> estimator(intrinsics_src,
+	DefaultEssentialMatrixEstimator estimator(intrinsics_src,
 		intrinsics_dst);
 	std::vector<int> inliers;
 	EssentialMatrix model;
@@ -733,7 +733,7 @@ void testEssentialMatrixFitting(
 		return;
 	}
 	
-	GCRANSAC<EssentialMatrixEstimator<solver::EssentialMatrixFivePointSteweniusSolver, solver::EssentialMatrixFivePointSteweniusSolver>, GridNeighborhoodGraph> gcransac;
+	GCRANSAC<DefaultEssentialMatrixEstimator, GridNeighborhoodGraph> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
 	gcransac.settings.threshold = inlier_outlier_threshold_; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
