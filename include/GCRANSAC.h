@@ -8,7 +8,8 @@
 #include "neighborhood_graph.h"
 
 template <class _ModelEstimator, 
-	class _NeighborhoodGraph>
+	class _NeighborhoodGraph,
+	class _ScoringFunction = MSACScoringFunction<_ModelEstimator>>
 class GCRANSAC
 {
 public:
@@ -16,7 +17,7 @@ public:
 
 	GCRANSAC() :
 		time_limit(std::numeric_limits<double>::max()),
-		scoring_function(std::make_unique<MSACScoringFunction<_ModelEstimator>>())
+		scoring_function(std::make_unique<_ScoringFunction>())
 	{
 	}
 	~GCRANSAC() { }
@@ -33,14 +34,6 @@ public:
 
 	const RANSACStatistics &getRansacStatistics() { return statistics; }
 
-	// Decides whether score s2 is higher than s1
-	inline int isScoreLess(const Score &s1_, // Input score
-		const Score &s2_) // Input score
-	{ 
-		return s1_.J < s2_.J && 
-			s1_.I <= s2_.I;
-	}
-
 protected:
 	double time_limit; // The desired time limit
 	std::vector<std::vector<cv::DMatch>> neighbours; // The neighborhood structure
@@ -53,7 +46,7 @@ protected:
 	const _NeighborhoodGraph *neighborhood_graph;
 	theia::Sampler<cv::Mat, size_t> *main_sampler; // The main sampler is used outside the local optimization
 	theia::Sampler<cv::Mat, size_t> *local_optimization_sampler; // The local optimization sampler is used inside the local optimization
-	const std::unique_ptr<MSACScoringFunction<_ModelEstimator>> scoring_function; // The scoring function used to measure the quality of a model
+	const std::unique_ptr<_ScoringFunction> scoring_function; // The scoring function used to measure the quality of a model
 
 	Graph<double, double, double> *graph; // The graph for graph-cut
 
@@ -97,8 +90,8 @@ protected:
 };
 
 // Computes the desired iteration number for RANSAC w.r.t. to the current inlier number
-template <class _ModelEstimator, class _NeighborhoodGraph>
-int GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::getIterationNumber(
+template <class _ModelEstimator, class _NeighborhoodGraph, class _ScoringFunction>
+int GCRANSAC<_ModelEstimator, _NeighborhoodGraph, _ScoringFunction>::getIterationNumber(
 	size_t inlier_number_,
 	size_t point_number_,
 	size_t sample_size_,
@@ -115,8 +108,8 @@ int GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::getIterationNumber(
 }
 
 // The main method applying Graph-Cut RANSAC to the input data points_
-template <class _ModelEstimator, class _NeighborhoodGraph>
-void GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::run(
+template <class _ModelEstimator, class _NeighborhoodGraph, class _ScoringFunction>
+void GCRANSAC<_ModelEstimator, _NeighborhoodGraph, _ScoringFunction>::run(
 	const cv::Mat &points_,  // Data points
 	const _ModelEstimator &estimator_, // The model estimator
 	theia::Sampler<cv::Mat, size_t> *main_sampler_, // The main sampler is used outside the local optimization
@@ -220,8 +213,7 @@ void GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::run(
 				true); // Flag to decide if the inliers are needed
 			
 			// Store the model of its score is higher than that of the previous best
-			if (isScoreLess(so_far_the_best_score, // The so-far-the-best model's score
-				score) && // The current model's score
+			if (so_far_the_best_score < score && // Comparing the so-far-the-best model's score and current model's score
 				estimator_.isValidModel(model, // The current model parameters
 					points_, // All input points
 					temp_inner_inliers[inl_offset], // The inliers of the current model
@@ -349,8 +341,8 @@ void GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::run(
 	statistics.processing_time = elapsed_seconds.count();
 }
 
-template <class _ModelEstimator, class _NeighborhoodGraph>
-bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::iteratedLeastSquaresFitting(
+template <class _ModelEstimator, class _NeighborhoodGraph, class _ScoringFunction>
+bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph, _ScoringFunction>::iteratedLeastSquaresFitting(
 	const cv::Mat &points_,
 	const _ModelEstimator &estimator_,
 	const double threshold_,
@@ -446,8 +438,8 @@ bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::iteratedLeastSquaresFitting(
 	return iterations > 1;
 }
 
-template <class _ModelEstimator, class _NeighborhoodGraph>
-inline bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::sample(
+template <class _ModelEstimator, class _NeighborhoodGraph, class _ScoringFunction>
+inline bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph, _ScoringFunction>::sample(
 	const std::vector<size_t> &pool_, // The pool if indices determining which point can be selected
 	size_t sample_number_,
 	size_t *sample_,
@@ -465,8 +457,8 @@ inline bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::sample(
 		sample_number_); // The number of points to be selected
 }
 
-template <class _ModelEstimator, class _NeighborhoodGraph>
-bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::graphCutLocalOptimization(
+template <class _ModelEstimator, class _NeighborhoodGraph, class _ScoringFunction>
+bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph, _ScoringFunction>::graphCutLocalOptimization(
 	const cv::Mat &points_, 
 	std::vector<size_t> &so_far_the_best_inliers_,
 	Model &so_far_the_best_model_,
@@ -563,8 +555,7 @@ bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::graphCutLocalOptimization(
 					true); // Flag saying that we do not need the inlier set
 
 				// If this model is better than the previous best, update.
-				if (isScoreLess(max_score, // The best score
-					score)) // The current score
+				if (max_score < score) // Comparing the so-far-the-best model's score and current model's score
 				{
 					updated = true; // Flag saying that we have updated the model parameters
 					max_score = score; // Store the new best score
@@ -581,8 +572,7 @@ bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::graphCutLocalOptimization(
 	}
 
 	// If the new best score is better than the original one, update the model parameters.
-	if (isScoreLess(so_far_the_best_score_, // The original best score
-		max_score)) // The best score of the local optimization
+	if (so_far_the_best_score_ < max_score) // Comparing the original best score and best score of the local optimization
 	{
 		so_far_the_best_score_ = max_score; // Store the new best score
 		so_far_the_best_model_ = best_model;
@@ -593,8 +583,8 @@ bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::graphCutLocalOptimization(
 	return false;
 }
 
-template <class _ModelEstimator, class _NeighborhoodGraph>
-void GCRANSAC<_ModelEstimator, _NeighborhoodGraph>::labeling(
+template <class _ModelEstimator, class _NeighborhoodGraph, class _ScoringFunction>
+void GCRANSAC<_ModelEstimator, _NeighborhoodGraph, _ScoringFunction>::labeling(
 	const cv::Mat &points_, 
 	size_t neighbor_number_,
 	const std::vector<std::vector<cv::DMatch>> &neighbors_,

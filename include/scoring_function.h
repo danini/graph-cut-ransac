@@ -25,19 +25,43 @@ struct Score {
 	{
 
 	}
+
+	inline bool operator<(const Score& s2_)
+	{
+		return J < s2_.J &&
+			I <= s2_.I;
+	}
+
+	inline bool operator>(const Score& s2_)
+	{
+		return *this > s2_;
+	}
 };
 
 template<class _ModelEstimator>
 class ScoringFunction
 {
 public:
+	ScoringFunction()
+	{
+
+	}
+
+	virtual ~ScoringFunction()
+	{
+
+	}
+
 	virtual inline Score getScore(const cv::Mat &points_, // The input data points
 		const Model &model_, // The current model parameters
 		const _ModelEstimator &estimator_, // The model estimator
 		const double threshold_, // The inlier-outlier threshold
 		std::vector<size_t> &inliers_, // The selected inliers
-		const Score &best_score_, // The score of the current so-far-the-best model
-		const bool store_inliers_) const = 0;
+		const Score &best_score_ = Score(), // The score of the current so-far-the-best model
+		const bool store_inliers_ = true) const = 0;
+
+	virtual void initialize(const double threshold_,
+		const size_t point_number_) = 0;
 
 };
 
@@ -49,6 +73,16 @@ protected:
 	size_t point_number; // Number of points
 
 public:
+	MSACScoringFunction()
+	{
+
+	}
+
+	~MSACScoringFunction()
+	{
+
+	}
+
 	void initialize(const double squared_truncated_threshold_,
 		const size_t point_number_)
 	{
