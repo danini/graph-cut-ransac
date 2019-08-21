@@ -27,21 +27,6 @@ typedef EssentialMatrixEstimator<solver::EssentialMatrixFivePointSteweniusSolver
 	solver::EssentialMatrixFivePointSteweniusSolver> // The solver used for fitting a model to a non-minimal sample
 	DefaultEssentialMatrixEstimator;
 
-/* RANSAC Scoring */
-struct Score {
-	/* number of inliers_, rectangular gain function */
-	unsigned I;
-	/* MSAC scoring, truncated quadratic gain function */
-	double J;
-
-	Score() :
-		I(0),
-		J(0.0)
-	{
-
-	}
-};
-
 struct Settings {
 	bool do_final_iterated_least_squares, // Flag to decide a final iterated least-squares fitting is needed to polish the output model parameters.
 		do_local_optimization, // Flag to decide if local optimization is needed
