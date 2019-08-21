@@ -32,7 +32,17 @@ public:
 
 	void setFPS(size_t fps_) { settings.desired_fps = fps_; time_limit = 1.0 / fps_; } // Set a desired FPS value
 
-	const RANSACStatistics &getRansacStatistics() { return statistics; }
+	// Return the constant reference of the scoring function
+	const RANSACStatistics &getRansacStatistics() const { return statistics; }
+
+	// Return the reference of the scoring function
+	RANSACStatistics &getMutableRansacStatistics() { return statistics; }
+
+	// Return the constant reference of the scoring function
+	const _ScoringFunction &getScoringFunction() const { return scoring_function; }
+
+	// Return the reference of the scoring function
+	_ScoringFunction &getMutableScoringFunction() { return scoring_function; }
 
 protected:
 	double time_limit; // The desired time limit
