@@ -74,10 +74,10 @@ namespace gcransac
 		RANSACStatistics &getMutableRansacStatistics() { return statistics; }
 
 		// Return the constant reference of the scoring function
-		const _ScoringFunction &getScoringFunction() const { return scoring_function; }
+		const _ScoringFunction &getScoringFunction() const { return *scoring_function; }
 
 		// Return the reference of the scoring function
-		_ScoringFunction &getMutableScoringFunction() { return scoring_function; }
+		_ScoringFunction &getMutableScoringFunction() { return *scoring_function; }
 
 	protected:
 		double time_limit; // The desired time limit
