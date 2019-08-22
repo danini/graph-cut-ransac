@@ -60,8 +60,8 @@ namespace gcransac
 		// The main method applying Graph-Cut RANSAC to the input data points
 		void run(const cv::Mat &points_,  // Data points
 			const _ModelEstimator &estimator_, // The model estimator
-			Sampler<cv::Mat, size_t> *main_sampler_, // The main sampler is used outside the local optimization
-			Sampler<cv::Mat, size_t> *local_optimization_sampler_, // The local optimization sampler is used inside the local optimization
+			sampler::Sampler<cv::Mat, size_t> *main_sampler_, // The main sampler is used outside the local optimization
+			sampler::Sampler<cv::Mat, size_t> *local_optimization_sampler_, // The local optimization sampler is used inside the local optimization
 			const _NeighborhoodGraph *neighborhood_graph_, // The initialized neighborhood graph
 			Model &obtained_model_);  // The output model
 
@@ -89,8 +89,8 @@ namespace gcransac
 		int step_size; // Step size per processes
 		double log_probability; // The logarithm of 1 - confidence
 		const _NeighborhoodGraph *neighborhood_graph;
-		Sampler<cv::Mat, size_t> *main_sampler; // The main sampler is used outside the local optimization
-		Sampler<cv::Mat, size_t> *local_optimization_sampler; // The local optimization sampler is used inside the local optimization
+		sampler::Sampler<cv::Mat, size_t> *main_sampler; // The main sampler is used outside the local optimization
+		sampler::Sampler<cv::Mat, size_t> *local_optimization_sampler; // The local optimization sampler is used inside the local optimization
 		const std::unique_ptr<_ScoringFunction> scoring_function; // The scoring function used to measure the quality of a model
 
 		Graph<double, double, double> *graph; // The graph for graph-cut
@@ -157,8 +157,8 @@ namespace gcransac
 	void GCRANSAC<_ModelEstimator, _NeighborhoodGraph, _ScoringFunction>::run(
 		const cv::Mat &points_,  // Data points
 		const _ModelEstimator &estimator_, // The model estimator
-		Sampler<cv::Mat, size_t> *main_sampler_, // The main sampler is used outside the local optimization
-		Sampler<cv::Mat, size_t> *local_optimization_sampler_, // The local optimization sampler is used inside the local optimization
+		sampler::Sampler<cv::Mat, size_t> *main_sampler_, // The main sampler is used outside the local optimization
+		sampler::Sampler<cv::Mat, size_t> *local_optimization_sampler_, // The local optimization sampler is used inside the local optimization
 		const _NeighborhoodGraph *neighborhood_graph_, // The initialized neighborhood graph
 		Model &obtained_model_)  // The output model 
 	{

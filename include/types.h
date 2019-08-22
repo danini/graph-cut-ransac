@@ -48,18 +48,18 @@
 namespace gcransac
 {
 	// The default estimator for fundamental matrix fitting
-	typedef FundamentalMatrixEstimator<solver::FundamentalMatrixSevenPointSolver, // The solver used for fitting a model to a minimal sample
-		solver::FundamentalMatrixEightPointSolver> // The solver used for fitting a model to a non-minimal sample
+	typedef estimator::FundamentalMatrixEstimator<estimator::solver::FundamentalMatrixSevenPointSolver, // The solver used for fitting a model to a minimal sample
+		estimator::solver::FundamentalMatrixEightPointSolver> // The solver used for fitting a model to a non-minimal sample
 		DefaultFundamentalMatrixEstimator;
 
 	// The default estimator for homography fitting
-	typedef RobustHomographyEstimator<solver::HomographyFourPointSolver, // The solver used for fitting a model to a minimal sample
-		solver::HomographyFourPointSolver> // The solver used for fitting a model to a non-minimal sample
+	typedef estimator::RobustHomographyEstimator<estimator::solver::HomographyFourPointSolver, // The solver used for fitting a model to a minimal sample
+		estimator::solver::HomographyFourPointSolver> // The solver used for fitting a model to a non-minimal sample
 		DefaultHomographyEstimator;
 
 	// The default estimator for essential matrix fitting
-	typedef EssentialMatrixEstimator<solver::EssentialMatrixFivePointSteweniusSolver, // The solver used for fitting a model to a minimal sample
-		solver::EssentialMatrixFivePointSteweniusSolver> // The solver used for fitting a model to a non-minimal sample
+	typedef estimator::EssentialMatrixEstimator<estimator::solver::EssentialMatrixFivePointSteweniusSolver, // The solver used for fitting a model to a minimal sample
+		estimator::solver::EssentialMatrixFivePointSteweniusSolver> // The solver used for fitting a model to a non-minimal sample
 		DefaultEssentialMatrixEstimator;
 
 	struct Settings {

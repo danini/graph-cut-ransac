@@ -385,7 +385,7 @@ void testHomographyFitting(
 	// in the sampler if NAPSAC or Progressive-NAPSAC sampling is applied.
 	std::chrono::time_point<std::chrono::system_clock> start, end; // Variables for time measurement
 	start = std::chrono::system_clock::now(); // The starting time of the neighborhood calculation
-	GridNeighborhoodGraph neighborhood(&points,
+	neighborhood::GridNeighborhoodGraph neighborhood(&points,
 		source_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
 		source_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_),
 		destination_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
@@ -407,7 +407,7 @@ void testHomographyFitting(
 	std::vector<int> inliers;
 	Homography model;
 
-	GCRANSAC<DefaultHomographyEstimator, GridNeighborhoodGraph> gcransac;
+	GCRANSAC<DefaultHomographyEstimator, neighborhood::GridNeighborhoodGraph> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
 	gcransac.settings.threshold = inlier_outlier_threshold_; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
@@ -420,7 +420,7 @@ void testHomographyFitting(
 
 	// Initialize the samplers
 	// The main sampler is used inside the local optimization
-	ProgressiveNapsacSampler main_sampler(&points,
+	sampler::ProgressiveNapsacSampler main_sampler(&points,
 		{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
 							// (source_image_width / 16) * (source_image_height / 16)  * (destination_image_width / 16)  (destination_image_height / 16), etc.
 		estimator.sampleSize(), // The size of a minimal sample
@@ -429,7 +429,7 @@ void testHomographyFitting(
 		static_cast<double>(destination_image.cols), // The width of the destination image
 		static_cast<double>(destination_image.rows));  // The height of the destination image
 
-	UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
+	sampler::UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
 
 	// Checking if the samplers are initialized successfully.
 	if (!main_sampler.isInitialized() ||
@@ -522,7 +522,7 @@ void testFundamentalMatrixFitting(
 	// in the sampler if NAPSAC or Progressive-NAPSAC sampling is applied.
 	std::chrono::time_point<std::chrono::system_clock> start, end; // Variables for time measurement
 	start = std::chrono::system_clock::now(); // The starting time of the neighborhood calculation
-	GridNeighborhoodGraph neighborhood(&points,
+	neighborhood::GridNeighborhoodGraph neighborhood(&points,
 		source_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
 		source_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_),
 		destination_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
@@ -551,7 +551,7 @@ void testFundamentalMatrixFitting(
 
 	// Initialize the samplers
 	// The main sampler is used inside the local optimization
-	ProgressiveNapsacSampler main_sampler(&points,
+	sampler::ProgressiveNapsacSampler main_sampler(&points,
 		{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
 							// (source_image_width / 16) * (source_image_height / 16)  * (destination_image_width / 16)  (destination_image_height / 16), etc.
 		estimator.sampleSize(), // The size of a minimal sample
@@ -559,7 +559,7 @@ void testFundamentalMatrixFitting(
 		static_cast<double>(source_image.rows), // The height of the source image
 		static_cast<double>(destination_image.cols), // The width of the destination image
 		static_cast<double>(destination_image.rows));  // The height of the destination image
-	UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
+	sampler::UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
 
 	// Checking if the samplers are initialized successfully.
 	if (!main_sampler.isInitialized() ||
@@ -569,7 +569,7 @@ void testFundamentalMatrixFitting(
 		return;
 	}
 	
-	GCRANSAC<DefaultFundamentalMatrixEstimator, GridNeighborhoodGraph> gcransac;
+	GCRANSAC<DefaultFundamentalMatrixEstimator, neighborhood::GridNeighborhoodGraph> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
 	gcransac.settings.threshold = inlier_outlier_threshold_ * max_image_diagonal; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
@@ -692,7 +692,7 @@ void testEssentialMatrixFitting(
 	// in the sampler if NAPSAC or Progressive-NAPSAC sampling is applied.
 	std::chrono::time_point<std::chrono::system_clock> start, end; // Variables for time measurement
 	start = std::chrono::system_clock::now(); // The starting time of the neighborhood calculation
-	GridNeighborhoodGraph neighborhood(&points,
+	neighborhood::GridNeighborhoodGraph neighborhood(&points,
 		source_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
 		source_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_),
 		destination_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
@@ -717,7 +717,7 @@ void testEssentialMatrixFitting(
 
 	// Initialize the samplers
 	// The main sampler is used inside the local optimization
-	ProgressiveNapsacSampler main_sampler(&points,
+	sampler::ProgressiveNapsacSampler main_sampler(&points,
 		{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
 							// (source_image_width / 16) * (source_image_height / 16)  * (destination_image_width / 16)  (destination_image_height / 16), etc.
 		estimator.sampleSize(), // The size of a minimal sample
@@ -725,7 +725,7 @@ void testEssentialMatrixFitting(
 		static_cast<double>(source_image.rows), // The height of the source image
 		static_cast<double>(destination_image.cols), // The width of the destination image
 		static_cast<double>(destination_image.rows));  // The height of the destination image
-	UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
+	sampler::UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
 
 	// Checking if the samplers are initialized successfully.
 	if (!main_sampler.isInitialized() ||
@@ -735,7 +735,7 @@ void testEssentialMatrixFitting(
 		return;
 	}
 	
-	GCRANSAC<DefaultEssentialMatrixEstimator, GridNeighborhoodGraph> gcransac;
+	GCRANSAC<DefaultEssentialMatrixEstimator, neighborhood::GridNeighborhoodGraph> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
 	gcransac.settings.threshold = inlier_outlier_threshold_; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term

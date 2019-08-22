@@ -101,6 +101,7 @@ source_group(Samplers FILES
 source_group(Utilities FILES
 	include/utils.h
 	include/types.h
+	include/uniform_random_generator.h
 )
 
 add_library(${PROJECT_NAME} STATIC

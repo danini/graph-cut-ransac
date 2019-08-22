@@ -46,32 +46,35 @@
 
 namespace gcransac
 {
-	namespace solver
+	namespace estimator
 	{
-		// This is the estimator class for estimating a homography matrix between two images. A model estimation method and error calculation method are implemented
-		class SolverEngine
+		namespace solver
 		{
-		public:
-			SolverEngine()
+			// This is the estimator class for estimating a homography matrix between two images. A model estimation method and error calculation method are implemented
+			class SolverEngine
 			{
-			}
+			public:
+				SolverEngine()
+				{
+				}
 
-			~SolverEngine()
-			{
-			}
+				~SolverEngine()
+				{
+				}
 
-			// The minimum number of points required for the estimation
-			static constexpr size_t sampleSize()
-			{
-				return 0;
-			}
+				// The minimum number of points required for the estimation
+				static constexpr size_t sampleSize()
+				{
+					return 0;
+				}
 
-			// Estimate the model parameters from the given point sample
-			virtual inline bool estimateModel(
-				const cv::Mat& data_,
-				const size_t *sample_,
-				size_t sample_number_,
-				std::vector<Model> &models_) const = 0;
-		};
+				// Estimate the model parameters from the given point sample
+				virtual inline bool estimateModel(
+					const cv::Mat& data_,
+					const size_t *sample_,
+					size_t sample_number_,
+					std::vector<Model> &models_) const = 0;
+			};
+		}
 	}
 }

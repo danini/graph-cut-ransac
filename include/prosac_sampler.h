@@ -44,170 +44,172 @@
 
 namespace gcransac
 {
-	// Prosac sampler used for PROSAC implemented according to "cv::Matching with PROSAC
-	// - Progressive Sampling Consensus" by Chum and cv::Matas.
-	class ProsacSampler : public Sampler < cv::Mat, size_t >
+	namespace sampler
 	{
-	protected:
-		size_t sample_size,
-			point_number,
-			ransac_convergence_iterations, // Number of iterations of PROSAC before it just acts like ransac.
-			kth_sample_number, // The kth sample of prosac sampling.
-			largest_sample_size,
-			subset_size;
-
-		std::vector<size_t> growth_function;
-
-		std::unique_ptr<UniformRandomGenerator<size_t>> random_generator; // The random number generator
-		
-		inline void incrementIterationNumber()
+		// Prosac sampler used for PROSAC implemented according to "cv::Matching with PROSAC
+		// - Progressive Sampling Consensus" by Chum and cv::Matas.
+		class ProsacSampler : public Sampler < cv::Mat, size_t >
 		{
-			// Increase the iteration number
-			++kth_sample_number;
+		protected:
+			size_t sample_size,
+				point_number,
+				ransac_convergence_iterations, // Number of iterations of PROSAC before it just acts like ransac.
+				kth_sample_number, // The kth sample of prosac sampling.
+				largest_sample_size,
+				subset_size;
 
-			// If the method should act exactly like RANSAC, set the random generator to
-			// generate values from all possible indices.
-			if (kth_sample_number > ransac_convergence_iterations)
-				random_generator->resetGenerator(0,
-					point_number - 1);
-			else // Increment the size of the sampling pool if required			
-			if (kth_sample_number > growth_function[subset_size - 1]) {
-				++subset_size; // n = n + 1
-				if (subset_size > point_number)
-					subset_size = point_number;
-				if (largest_sample_size < subset_size)
-					largest_sample_size = subset_size;
+			std::vector<size_t> growth_function;
 
-				// Reset the random generator to generate values from the current subset of points,
-				// except the last one since it will always be used. 
-				random_generator->resetGenerator(0,
-					subset_size - 2);
-			}
-		}
+			std::unique_ptr<UniformRandomGenerator<size_t>> random_generator; // The random number generator
 
-	public:
-		explicit ProsacSampler(const cv::Mat const *container_,
-			const size_t sample_size_,
-			const size_t ransac_convergence_iterations_ = 100000) :
-			sample_size(sample_size_),
-			ransac_convergence_iterations(ransac_convergence_iterations_),
-			point_number(container_->rows),
-			kth_sample_number(1),
-			Sampler(container_)
-		{
-			initialized = initialize(container);
-		}
-
-		~ProsacSampler() {}
-
-		const std::string getName() const { return "PROSAC Sampler"; }
-
-		bool initialize(const cv::Mat const *container_)
-		{
-			// Set T_n according to the PROSAC paper's recommendation.
-			growth_function.resize(point_number, 0);
-
-			// Tq.he data points in U_N are sorted in descending order w.r.t. the quality function 
-			// Let {Mi}i = 1...T_N denote the sequence of samples Mi c U_N that are uniformly drawn by Ransac.
-
-			// Let T_n be an average number of samples from {Mi}i=1...T_N that contain data points from U_n only.
-			// compute initial value for T_n
-			//                                  n - i
-			// T_n = T_N * Product i = 0...m-1 -------, n >= sample size, N = points size
-			//                                  N - i
-			double T_n = ransac_convergence_iterations;
-			for (size_t i = 0; i < sample_size; i++)
-				T_n *= static_cast<double>(sample_size - i) / (point_number - i);
-
-			size_t T_n_prime = 1;
-			// compute values using recurrent relation
-			//             n + 1
-			// T(n+1) = --------- T(n), m is sample size.
-			//           n + 1 - m
-
-			// growth function is defined as
-			// g(t) = min {n, T'_(n) >= t}
-			// T'_(n+1) = T'_(n) + (T_(n+1) - T_(n))
-			for (size_t i = 0; i < point_number; ++i) {
-				if (i + 1 <= sample_size) {
-					growth_function[i] = T_n_prime;
-					continue;
-				}
-				double Tn_plus1 = static_cast<double>(i + 1) * T_n / (i + 1 - sample_size);
-				growth_function[i] = T_n_prime + (unsigned int)ceil(Tn_plus1 - T_n);
-				T_n = Tn_plus1;
-				T_n_prime = growth_function[i];
-			}
-
-			largest_sample_size = sample_size; // largest set sampled in PROSAC
-			subset_size = sample_size; // The size of the current sampling pool		
-			
-			// Initialize the random generator
-			random_generator = std::make_unique<UniformRandomGenerator<size_t>>();
-			random_generator->resetGenerator(0,
-				subset_size - 1);
-			return true;
-		}
-
-		// Set the sample such that you are sampling the kth prosac sample (Eq. 6).
-		void setSampleNumber(int k)
-		{
-			kth_sample_number = k;
-			
-			// If the method should act exactly like RANSAC, set the random generator to
-			// generate values from all possible indices.
-			if (kth_sample_number > ransac_convergence_iterations)
-				random_generator->resetGenerator(0,
-					point_number - 1);
-			else // Increment the size of the sampling pool while required			
-				while (kth_sample_number > growth_function[subset_size - 1]) {
-					++subset_size; // n = n + 1
-					if (subset_size > point_number)
-						subset_size = point_number;
-					if (largest_sample_size < subset_size)
-						largest_sample_size = subset_size;
-
-					// Reset the random generator to generate values from the current subset of points,
-					// except the last one since it will always be used. 
-					random_generator->resetGenerator(0,
-						subset_size - 2);
-				}
-		}
-
-		// Samples the input variable data and fills the std::vector subset with the prosac
-		// samples.
-		// NOTE: This assumes that data is in sorted order by quality where data[i] is
-		// of higher quality than data[j] for all i < j.
-		inline bool sample(const std::vector<size_t> &pool_,
-			size_t * const subset_,
-			size_t sample_size_)
-		{ 
-			if (sample_size_ != sample_size)
+			inline void incrementIterationNumber()
 			{
-				fprintf(stderr, "An error occured when sampling. PROSAC is not yet implemented to change the sample size after being initialized.\n");
-				incrementIterationNumber(); // Increase the iteration number
-				return false;
+				// Increase the iteration number
+				++kth_sample_number;
+
+				// If the method should act exactly like RANSAC, set the random generator to
+				// generate values from all possible indices.
+				if (kth_sample_number > ransac_convergence_iterations)
+					random_generator->resetGenerator(0,
+						point_number - 1);
+				else // Increment the size of the sampling pool if required			
+					if (kth_sample_number > growth_function[subset_size - 1]) {
+						++subset_size; // n = n + 1
+						if (subset_size > point_number)
+							subset_size = point_number;
+						if (largest_sample_size < subset_size)
+							largest_sample_size = subset_size;
+
+						// Reset the random generator to generate values from the current subset of points,
+						// except the last one since it will always be used. 
+						random_generator->resetGenerator(0,
+							subset_size - 2);
+					}
 			}
 
-			// If the method should act exactly like RANSAC, sample from all points.
-			// From this point, function 'incrementIterationNumber()' is not called
-			// since it is not important to increase the iteration number.
-			if (kth_sample_number > ransac_convergence_iterations) {
-				random_generator->generateUniqueRandomSet(
-					subset_, // The set of points' indices to be selected
-					sample_size_); // The number of points to be selected
+		public:
+			explicit ProsacSampler(const cv::Mat const *container_,
+				const size_t sample_size_,
+				const size_t ransac_convergence_iterations_ = 100000) :
+				sample_size(sample_size_),
+				ransac_convergence_iterations(ransac_convergence_iterations_),
+				point_number(container_->rows),
+				kth_sample_number(1),
+				Sampler(container_)
+			{
+				initialized = initialize(container);
+			}
+
+			~ProsacSampler() {}
+
+			const std::string getName() const { return "PROSAC Sampler"; }
+
+			bool initialize(const cv::Mat const *container_)
+			{
+				// Set T_n according to the PROSAC paper's recommendation.
+				growth_function.resize(point_number, 0);
+
+				// Tq.he data points in U_N are sorted in descending order w.r.t. the quality function 
+				// Let {Mi}i = 1...T_N denote the sequence of samples Mi c U_N that are uniformly drawn by Ransac.
+
+				// Let T_n be an average number of samples from {Mi}i=1...T_N that contain data points from U_n only.
+				// compute initial value for T_n
+				//                                  n - i
+				// T_n = T_N * Product i = 0...m-1 -------, n >= sample size, N = points size
+				//                                  N - i
+				double T_n = ransac_convergence_iterations;
+				for (size_t i = 0; i < sample_size; i++)
+					T_n *= static_cast<double>(sample_size - i) / (point_number - i);
+
+				size_t T_n_prime = 1;
+				// compute values using recurrent relation
+				//             n + 1
+				// T(n+1) = --------- T(n), m is sample size.
+				//           n + 1 - m
+
+				// growth function is defined as
+				// g(t) = min {n, T'_(n) >= t}
+				// T'_(n+1) = T'_(n) + (T_(n+1) - T_(n))
+				for (size_t i = 0; i < point_number; ++i) {
+					if (i + 1 <= sample_size) {
+						growth_function[i] = T_n_prime;
+						continue;
+					}
+					double Tn_plus1 = static_cast<double>(i + 1) * T_n / (i + 1 - sample_size);
+					growth_function[i] = T_n_prime + (unsigned int)ceil(Tn_plus1 - T_n);
+					T_n = Tn_plus1;
+					T_n_prime = growth_function[i];
+				}
+
+				largest_sample_size = sample_size; // largest set sampled in PROSAC
+				subset_size = sample_size; // The size of the current sampling pool		
+
+				// Initialize the random generator
+				random_generator = std::make_unique<UniformRandomGenerator<size_t>>();
+				random_generator->resetGenerator(0,
+					subset_size - 1);
 				return true;
 			}
 
-			// Generate PROSAC sample in range [0, subset_size-2]
-			random_generator->generateUniqueRandomSet(
-				subset_, // The set of points' indices to be selected
-				sample_size - 1); // The number of points to be selected
-			subset_[sample_size - 1] = subset_size - 1; // The last index is that of the point at the end of the current subset used.
+			// Set the sample such that you are sampling the kth prosac sample (Eq. 6).
+			void setSampleNumber(int k)
+			{
+				kth_sample_number = k;
 
-			incrementIterationNumber(); // Increase the iteration number
-			return true;
-		}
-	};
+				// If the method should act exactly like RANSAC, set the random generator to
+				// generate values from all possible indices.
+				if (kth_sample_number > ransac_convergence_iterations)
+					random_generator->resetGenerator(0,
+						point_number - 1);
+				else // Increment the size of the sampling pool while required			
+					while (kth_sample_number > growth_function[subset_size - 1]) {
+						++subset_size; // n = n + 1
+						if (subset_size > point_number)
+							subset_size = point_number;
+						if (largest_sample_size < subset_size)
+							largest_sample_size = subset_size;
 
+						// Reset the random generator to generate values from the current subset of points,
+						// except the last one since it will always be used. 
+						random_generator->resetGenerator(0,
+							subset_size - 2);
+					}
+			}
+
+			// Samples the input variable data and fills the std::vector subset with the prosac
+			// samples.
+			// NOTE: This assumes that data is in sorted order by quality where data[i] is
+			// of higher quality than data[j] for all i < j.
+			inline bool sample(const std::vector<size_t> &pool_,
+				size_t * const subset_,
+				size_t sample_size_)
+			{
+				if (sample_size_ != sample_size)
+				{
+					fprintf(stderr, "An error occured when sampling. PROSAC is not yet implemented to change the sample size after being initialized.\n");
+					incrementIterationNumber(); // Increase the iteration number
+					return false;
+				}
+
+				// If the method should act exactly like RANSAC, sample from all points.
+				// From this point, function 'incrementIterationNumber()' is not called
+				// since it is not important to increase the iteration number.
+				if (kth_sample_number > ransac_convergence_iterations) {
+					random_generator->generateUniqueRandomSet(
+						subset_, // The set of points' indices to be selected
+						sample_size_); // The number of points to be selected
+					return true;
+				}
+
+				// Generate PROSAC sample in range [0, subset_size-2]
+				random_generator->generateUniqueRandomSet(
+					subset_, // The set of points' indices to be selected
+					sample_size - 1); // The number of points to be selected
+				subset_[sample_size - 1] = subset_size - 1; // The last index is that of the point at the end of the current subset used.
+
+				incrementIterationNumber(); // Increase the iteration number
+				return true;
+			}
+		};
+	}
 } 
