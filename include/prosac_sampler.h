@@ -1,4 +1,4 @@
-// Copyright (C) 2013 The Regents of the University of California (Regents).
+// Copyright (C) 2019 Czech Technical University.
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -13,7 +13,7 @@
 //       disclaimer in the documentation and/or other materials provided
 //       with the distribution.
 //
-//     * Neither the name of The Regents or University of California nor the
+//     * Neither the name of Czech Technical University nor the
 //       names of its contributors may be used to endorse or promote products
 //       derived from this software without specific prior written permission.
 //
@@ -30,10 +30,8 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //
 // Please contact the author of this library if you have any questions.
-// Author: Chris Sweeney (cmsweeney@cs.ucsb.edu)
-
-#ifndef THEIA_SOLVERS_PROSAC_SAMPLER_H_
-#define THEIA_SOLVERS_PROSAC_SAMPLER_H_
+// Author: Daniel Barath (barath.daniel@sztaki.mta.hu)
+#pragma once 
 
 #include <stdlib.h>
 #include <algorithm>
@@ -44,7 +42,7 @@
 #include "sampler.h"
 #include "uniform_random_generator.h"
 
-namespace theia
+namespace gcransac
 {
 	// Prosac sampler used for PROSAC implemented according to "cv::Matching with PROSAC
 	// - Progressive Sampling Consensus" by Chum and cv::Matas.
@@ -212,6 +210,4 @@ namespace theia
 		}
 	};
 
-}  // namespace theia
-
-#endif  // THEIA_SOLVERS_PROSAC_SAMPLER_H_
+} 

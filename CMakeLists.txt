@@ -72,12 +72,6 @@ source_group(third_party\\GCOptimization FILES
 	include/LinkedBlockList.h
 )
 
-source_group(third_party\\Theia FILES
-	include/prosac_sampler.h
-	include/sampler.h
-	include/estimator.h
-)
-
 add_library(${PROJECT_NAME} STATIC
 	${HDRS_GCRANSAC}
 	${SRCS_GCRANSAC}

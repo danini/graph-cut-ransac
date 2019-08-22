@@ -1,4 +1,4 @@
-// Copyright (C) 2013 The Regents of the University of California (Regents).
+// Copyright (C) 2019 Czech Technical University.
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -13,7 +13,7 @@
 //       disclaimer in the documentation and/or other materials provided
 //       with the distribution.
 //
-//     * Neither the name of The Regents or University of California nor the
+//     * Neither the name of Czech Technical University nor the
 //       names of its contributors may be used to endorse or promote products
 //       derived from this software without specific prior written permission.
 //
@@ -30,23 +30,18 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //
 // Please contact the author of this library if you have any questions.
-// Author: Chris Sweeney (cmsweeney@cs.ucsb.edu)
-
-#ifndef THEIA_SOLVERS_ESTIMATOR_H_
-#define THEIA_SOLVERS_ESTIMATOR_H_
+// Author: Daniel Barath (barath.daniel@sztaki.mta.hu)
+#pragma once
 
 #include <vector>
 
-namespace theia
+namespace gcransac
 {
 	// Templated class for estimating a model for RANSAC. This class is purely a
 	// virtual class and should be implemented for the specific task that RANSAC is
 	// being used for. Two methods must be implemented: estimateModel and residual. All
 	// other methods are optional, but will likely enhance the quality of the RANSAC
 	// output.
-	//
-	// NOTE: RANSAC, ARRSAC, and other solvers work best if Datum and Model are
-	// lightweight classes or structs.
 	template <typename DatumType, typename ModelType> class Estimator
 	{
 	public:
@@ -75,60 +70,11 @@ namespace theia
 			const size_t &sample_number,
 			std::vector<Model>* model) const = 0;
 
-		// Refine the model based on an updated subset of data, and a pre-computed
-		// model. Can be optionally implemented.
-		inline virtual bool refineModel(const std::vector<Datum>& data, Model* model) const
-		{
-			return true;
-		}
-
 		// Given a model and a data point, calculate the error. Users should implement
 		// this function appropriately for the task being solved.
 		inline virtual double residual(const Datum& data, const Model& model) const = 0;
 		inline virtual double squaredResidual(const Datum& data, const Model& model) const = 0;
-
-		// Compute the residuals of many data points. By default this is just a loop
-		// that calls residual() on each data point, but this function can be useful if
-		// the errors of multiple points may be estimated simultanesously (e.g.,
-		// matrix multiplication to compute the reprojection error of many points at
-		// once).
-		virtual std::vector<double> residuals(const std::vector<Datum>& data,
-			const Model& model) const 
-		{
-			std::vector<double> residuals(data.size());
-#ifdef USE_OPENMP
-#pragma omp for
-#endif
-			for (auto i = 0; i < data.size(); i++) 
-			{
-				residuals[i] = residual(data[i], model);
-			}
-			return residuals;
-		}
-
-		// Returns the set inliers of the data set based on the error threshold
-		// provided.
-		std::vector<int> getInliers(const std::vector<Datum>& data,
-			const Model& model,
-			double error_threshold) const 
-		{
-			std::vector<int> inliers;
-			inliers.reserve(data.size());
-
-			std::vector<bool> isInlier(data.size(), false);
-#ifdef USE_OPENMP
-#pragma omp for
-#endif
-			for (int i = 0; i < data.size(); i++)
-				isInlier[i] = residual(data[i], model) < error_threshold;
-
-			for (int i = 0; i < data.size(); ++i)
-				if (isInlier[i])
-					inliers.emplace_back(i);
-
-			return inliers;
-		}
-
+				 
 		// Enable a quick check to see if the model is valid. This can be a geometric
 		// check or some other verification of the model structure.
 		inline virtual bool isValidModel(const Model& model) const { return true; }
@@ -142,6 +88,4 @@ namespace theia
 		{ return true; }
 	};
 
-}  // namespace theia
-
-#endif  // THEIA_SOLVERS_ESTIMATOR_H_
+}  // namespace gcransac

@@ -88,6 +88,8 @@ bool initializeScene(const std::string &scene_name_,
 	std::string &output_correspondence_path_,
 	std::string &output_matched_image_path_);
 
+using namespace gcransac;
+
 int main(int argc, const char* argv[])
 {
 	srand(static_cast<int>(time(NULL)));
