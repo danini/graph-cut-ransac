@@ -235,10 +235,10 @@ void GCRANSAC<_ModelEstimator, _NeighborhoodGraph, _ScoringFunction>::run(
 				// Decide if local optimization is needed. The current criterion requires a minimum number of iterations
 				// and number of inliers before applying GC.
 				do_local_optimization = statistics.iteration_number > settings.min_iteration_number_before_lo &&
-					so_far_the_best_score.I > sample_number;
+					so_far_the_best_score.inlier_number > sample_number;
 
 				// Update the number of maximum iterations
-				max_iteration = getIterationNumber(so_far_the_best_score.I, // The inlier number of the current best model
+				max_iteration = getIterationNumber(so_far_the_best_score.inlier_number, // The inlier number of the current best model
 					point_number, // The number of points
 					sample_number, // The sample size
 					log_probability); // The logarithm of 1 - confidence
@@ -262,7 +262,7 @@ void GCRANSAC<_ModelEstimator, _NeighborhoodGraph, _ScoringFunction>::run(
 
 			// Update the maximum number of iterations variable
 			max_iteration = 
-				getIterationNumber(so_far_the_best_score.I, // The current inlier number
+				getIterationNumber(so_far_the_best_score.inlier_number, // The current inlier number
 					point_number, // The number of points
 					sample_number, // The sample size
 					log_probability); // log(1 - confidence)
@@ -282,7 +282,7 @@ void GCRANSAC<_ModelEstimator, _NeighborhoodGraph, _ScoringFunction>::run(
 
 	// If the best model has only minimal number of points, the model
 	// is not considered to be found. 
-	if (so_far_the_best_score.I <= sample_number)
+	if (so_far_the_best_score.inlier_number <= sample_number)
 	{
 		end = std::chrono::system_clock::now(); // The current time
 		elapsed_seconds = end - start; // Time elapsed since the algorithm started
@@ -308,7 +308,7 @@ void GCRANSAC<_ModelEstimator, _NeighborhoodGraph, _ScoringFunction>::run(
 
 	// Recalculate the score if needed (i.e. there is some inconstistency in
 	// in the number of inliers stored and calculated).
-	if (temp_inner_inliers[inl_offset].size() != so_far_the_best_score.I)
+	if (temp_inner_inliers[inl_offset].size() != so_far_the_best_score.inlier_number)
 		Score score = scoring_function->getScore(points_, // All points
 			so_far_the_best_model, // Best model parameters
 			estimator_, // The estimator
@@ -335,7 +335,7 @@ void GCRANSAC<_ModelEstimator, _NeighborhoodGraph, _ScoringFunction>::run(
 		std::vector<Model> models;
 		estimator_.estimateModelNonminimal(points_,
 			&(temp_inner_inliers[inl_offset])[0],
-			so_far_the_best_score.I,
+			so_far_the_best_score.inlier_number,
 			&models);
 
 		if (models.size() > 0)
@@ -396,7 +396,7 @@ bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph, _ScoringFunction>::iteratedLe
 			
 			// Interrupt the procedure if the inlier number has not changed.
 			// Therefore, the previous and current model parameters are likely the same.
-			if (score.I == inliers_.size())
+			if (score.inlier_number == inliers_.size())
 				break;
 
 			// Update the output model
@@ -425,11 +425,11 @@ bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph, _ScoringFunction>::iteratedLe
 
 				// Do not test the model if the inlier number has not changed.
 				// Therefore, the previous and current model parameters are likely the same.
-				if (score.I == inliers_.size())
+				if (score.inlier_number == inliers_.size())
 					continue;
 
 				// Update the model if its score is higher than that of the current best
-				if (score.I >= best_score.I)
+				if (score.inlier_number >= best_score.inlier_number)
 				{
 					updated = true; // Set a flag saying that the model is updated, so the process should continue
 					best_score = score; // Store the new score

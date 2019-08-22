@@ -72,7 +72,7 @@ namespace theia
 		// By default, this simply implements the minimal case.
 		inline virtual bool estimateModelNonminimal(const Datum& data,
 			const size_t *sample,
-			size_t sample_number,
+			const size_t &sample_number,
 			std::vector<Model>* model) const = 0;
 
 		// Refine the model based on an updated subset of data, and a pre-computed

@@ -14,27 +14,27 @@
 struct Score {
 
 	/* Number of inliers, rectangular gain function */
-	size_t I;
+	size_t inlier_number;
 
 	/* Score */
-	double J;
+	double value;
 
 	Score() :
-		I(0),
-		J(0.0)
+		inlier_number(0),
+		value(0.0)
 	{
 
 	}
 
-	inline bool operator<(const Score& s2_)
+	inline bool operator<(const Score& score_)
 	{
-		return J < s2_.J &&
-			I <= s2_.I;
+		return value < score_.value &&
+			inlier_number <= score_.inlier_number;
 	}
 
-	inline bool operator>(const Score& s2_)
+	inline bool operator>(const Score& score_)
 	{
-		return *this > s2_;
+		return *this > score_;
 	}
 };
 
@@ -118,14 +118,14 @@ public:
 					inliers_.emplace_back(point_idx);
 
 				// Increase the inlier number
-				++(score.I);
+				++(score.inlier_number);
 				// Increase the score. The original truncated quadratic loss is as follows: 
 				// 1 - residual^2 / threshold^2. For RANSAC, -residual^2 is enough.
-				score.J += squared_residual; // Truncated quadratic cost
+				score.value += squared_residual; // Truncated quadratic cost
 			}
 
 			// Interrupt if there is no chance of being better than the best model
-			if (point_number - point_idx + score.I < best_score_.I)
+			if (point_number - point_idx + score.inlier_number < best_score_.inlier_number)
 				return Score();
 		}
 

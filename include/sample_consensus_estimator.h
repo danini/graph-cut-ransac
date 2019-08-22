@@ -87,7 +87,7 @@ namespace theia
 		int max_iterations;
 
 		// Whether to use the T_{d,d}, with d=1, test proposed in
-		// Chum, O. and cv::Matas, J.: Randomized RANSAC and T(d,d) test, BMVC 2002.
+		// Chum, O. and cv::Matas, value.: Randomized RANSAC and T(d,d) test, BMVC 2002.
 		// After computing the pose, RANSAC selects one match at random and evaluates
 		// all poses. If the point is an outlier to one pose, the corresponding pose
 		// is rejected. Notice that if the pose solver returns multiple poses, then

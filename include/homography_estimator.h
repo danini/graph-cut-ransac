@@ -1,6 +1,9 @@
 #pragma once
 
+#define _USE_MATH_DEFINES
+
 #include <math.h>
+#include <cmath>
 #include <random>
 #include <vector>
 
@@ -13,19 +16,28 @@
 #include "solver_homography_four_point.h"
 
 // This is the estimator class for estimating a homography matrix between two images. A model estimation method and error calculation method are implemented
-template<class _MinimalSolverEngine, class _NonMinimalSolverEngine>
+template<class _MinimalSolverEngine,  // The solver used for estimating the model from a minimal sample
+	class _NonMinimalSolverEngine> // The solver used for estimating the model from a non-minimal sample
 class RobustHomographyEstimator : public theia::Estimator < cv::Mat, Model >
 {
 protected:
+	// Minimal solver engine used for estimating a model from a minimal sample
 	const std::shared_ptr<const _MinimalSolverEngine> minimal_solver;
+
+	// Non-minimal solver engine used for estimating a model from a bigger than minimal sample
 	const std::shared_ptr<const _NonMinimalSolverEngine> non_minimal_solver;
 
 public:
 	RobustHomographyEstimator() :
-		minimal_solver(std::make_shared<const _MinimalSolverEngine>()),
-		non_minimal_solver(std::make_shared<const _NonMinimalSolverEngine>())
+		minimal_solver(std::make_shared<const _MinimalSolverEngine>()), // Minimal solver engine used for estimating a model from a minimal sample
+		non_minimal_solver(std::make_shared<const _NonMinimalSolverEngine>()) // Non-minimal solver engine used for estimating a model from a bigger than minimal sample
 	{}
 	~RobustHomographyEstimator() {}
+
+	// The size of a non-minimal sample required for the estimation
+	static constexpr size_t nonMinimalSampleSize() {
+		return _NonMinimalSolverEngine::sampleSize();
+	}
 	
 	// The size of a minimal sample required for the estimation
 	static constexpr size_t sampleSize() {
@@ -37,72 +49,75 @@ public:
 		return 7 * sampleSize();
 	}
 
+	// Estimating the model from a minimal sample
 	inline bool estimateModel(
-		const cv::Mat& data,
-		const size_t *sample,
-		std::vector<Model>* models) const
+		const cv::Mat& data_, // The data points
+		const size_t *sample_, // The sample usd for the estimation
+		std::vector<Model>* models_) const // The estimated model parameters
 	{
-		constexpr size_t M = 4;
-		return minimal_solver->estimateModel(data,
-			sample,
-			M,
-			*models);
+		return minimal_solver->estimateModel(data_, // The data points
+			sample_, // The sample used for the estimation
+			sampleSize(), // The size of a minimal sample
+			*models_); // The estimated model parameters
 	}
 
-	inline bool estimateModelNonminimal(const cv::Mat& data,
-		const size_t *sample,
-		size_t sample_number,
-		std::vector<Model>* models) const
+	// Estimating the model from a non-minimal sample
+	inline bool estimateModelNonminimal(const cv::Mat& data_, // The data points
+		const size_t *sample_, // The sample used for the estimation
+		const size_t &sample_number_, // The size of a minimal sample
+		std::vector<Model>* models_) const // The estimated model parameters
 	{
-		if (sample_number < sampleSize())
+		// Return of there are not enough points for the estimation
+		if (sample_number_ < nonMinimalSampleSize())
 			return false;
 		
-		cv::Mat normalized_points(sample_number, data.cols, data.type()); // The normalized point coordinates
-		Eigen::Matrix3d T1, T2; // The normalizing transformations in the 1st and 2nd images
+		cv::Mat normalized_points(sample_number_, data_.cols, data_.type()); // The normalized point coordinates
+		Eigen::Matrix3d normalizing_transform_source, // The normalizing transformations in the source image
+			normalizing_transform_destination; // The normalizing transformations in the destination image
 
 		// Normalize the point coordinates to achieve numerical stability when
 		// applying the least-squares model fitting.
-		if (!normalizePoints(data, // The data points
-			sample, // The points to which the model will be fit
-			sample_number, // The number of points
+		if (!normalizePoints(data_, // The data points
+			sample_, // The points to which the model will be fit
+			sample_number_, // The number of points
 			normalized_points, // The normalized point coordinates
-			T1, // The normalizing transformation in the first image
-			T2)) // The normalizing transformation in the second image
+			normalizing_transform_source, // The normalizing transformation in the first image
+			normalizing_transform_destination)) // The normalizing transformation in the second image
 			return false;
 
 		// The four point fundamental matrix fitting algorithm
 		if (!non_minimal_solver->estimateModel(normalized_points,
 			nullptr,
-			sample_number,
-			*models))
+			sample_number_,
+			*models_))
 			return false;
 
 		// Denormalizing the estimated fundamental matrices
-		const Eigen::Matrix3d T2_inverse = T2.inverse();
-		for (auto &model : *models)
-			model.descriptor = T2_inverse * model.descriptor * T1;
+		const Eigen::Matrix3d normalizing_transform_destination_inverse = normalizing_transform_destination.inverse();
+		for (auto &model : *models_)
+			model.descriptor = normalizing_transform_destination_inverse * model.descriptor * normalizing_transform_source;
 		return true;
 	}
 
-	inline double squaredResidual(const cv::Mat& point,
-		const Model& model) const
+	inline double squaredResidual(const cv::Mat& point_,
+		const Model& model_) const
 	{
-		return squaredResidual(point, model.descriptor);
+		return squaredResidual(point_, model_.descriptor);
 	}
 
-	inline double squaredResidual(const cv::Mat& point,
-		const Eigen::MatrixXd& descriptor) const
+	inline double squaredResidual(const cv::Mat& point_,
+		const Eigen::MatrixXd& descriptor_) const
 	{
-		const double* s = reinterpret_cast<double *>(point.data);
+		const double* s = reinterpret_cast<double *>(point_.data);
 
 		const double x1 = *s;
 		const double y1 = *(s + 1);
 		const double x2 = *(s + 2);
 		const double y2 = *(s + 3);
 
-		const double t1 = descriptor(0, 0) * x1 + descriptor(0, 1) * y1 + descriptor(0, 2);
-		const double t2 = descriptor(1, 0) * x1 + descriptor(1, 1) * y1 + descriptor(1, 2);
-		const double t3 = descriptor(2, 0) * x1 + descriptor(2, 1) * y1 + descriptor(2, 2);
+		const double t1 = descriptor_(0, 0) * x1 + descriptor_(0, 1) * y1 + descriptor_(0, 2);
+		const double t2 = descriptor_(1, 0) * x1 + descriptor_(1, 1) * y1 + descriptor_(1, 2);
+		const double t3 = descriptor_(2, 0) * x1 + descriptor_(2, 1) * y1 + descriptor_(2, 2);
 
 		const double d1 = x2 - (t1 / t3);
 		const double d2 = y2 - (t2 / t3);
@@ -110,29 +125,29 @@ public:
 		return d1 * d1 + d2 * d2;
 	}
 
-	inline double residual(const cv::Mat& point,
-		const Model& model) const
+	inline double residual(const cv::Mat& point_,
+		const Model& model_) const
 	{
-		return residual(point, model.descriptor);
+		return residual(point_, model_.descriptor);
 	}
 
-	inline double residual(const cv::Mat& point,
-		const Eigen::MatrixXd& descriptor) const
+	inline double residual(const cv::Mat& point_,
+		const Eigen::MatrixXd& descriptor_) const
 	{
-		return sqrt(squaredResidual(point, descriptor));
+		return sqrt(squaredResidual(point_, descriptor_));
 	}
 
 	inline bool normalizePoints(
-		const cv::Mat& data, // The data points
-		const size_t *sample, // The points to which the model will be fit
-		size_t sample_number,// The number of points
-		cv::Mat &normalized_points, // The normalized point coordinates
-		Eigen::Matrix3d &T1, // The normalizing transformation in the first image
-		Eigen::Matrix3d &T2) const // The normalizing transformation in the second image
+		const cv::Mat& data_, // The data points
+		const size_t *sample_, // The points to which the model will be fit
+		const size_t &sample_number_,// The number of points
+		cv::Mat &normalized_points_, // The normalized point coordinates
+		Eigen::Matrix3d &normalizing_transform_source_, // The normalizing transformation in the first image
+		Eigen::Matrix3d &normalizing_transform_destination_) const // The normalizing transformation in the second image
 	{
-		const size_t cols = data.cols;
-		double *normalized_points_ptr = reinterpret_cast<double *>(normalized_points.data);
-		const double *points_ptr = reinterpret_cast<double *>(data.data);
+		const size_t cols = data_.cols;
+		double *normalized_points_ptr = reinterpret_cast<double *>(normalized_points_.data);
+		const double *points_ptr = reinterpret_cast<double *>(data_.data);
 
 		double mass_point_src[2], // Mass point in the first image
 			mass_point_dst[2]; // Mass point in the second image
@@ -145,10 +160,10 @@ public:
 			0.0;
 
 		// Calculating the mass points in both images
-		for (size_t i = 0; i < sample_number; ++i)
+		for (size_t i = 0; i < sample_number_; ++i)
 		{
 			// Get pointer of the current point
-			const double *d_idx = points_ptr + cols * sample[i];
+			const double *d_idx = points_ptr + cols * sample_[i];
 
 			// Add the coordinates to that of the mass points
 			mass_point_src[0] += *(d_idx);
@@ -158,17 +173,17 @@ public:
 		}
 
 		// Get the average
-		mass_point_src[0] /= sample_number;
-		mass_point_src[1] /= sample_number;
-		mass_point_dst[0] /= sample_number;
-		mass_point_dst[1] /= sample_number;
+		mass_point_src[0] /= sample_number_;
+		mass_point_src[1] /= sample_number_;
+		mass_point_dst[0] /= sample_number_;
+		mass_point_dst[1] /= sample_number_;
 
 		// Get the mean distance from the mass points
 		double average_distance_src = 0.0,
 			average_distance_dst = 0.0;
-		for (size_t i = 0; i < sample_number; ++i)
+		for (size_t i = 0; i < sample_number_; ++i)
 		{
-			const double *d_idx = points_ptr + cols * sample[i];
+			const double *d_idx = points_ptr + cols * sample_[i];
 
 			const double x1 = *(d_idx);
 			const double y1 = *(d_idx + 1);
@@ -184,18 +199,17 @@ public:
 			average_distance_dst += sqrt(dx2 * dx2 + dy2 * dy2);
 		}
 
-		average_distance_src /= sample_number;
-		average_distance_dst /= sample_number;
+		average_distance_src /= sample_number_;
+		average_distance_dst /= sample_number_;
 
 		// Calculate the sqrt(2) / MeanDistance ratios
-		static const double sqrt_2 = sqrt(2);
-		const double ratio_src = sqrt_2 / average_distance_src;
-		const double ratio_dst = sqrt_2 / average_distance_dst;
+		const double ratio_src = M_SQRT2 / average_distance_src;
+		const double ratio_dst = M_SQRT2 / average_distance_dst;
 
 		// Compute the normalized coordinates
-		for (size_t i = 0; i < sample_number; ++i)
+		for (size_t i = 0; i < sample_number_; ++i)
 		{
-			const double *d_idx = points_ptr + cols * sample[i];
+			const double *d_idx = points_ptr + cols * sample_[i];
 
 			const double x1 = *(d_idx);
 			const double y1 = *(d_idx + 1);
@@ -209,11 +223,11 @@ public:
 		}
 
 		// Creating the normalizing transformations
-		T1 << ratio_src, 0, -ratio_src * mass_point_src[0],
+		normalizing_transform_source_ << ratio_src, 0, -ratio_src * mass_point_src[0],
 			0, ratio_src, -ratio_src * mass_point_src[1],
 			0, 0, 1;
 
-		T2 << ratio_dst, 0, -ratio_dst * mass_point_dst[0],
+		normalizing_transform_destination_ << ratio_dst, 0, -ratio_dst * mass_point_dst[0],
 			0, ratio_dst, -ratio_dst * mass_point_dst[1],
 			0, 0, 1;
 		return true;
