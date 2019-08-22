@@ -109,7 +109,7 @@ namespace gcransac
 				const size_t *sample, // The selected sample_ which will be used for estimation
 				std::vector<Model>* models) const // The estimated model_ parameters
 			{
-				constexpr size_t sample_size = 5; // The size of a minimal sample
+				constexpr size_t sample_size = sampleSize(); // The size of a minimal sample
 
 				// Estimating the model_ parameters by the solver engine
 				if (!minimal_solver->estimateModel(data, // The data points
@@ -319,7 +319,7 @@ namespace gcransac
 				Eigen::Matrix3d &normalizing_transform_source_, // The normalizing transformation in the first image
 				Eigen::Matrix3d &normalizing_transform_destination_) const // The normalizing transformation in the second image
 			{
-				const size_t cols = data_.cols;
+				const size_t cols = data_.cols; 
 				double *normalized_points_ptr = reinterpret_cast<double *>(normalized_points_.data);
 				const double *points_ptr = reinterpret_cast<double *>(data_.data);
 
