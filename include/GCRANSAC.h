@@ -246,7 +246,7 @@ namespace gcransac
 			}
 
 			// Select the so-far-the-best from the estimated models
-			for (const auto &model : models)
+			for (auto &model : models)
 			{
 				// Get the inliers and the score of the non-optimized model
 				Score score = scoring_function->getScore(points_, // All points
@@ -444,7 +444,7 @@ namespace gcransac
 				bool updated = false; // A flag determining if the model is updated
 
 				// Evaluate all the estimated models to find the best
-				for (const auto &model : models)
+				for (auto &model : models)
 				{
 					// Calculate the score of the current model
 					tmp_inliers.resize(0);
@@ -586,7 +586,7 @@ namespace gcransac
 					break;
 
 				// Select the best model from the estimated set
-				for (const auto &model : models)
+				for (auto &model : models)
 				{
 					std::vector<size_t> tmp_inliers;
 

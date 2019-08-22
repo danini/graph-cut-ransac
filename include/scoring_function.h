@@ -88,7 +88,7 @@ namespace gcransac
 		}
 
 		virtual inline Score getScore(const cv::Mat &points_, // The input data points
-			const Model &model_, // The current model parameters
+			Model &model_, // The current model parameters
 			const _ModelEstimator &estimator_, // The model estimator
 			const double threshold_, // The inlier-outlier threshold
 			std::vector<size_t> &inliers_, // The selected inliers
@@ -127,7 +127,7 @@ namespace gcransac
 
 		// Return the score of a model w.r.t. the data points and the threshold
 		inline Score getScore(const cv::Mat &points_, // The input data points
-			const Model &model_, // The current model parameters
+			Model &model_, // The current model parameters
 			const _ModelEstimator &estimator_, // The model estimator
 			const double threshold_, // The inlier-outlier threshold
 			std::vector<size_t> &inliers_, // The selected inliers
