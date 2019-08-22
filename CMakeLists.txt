@@ -72,6 +72,37 @@ source_group(third_party\\GCOptimization FILES
 	include/LinkedBlockList.h
 )
 
+source_group(Models FILES
+	include/solver_engine.h
+	include/solver_essential_matrix_five_point_stewenius.h
+	include/solver_fundamental_matrix_eight_point.h
+	include/solver_fundamental_matrix_seven_point.h
+	include/solver_homography_four_point.h
+	include/essential_estimator.h
+	include/estimator.h
+	include/fundamental_estimator.h
+	include/homography_estimator.h
+	include/model.h
+)
+
+source_group(NeighborhoodGraphs FILES
+	include/flann_neighborhood_graph.h
+	include/grid_neighborhood_graph.h
+	include/neighborhood_graph.h
+)
+
+source_group(Samplers FILES
+	include/progressive_napsac_sampler.h
+	include/prosac_sampler.h
+	include/sampler.h
+	include/uniform_sampler.h
+)
+
+source_group(Utilities FILES
+	include/utils.h
+	include/types.h
+)
+
 add_library(${PROJECT_NAME} STATIC
 	${HDRS_GCRANSAC}
 	${SRCS_GCRANSAC}
