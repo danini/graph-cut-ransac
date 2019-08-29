@@ -101,7 +101,7 @@ namespace gcransac
 			bool local_optimization = false);
 
 		// Computes the desired iteration number for RANSAC w.r.t. to the current inlier number
-		int getIterationNumber(size_t inlier_number_, // The inlier number
+		size_t getIterationNumber(size_t inlier_number_, // The inlier number
 			size_t point_number_, // The point number
 			size_t sample_size_, // The current_sample size
 			double log_probability_); // The logarithm of the desired probability
@@ -136,7 +136,7 @@ namespace gcransac
 
 	// Computes the desired iteration number for RANSAC w.r.t. to the current inlier number
 	template <class _ModelEstimator, class _NeighborhoodGraph, class _ScoringFunction>
-	int GCRANSAC<_ModelEstimator, _NeighborhoodGraph, _ScoringFunction>::getIterationNumber(
+	size_t GCRANSAC<_ModelEstimator, _NeighborhoodGraph, _ScoringFunction>::getIterationNumber(
 		size_t inlier_number_,
 		size_t point_number_,
 		size_t sample_size_,

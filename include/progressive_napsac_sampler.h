@@ -74,7 +74,7 @@ namespace gcransac
 
 		public:
 			explicit ProgressiveNapsacSampler(
-				const cv::Mat const *container_, // The pointer pointing to the data points
+				const cv::Mat * const container_, // The pointer pointing to the data points
 				const std::vector<size_t> layer_data_, // The number of cells for each neighborhood grid. This must be in descending order.
 				const size_t sample_size_, // The size of a minimal sample.
 				const double source_image_width_, // The width of the source image
@@ -104,7 +104,7 @@ namespace gcransac
 
 			// Initializes any non-trivial variables and sets up sampler if
 			// necessary. Must be called before sample is called.
-			bool initialize(const cv::Mat const *container_);
+			bool initialize(const cv::Mat * const container_);
 
 			const std::string getName() const { return "Progressive NAPSAC Sampler"; }
 
@@ -115,7 +115,7 @@ namespace gcransac
 				size_t sample_size_);
 		};
 
-		bool ProgressiveNapsacSampler::initialize(const cv::Mat const *container_)
+		bool ProgressiveNapsacSampler::initialize(const cv::Mat * const container_)
 		{
 			// Initialize the random generator
 			random_generator = std::make_unique<UniformRandomGenerator<size_t>>();
@@ -137,8 +137,8 @@ namespace gcransac
 				{
 					fprintf(stderr, "Error when initializing the Progressive NAPSAC sampler. The layers must be in descending order. The current order is \"");
 					for (size_t layer_idx = 0; layer_idx < layer_number - 1; ++layer_idx)
-						fprintf(stderr, "%d ", layer_data[layer_idx]);
-					fprintf(stderr, "%d\"\n", layer_data.back());
+						fprintf(stderr, "%d ", static_cast<int>(layer_data[layer_idx]));
+					fprintf(stderr, "%d\"\n", static_cast<int>(layer_data.back()));
 					return false;
 				}
 

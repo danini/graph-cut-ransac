@@ -20,9 +20,12 @@
 #include "solver_essential_matrix_five_point_stewenius.h"
 
 #include <ctime>
-#include <direct.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+
+#ifdef _WIN32
+	#include <direct.h>
+#endif 
 
 struct stat info;
 
@@ -238,11 +241,21 @@ bool initializeScene(const std::string &scene_name_,
 
 	// Create the task directory if it doesn't exist
 	if (stat(dir.c_str(), &info) != 0) // Check if exists
-		if (_mkdir(dir.c_str()) != 0) // Create it, if not
+	{
+#ifdef _WIN32 // Create a directory on Windows
+		if (_mkdir(dir.c_str()) != 0) // Create it, if	 not
 		{
 			fprintf(stderr, "Error while creating a new folder in 'results'\n");
 			return false;
 		}
+#else // Create a directory on Linux
+		if (mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
+		{
+			fprintf(stderr, "Error while creating a new folder in 'results'\n");
+			return false;
+		}
+#endif
+	}
 
 	// The source image's path
 	src_image_path_ =
@@ -251,7 +264,7 @@ bool initializeScene(const std::string &scene_name_,
 		src_image_path_ = root_dir + "data/" + scene_name_ + "/" + scene_name_ + "1.png";
 	if (cv::imread(src_image_path_).empty())
 	{
-		fprintf(stderr, "Error while loading image '%s'\n", src_image_path_);
+		fprintf(stderr, "Error while loading image '%s'\n", src_image_path_.c_str());
 		return false;
 	}
 
@@ -262,7 +275,7 @@ bool initializeScene(const std::string &scene_name_,
 		dst_image_path_ = root_dir + "data/" + scene_name_ + "/" + scene_name_ + "2.png";
 	if (cv::imread(dst_image_path_).empty())
 	{
-		fprintf(stderr, "Error while loading image '%s'\n", dst_image_path_);
+		fprintf(stderr, "Error while loading image '%s'\n", dst_image_path_.c_str());
 		return false;
 	}
 
@@ -295,12 +308,19 @@ bool initializeScene(const std::string &scene_name_,
 	std::string dir = root_dir + "results/" + scene_name_;
 
 	// Create the task directory if it doesn't exist
-	if (stat(dir.c_str(), &info) != 0) // Check if exists
-		if (_mkdir(dir.c_str()) != 0) // Create it, if not
-		{
-			fprintf(stderr, "Error while creating a new folder in 'results'\n");
-			return false;
-		}
+#ifdef _WIN32 // Create a directory on Windows
+	if (_mkdir(dir.c_str()) != 0) // Create it, if	 not
+	{
+		fprintf(stderr, "Error while creating a new folder in 'results'\n");
+		return false;
+	}
+#else // Create a directory on Linux
+	if (mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
+	{
+		fprintf(stderr, "Error while creating a new folder in 'results'\n");
+		return false;
+	}
+#endif
 
 	// The source image's path
 	src_image_path_ =
@@ -309,7 +329,7 @@ bool initializeScene(const std::string &scene_name_,
 		src_image_path_ = root_dir + "data/" + scene_name_ + "/" + scene_name_ + "1.png";
 	if (cv::imread(src_image_path_).empty())
 	{
-		fprintf(stderr, "Error while loading image '%s'\n", src_image_path_);
+		fprintf(stderr, "Error while loading image '%s'\n", src_image_path_.c_str());
 		return false;
 	}
 
@@ -320,7 +340,7 @@ bool initializeScene(const std::string &scene_name_,
 		dst_image_path_ = root_dir + "data/" + scene_name_ + "/" + scene_name_ + "2.png";
 	if (cv::imread(dst_image_path_).empty())
 	{
-		fprintf(stderr, "Error while loading image '%s'\n", dst_image_path_);
+		fprintf(stderr, "Error while loading image '%s'\n", dst_image_path_.c_str());
 		return false;
 	}
 
@@ -453,9 +473,9 @@ void testHomographyFitting(
 	// Write statistics
 	printf("Elapsed time = %f secs\n", statistics.processing_time);
 	printf("Inlier number = %d\n", static_cast<int>(statistics.inliers.size()));
-	printf("Applied number of local optimizations = %d\n", statistics.local_optimization_number);
-	printf("Applied number of graph-cuts = %d\n", statistics.graph_cut_number);
-	printf("Number of iterations = %d\n\n", statistics.iteration_number);
+	printf("Applied number of local optimizations = %d\n", static_cast<int>(statistics.local_optimization_number));
+	printf("Applied number of graph-cuts = %d\n", static_cast<int>(statistics.graph_cut_number));
+	printf("Number of iterations = %d\n\n", static_cast<int>(statistics.iteration_number));
 
 	// Draw the inlier matches to the images
 	cv::Mat match_image;
@@ -594,9 +614,9 @@ void testFundamentalMatrixFitting(
 	// Write statistics
 	printf("Elapsed time = %f secs\n", statistics.processing_time);
 	printf("Inlier number = %d\n", static_cast<int>(statistics.inliers.size()));
-	printf("Applied number of local optimizations = %d\n", statistics.local_optimization_number);
-	printf("Applied number of graph-cuts = %d\n", statistics.graph_cut_number);
-	printf("Number of iterations = %d\n\n", statistics.iteration_number);
+	printf("Applied number of local optimizations = %d\n", static_cast<int>(statistics.local_optimization_number));
+	printf("Applied number of graph-cuts = %d\n", static_cast<int>(statistics.graph_cut_number));
+	printf("Number of iterations = %d\n\n", static_cast<int>(statistics.iteration_number));
 	
 	// Draw the inlier matches to the images
 	cv::Mat match_image;
@@ -606,9 +626,11 @@ void testFundamentalMatrixFitting(
 		destination_image,
 		match_image);
 
-	printf("Saving the matched images to file '%s'.\n", output_match_image_path_.c_str());
+	printf("Saving the matched images to file '%s'.\n", 
+		output_match_image_path_.c_str());
 	imwrite(output_match_image_path_, match_image); // Save the matched image to file
-	printf("Saving the inlier correspondences to file '%s'.\n", out_correspondence_path_.c_str());
+	printf("Saving the inlier correspondences to file '%s'.\n",
+		out_correspondence_path_.c_str());
 	savePointsToFile(points, out_correspondence_path_.c_str(), &statistics.inliers); // Save the inliers to file
 
 	printf("Press a button to continue...\n");

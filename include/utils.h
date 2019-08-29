@@ -93,7 +93,12 @@ void saveStatisticsToFile(const gcransac::RANSACStatistics &statistics_,
 	const std::string &source_path_,
 	const std::string &destination_path_,
 	const std::string &filename_,
-	const int mode_ = std::fstream::app);
+#ifdef _WIN32
+	const int mode_ = std::fstream::app
+#else
+	const std::ios_base::openmode mode_ = std::fstream::app
+#endif
+	);
 
 /*
 	Function definition
@@ -382,7 +387,12 @@ void saveStatisticsToFile(
 	const std::string &source_path_,
 	const std::string &destination_path_,
 	const std::string &filename_,
-	const int mode_)
+#ifdef _WIN32
+	const int mode_
+#else
+	const std::ios_base::openmode mode_
+#endif
+	)
 {
 	std::ofstream file(filename_, mode_);
 

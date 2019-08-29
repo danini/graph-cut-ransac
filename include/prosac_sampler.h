@@ -88,7 +88,7 @@ namespace gcransac
 			}
 
 		public:
-			explicit ProsacSampler(const cv::Mat const *container_,
+			explicit ProsacSampler(const cv::Mat * const container_,
 				const size_t sample_size_,
 				const size_t ransac_convergence_iterations_ = 100000) :
 				sample_size(sample_size_),
@@ -104,7 +104,7 @@ namespace gcransac
 
 			const std::string getName() const { return "PROSAC Sampler"; }
 
-			bool initialize(const cv::Mat const *container_)
+			bool initialize(const cv::Mat * const container_)
 			{
 				// Set T_n according to the PROSAC paper's recommendation.
 				growth_function.resize(point_number, 0);
