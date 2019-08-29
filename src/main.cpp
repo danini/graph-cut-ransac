@@ -20,9 +20,12 @@
 #include "solver_essential_matrix_five_point_stewenius.h"
 
 #include <ctime>
-#include <direct.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+
+#ifdef _WIN32
+	#include <direct.h>
+#endif 
 
 struct stat info;
 
@@ -238,11 +241,21 @@ bool initializeScene(const std::string &scene_name_,
 
 	// Create the task directory if it doesn't exist
 	if (stat(dir.c_str(), &info) != 0) // Check if exists
+	{
+#ifdef _WIN32 // Create a directory on Windows
 		if (_mkdir(dir.c_str()) != 0) // Create it, if not
 		{
 			fprintf(stderr, "Error while creating a new folder in 'results'\n");
 			return false;
 		}
+#else // Create a directory on Linux
+		if (mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
+		{
+			fprintf(stderr, "Error while creating a new folder in 'results'\n");
+			return false;
+		}
+#endif
+	}
 
 	// The source image's path
 	src_image_path_ =
