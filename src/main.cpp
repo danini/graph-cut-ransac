@@ -243,11 +243,7 @@ bool initializeScene(const std::string &scene_name_,
 	if (stat(dir.c_str(), &info) != 0) // Check if exists
 	{
 #ifdef _WIN32 // Create a directory on Windows
-<<<<<<< HEAD
-		if (_mkdir(dir.c_str()) != 0) // Create it, if	 not
-=======
 		if (_mkdir(dir.c_str()) != 0) // Create it, if not
->>>>>>> 2e3d812602e7140a01c5d281f95ffe27a052de4c
 		{
 			fprintf(stderr, "Error while creating a new folder in 'results'\n");
 			return false;
@@ -786,9 +782,9 @@ void testEssentialMatrixFitting(
 	// Print the statistics
 	printf("Elapsed time = %f secs\n", statistics.processing_time);
 	printf("Inlier number = %d\n", static_cast<int>(statistics.inliers.size()));
-	printf("Applied number of local optimizations = %d\n", statistics.local_optimization_number);
-	printf("Applied number of graph-cuts = %d\n", statistics.graph_cut_number);
-	printf("Number of iterations = %d\n\n", statistics.iteration_number);
+	printf("Applied number of local optimizations = %d\n", static_cast<int>(statistics.local_optimization_number));
+	printf("Applied number of graph-cuts = %d\n", static_cast<int>(statistics.graph_cut_number));
+	printf("Number of iterations = %d\n\n", static_cast<int>(statistics.iteration_number));
 
 	// Draw the inlier matches to the images
 	cv::Mat match_image;

@@ -398,7 +398,7 @@ void saveStatisticsToFile(
 
 	if (!file.is_open())
 	{
-		fprintf(stderr, "A problem occured when saving the statistics to file '%s'.\n", filename_);
+		fprintf(stderr, "A problem occured when saving the statistics to file '%s'.\n", filename_.c_str());
 		return;
 	}
 

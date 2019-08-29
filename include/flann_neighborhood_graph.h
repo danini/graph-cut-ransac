@@ -79,7 +79,7 @@ namespace gcransac
 				initialized = initialize(container);
 			}
 
-			bool initialize(const cv::Mat const *container_);
+			bool initialize(const cv::Mat * const container_);
 			inline const std::vector<size_t> &getNeighbors(size_t point_idx_) const;
 		};
 
