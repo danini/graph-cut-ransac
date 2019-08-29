@@ -243,7 +243,11 @@ bool initializeScene(const std::string &scene_name_,
 	if (stat(dir.c_str(), &info) != 0) // Check if exists
 	{
 #ifdef _WIN32 // Create a directory on Windows
+<<<<<<< HEAD
 		if (_mkdir(dir.c_str()) != 0) // Create it, if	 not
+=======
+		if (_mkdir(dir.c_str()) != 0) // Create it, if not
+>>>>>>> 2e3d812602e7140a01c5d281f95ffe27a052de4c
 		{
 			fprintf(stderr, "Error while creating a new folder in 'results'\n");
 			return false;
