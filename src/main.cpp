@@ -105,7 +105,7 @@ int main(int argc, const char* argv[])
 	const double spatial_coherence_weight = 0.14; // The weight of the spatial coherence term in the graph-cut energy minimization.
 	const size_t cell_number_in_neighborhood_graph = 8; // The number of cells along each axis in the neighborhood graph.
 
-	printf("------------------------------------------------------------\nFundamental matrix fitting\n------------------------------------------------------------\n");
+	/*printf("------------------------------------------------------------\nFundamental matrix fitting\n------------------------------------------------------------\n");
 	for (const std::string &scene : getAvailableTestScenes(Problem::FundamentalMatrixFitting))
 	{
 		printf("Processed scene = '%s'\n", scene.c_str());
@@ -169,7 +169,7 @@ int main(int argc, const char* argv[])
 			cell_number_in_neighborhood_graph, // The radius of the neighborhood ball for determining the neighborhoods.
 			fps); // The required FPS limit. If it is set to -1, the algorithm will not be interrupted before finishing.
 		printf("\n------------------------------------------------------------\n");
-	}
+	}*/
 
 	printf("------------------------------------------------------------\nEssential matrix fitting\n------------------------------------------------------------\n");
 	for (const std::string &scene : getAvailableTestScenes(Problem::EssentialMatrixFitting))
@@ -210,6 +210,7 @@ int main(int argc, const char* argv[])
 		printf("\n------------------------------------------------------------\n");
 	}
 
+	while (1);
 	return 0;
 }
 
@@ -308,19 +309,22 @@ bool initializeScene(const std::string &scene_name_,
 	std::string dir = root_dir + "results/" + scene_name_;
 
 	// Create the task directory if it doesn't exist
+	if (stat(dir.c_str(), &info) != 0) // Check if exists
+	{
 #ifdef _WIN32 // Create a directory on Windows
-	if (_mkdir(dir.c_str()) != 0) // Create it, if	 not
-	{
-		fprintf(stderr, "Error while creating a new folder in 'results'\n");
-		return false;
-	}
+		if (_mkdir(dir.c_str()) != 0) // Create it, if not
+		{
+			fprintf(stderr, "Error while creating a new folder in 'results'\n");
+			return false;
+		}
 #else // Create a directory on Linux
-	if (mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
-	{
-		fprintf(stderr, "Error while creating a new folder in 'results'\n");
-		return false;
-	}
+		if (mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
+		{
+			fprintf(stderr, "Error while creating a new folder in 'results'\n");
+			return false;
+		}
 #endif
+	}
 
 	// The source image's path
 	src_image_path_ =
