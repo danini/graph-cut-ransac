@@ -447,7 +447,8 @@ void testHomographyFitting(
 		static_cast<double>(source_image.cols), // The width of the source image
 		static_cast<double>(source_image.rows), // The height of the source image
 		static_cast<double>(destination_image.cols), // The width of the destination image
-		static_cast<double>(destination_image.rows));  // The height of the destination image
+		static_cast<double>(destination_image.rows),  // The height of the destination image
+		0.5); // The length (i.e., 0.5 * <point number> iterations) of fully blending to global sampling 
 
 	sampler::UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
 

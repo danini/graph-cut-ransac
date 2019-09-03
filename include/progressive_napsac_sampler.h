@@ -51,7 +51,8 @@ namespace gcransac
 		protected:
 			std::unique_ptr<UniformRandomGenerator<size_t>> random_generator; // The random number generator
 			const size_t layer_number; // The number of overlapping neighborhood grids
-			const double source_image_width, // The width of the source image
+			const double sampler_length, // The length of fully blending to global sampling 
+				source_image_width, // The width of the source image
 				source_image_height, // The height of the source image
 				destination_image_width, // The width of the destination image
 				destination_image_height; // The height of the destination image
@@ -74,13 +75,14 @@ namespace gcransac
 
 		public:
 			explicit ProgressiveNapsacSampler(
-				const cv::Mat * const container_, // The pointer pointing to the data points
+				const cv::Mat const *container_, // The pointer pointing to the data points
 				const std::vector<size_t> layer_data_, // The number of cells for each neighborhood grid. This must be in descending order.
 				const size_t sample_size_, // The size of a minimal sample.
 				const double source_image_width_, // The width of the source image
 				const double source_image_height_, // The height of the source image
 				const double destination_image_width_, // The width of the destination image
-				const double destination_image_height_) // The height of the destination image
+				const double destination_image_height_, // The height of the destination image
+				const double sampler_length_ = 20) // The length of fully blending to global sampling 
 				: Sampler(container_),
 				layer_data(layer_data_),
 				sample_size(sample_size_),
@@ -95,7 +97,8 @@ namespace gcransac
 				destination_image_height(destination_image_height_),
 				kth_sample_number(0),
 				one_point_prosac_sampler(container_, 1, container_->rows),
-				prosac_sampler(container_, sample_size_, container_->rows)
+				prosac_sampler(container_, sample_size_, container_->rows),
+				sampler_length(sampler_length_)
 			{
 				initialized = initialize(container_);
 			}
@@ -104,7 +107,7 @@ namespace gcransac
 
 			// Initializes any non-trivial variables and sets up sampler if
 			// necessary. Must be called before sample is called.
-			bool initialize(const cv::Mat * const container_);
+			bool initialize(const cv::Mat const *container_);
 
 			const std::string getName() const { return "Progressive NAPSAC Sampler"; }
 
@@ -115,7 +118,7 @@ namespace gcransac
 				size_t sample_size_);
 		};
 
-		bool ProgressiveNapsacSampler::initialize(const cv::Mat * const container_)
+		bool ProgressiveNapsacSampler::initialize(const cv::Mat const *container_)
 		{
 			// Initialize the random generator
 			random_generator = std::make_unique<UniformRandomGenerator<size_t>>();
@@ -123,7 +126,7 @@ namespace gcransac
 				static_cast<size_t>(point_number));
 
 			max_progressive_napsac_iterations =
-				static_cast<size_t>(container_->rows / 2.0);
+				static_cast<size_t>(sampler_length * container_->rows);
 
 			// Initialize the grid layers. We do not need to add the last layer
 			// since it contains the whole image.
@@ -137,8 +140,8 @@ namespace gcransac
 				{
 					fprintf(stderr, "Error when initializing the Progressive NAPSAC sampler. The layers must be in descending order. The current order is \"");
 					for (size_t layer_idx = 0; layer_idx < layer_number - 1; ++layer_idx)
-						fprintf(stderr, "%d ", static_cast<int>(layer_data[layer_idx]));
-					fprintf(stderr, "%d\"\n", static_cast<int>(layer_data.back()));
+						fprintf(stderr, "%d ", layer_data[layer_idx]);
+					fprintf(stderr, "%d\"\n", layer_data.back());
 					return false;
 				}
 
