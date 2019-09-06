@@ -105,7 +105,7 @@ int main(int argc, const char* argv[])
 	const double spatial_coherence_weight = 0.14; // The weight of the spatial coherence term in the graph-cut energy minimization.
 	const size_t cell_number_in_neighborhood_graph = 8; // The number of cells along each axis in the neighborhood graph.
 
-	/*printf("------------------------------------------------------------\nFundamental matrix fitting\n------------------------------------------------------------\n");
+	printf("------------------------------------------------------------\nFundamental matrix fitting\n------------------------------------------------------------\n");
 	for (const std::string &scene : getAvailableTestScenes(Problem::FundamentalMatrixFitting))
 	{
 		printf("Processed scene = '%s'\n", scene.c_str());
@@ -169,7 +169,7 @@ int main(int argc, const char* argv[])
 			cell_number_in_neighborhood_graph, // The radius of the neighborhood ball for determining the neighborhoods.
 			fps); // The required FPS limit. If it is set to -1, the algorithm will not be interrupted before finishing.
 		printf("\n------------------------------------------------------------\n");
-	}*/
+	}
 
 	printf("------------------------------------------------------------\nEssential matrix fitting\n------------------------------------------------------------\n");
 	for (const std::string &scene : getAvailableTestScenes(Problem::EssentialMatrixFitting))
@@ -210,7 +210,6 @@ int main(int argc, const char* argv[])
 		printf("\n------------------------------------------------------------\n");
 	}
 
-	while (1);
 	return 0;
 }
 

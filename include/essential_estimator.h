@@ -71,10 +71,16 @@ namespace gcransac
 			// when using symmetric epipolar distance. 
 			const double minimum_inlier_ratio_in_validity_check;
 
+			// The ratio of points used when the non-minimal model fitting method returns multiple models.
+			// The selected points are not used for the estimation but for selecting the best model
+			// from the set of estimated ones. 
+			const double point_ratio_for_selecting_from_multiple_models;
+			
 		public:
 			EssentialMatrixEstimator(Eigen::Matrix3d intrinsics_src_, // The intrinsic parameters of the source camera
 				Eigen::Matrix3d intrinsics_dst_,  // The intrinsic parameters of the destination camera
-				const double minimum_inlier_ratio_in_validity_check_ = 0.5) :
+				const double minimum_inlier_ratio_in_validity_check_ = 0.5,
+				const double point_ratio_for_selecting_from_multiple_models_ = 0.05) :
 				// The intrinsic parameters of the source camera
 				intrinsics_src(intrinsics_src_),
 				// The intrinsic parameters of the destination camera
@@ -85,7 +91,11 @@ namespace gcransac
 				non_minimal_solver(std::make_shared<const _NonMinimalSolverEngine>()),
 				// The lower bound of the inlier ratio which is required to pass the validity test.
 				// It is clamped to be in interval [0, 1].
-				minimum_inlier_ratio_in_validity_check(std::clamp(minimum_inlier_ratio_in_validity_check_, 0.0, 1.0))
+				minimum_inlier_ratio_in_validity_check(std::clamp(minimum_inlier_ratio_in_validity_check_, 0.0, 1.0)),
+				// The ratio of points used when the non-minimal model fitting method returns multiple models.
+				// The selected points are not used for the estimation but for selecting the best model
+				// from the set of estimated ones. 
+				point_ratio_for_selecting_from_multiple_models(std::clamp(point_ratio_for_selecting_from_multiple_models_, 0.0, 1.0))
 			{}
 			~EssentialMatrixEstimator() {}
 
@@ -267,7 +277,16 @@ namespace gcransac
 				if (sample_number_ < nonMinimalSampleSize())
 					return false;
 
-				cv::Mat normalized_points(sample_number_, data_.cols, data_.type()); // The normalized point_ coordinates
+				// Number of points used for selecting the best model out of the estimated ones.
+				// In case the solver return a single model, 0 points are not used for the estimation.
+				const size_t points_not_used = non_minimal_solver->returnMultipleModels() ?
+					MAX(1, std::round(sample_number_ * point_ratio_for_selecting_from_multiple_models)) :
+					0;
+
+				// Number of points used for the estimation
+				const size_t points_used = sample_number_ - points_not_used;
+
+				cv::Mat normalized_points(points_used, data_.cols, data_.type()); // The normalized point_ coordinates
 				Eigen::Matrix3d normalizing_transform_source, // The normalizing transformations in the source image
 					normalizing_transform_destination; // The normalizing transformations in the destination image
 
@@ -275,39 +294,73 @@ namespace gcransac
 				// applying the least-squares model_ fitting.
 				if (!normalizePoints(data_, // The data_ points
 					sample_, // The points to which the model_ will be fit
-					sample_number_, // The number of points
+					points_used, // The number of points
 					normalized_points, // The normalized point_ coordinates
 					normalizing_transform_source, // The normalizing transformation in the first image
 					normalizing_transform_destination)) // The normalizing transformation in the second image
 					return false;
 
-				// The eight point_ fundamental matrix fitting algorithm
+				// The container where the estimated models are stored
+				std::vector<Model> temp_models;
+				std::vector<size_t> valid_model_indices;
+
+				// The eight point fundamental matrix fitting algorithm
 				if (!non_minimal_solver->estimateModel(normalized_points,
 					nullptr,
-					sample_number_,
-					*models_))
+					points_used,
+					temp_models))
 					return false;
 
 				/* Orientation constraint check */
-				for (short model_idx = models_->size() - 1; model_idx >= 0; --model_idx)
-					if (!isOrientationValid(models_->at(model_idx).descriptor,
+				const size_t model_number = temp_models.size();
+				valid_model_indices.reserve(model_number);
+				for (size_t model_idx = 0; model_idx < model_number; ++model_idx)
+					if (isOrientationValid(temp_models.at(model_idx).descriptor,
 						data_,
 						sample_,
-						sample_number_))
-						models_->erase(models_->begin() + model_idx);
+						points_used))
+						valid_model_indices.emplace_back(model_idx);
 
-				// Denormalizing the estimated fundamental matrices
+				if (valid_model_indices.size() == 0)
+					return false;
+
+				// Denormalizing the estimated essential matrices and selecting the best
+				// if multiple ones have been estimated.
 				const Eigen::Matrix3d T2_transpose = normalizing_transform_destination.transpose();
-				for (auto &model : *models_)
+				double best_residual = std::numeric_limits<double>::max();
+				size_t best_model_idx = 0;
+				for (const size_t &model_idx : valid_model_indices)
 				{
+					// Get the reference of the current model
+					Model &model = temp_models[model_idx];
+
 					// Transform the estimated fundamental matrix back to the not normalized space
 					model.descriptor = T2_transpose * model.descriptor * normalizing_transform_source;
 
-					// Normalizing the essential matrix elements
-					model.descriptor.normalize();
-					if (model.descriptor(2, 2) < 0)
-						model.descriptor = -model.descriptor;
+					// Calculate the sum of squared residuals from the selected point set
+					double current_residual = 0.0;
+					if (valid_model_indices.size() > 1)
+						for (size_t sample_idx = points_used; sample_idx < sample_number_; ++sample_idx)
+							current_residual += squaredResidual(data_.row(sample_[sample_idx]), model.descriptor);
+
+					// Update the best model index if the sum of squared residuals measured from the correspondences
+					// not used in the estimation is smaller than the previous best.
+					if (current_residual < best_residual)
+					{
+						best_residual = current_residual;
+						best_model_idx = model_idx;
+					}
 				}
+
+				// Store the best model
+				models_->emplace_back(temp_models[best_model_idx]);
+				Model &best_model = models_->back();
+
+				// Normalizing the essential matrix elements
+				best_model.descriptor.normalize();
+				if (best_model.descriptor(2, 2) < 0)
+					best_model.descriptor = -best_model.descriptor;
+
 				return true;
 			}
 
