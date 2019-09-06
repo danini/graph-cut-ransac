@@ -239,7 +239,7 @@ namespace gcransac
 				return sampsonDistance(point_, descriptor_);
 			}
 
-			// Validate the model_ by checking the number of inlier with symmetric epipolar distance
+			// Validate the model by checking the number of inlier with symmetric epipolar distance
 			// instead of Sampson distance. In general, Sampson distance is more accurate but less
 			// robust to degenerate solutions than the symmetric epipolar distance. Therefore,
 			// every so-far-the-best model is checked if it has enough inlier with symmetric
@@ -267,12 +267,14 @@ namespace gcransac
 				// If the algorithm has not terminated earlier, there are not enough inliers_.
 				return false;
 			}
-
+			
+			// Estimating the model from a non-minimal sample
 			inline bool estimateModelNonminimal(
 				const cv::Mat& data_,
 				const size_t *sample_,
 				const size_t &sample_number_,
-				std::vector<Model>* models_) const
+				std::vector<Model>* models_,
+				const double *weights_ = nullptr) const
 			{
 				if (sample_number_ < nonMinimalSampleSize())
 					return false;
@@ -308,7 +310,8 @@ namespace gcransac
 				if (!non_minimal_solver->estimateModel(normalized_points,
 					nullptr,
 					points_used,
-					temp_models))
+					temp_models,
+					weights_))
 					return false;
 
 				/* Orientation constraint check */

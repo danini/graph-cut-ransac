@@ -102,7 +102,8 @@ namespace gcransac
 			inline bool estimateModelNonminimal(const cv::Mat& data_, // The data points
 				const size_t *sample_, // The sample used for the estimation
 				const size_t &sample_number_, // The size of a minimal sample
-				std::vector<Model>* models_) const // The estimated model parameters
+				std::vector<Model>* models_,
+				const double *weights_ = nullptr) const // The estimated model parameters
 			{
 				// Return of there are not enough points for the estimation
 				if (sample_number_ < nonMinimalSampleSize())
@@ -126,7 +127,8 @@ namespace gcransac
 				if (!non_minimal_solver->estimateModel(normalized_points,
 					nullptr,
 					sample_number_,
-					*models_))
+					*models_,
+					weights_))
 					return false;
 
 				// Denormalizing the estimated fundamental matrices

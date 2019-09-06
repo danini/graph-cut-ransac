@@ -76,11 +76,13 @@ namespace gcransac
 				}
 
 				// Estimate the model parameters from the given point sample
+				// using weighted fitting if possible.
 				virtual inline bool estimateModel(
 					const cv::Mat& data_,
 					const size_t *sample_,
 					size_t sample_number_,
-					std::vector<Model> &models_) const = 0;
+					std::vector<Model> &models_,
+					const double *weights_ = nullptr) const = 0;
 			};
 		}
 	}

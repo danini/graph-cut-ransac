@@ -67,11 +67,14 @@ namespace gcransac
 					return true;
 				}
 
+				// Estimate the model parameters from the given point sample
+				// using weighted fitting if possible.
 				inline bool estimateModel(
-					const cv::Mat& data_,
-					const size_t *sample_,
-					size_t sample_number_,
-					std::vector<Model> &models_) const;
+					const cv::Mat& data_, // The set of data points
+					const size_t *sample_, // The sample used for the estimation
+					size_t sample_number_, // The size of the sample
+					std::vector<Model> &models_, // The estimated model parameters
+					const double *weights_ = nullptr) const; // The weight for each point
 
 			protected:
 				inline Eigen::Matrix<double, 1, 10> multiplyDegOnePoly(
@@ -99,7 +102,8 @@ namespace gcransac
 				const cv::Mat& data_,
 				const size_t *sample_,
 				size_t sample_number_,
-				std::vector<Model> &models_) const
+				std::vector<Model> &models_,
+				const double *weights_) const
 			{
 				if (sample_ == nullptr)
 					sample_number_ = data_.rows;
@@ -111,22 +115,45 @@ namespace gcransac
 				// Step 1. Create the nx9 matrix containing epipolar constraints.
 				//   Essential matrix is a linear combination of the 4 vectors spanning the null space of this
 				//   matrix.
-				double x0, y0, x1, y1;
+				int offset;
+				double x0, y0, x1, y1, weight = 1.0;
 				for (size_t i = 0; i < sample_number_; i++)
 				{
-					int offset;
 					if (sample_ == nullptr)
+					{
 						offset = cols * i;
+						if (weights_ != nullptr)
+							weight = weights_[i];
+					}
 					else
+					{
 						offset = cols * sample_[i];
+						if (weights_ != nullptr)
+							weight = weights_[sample_[i]];
+					}
 
 					x0 = data_ptr[offset];
 					y0 = data_ptr[offset + 1];
 					x1 = data_ptr[offset + 2];
 					y1 = data_ptr[offset + 3];
+					
+					// Precalculate these values to avoid calculating them multiple times
+					const double
+						weight_times_x0 = weight * x0,
+						weight_times_x1 = weight * x1,
+						weight_times_y0 = weight * y0,
+						weight_times_y1 = weight * y1;
 
 					coefficients.row(i) <<
-						x1 * x0, y1 * x0, x0, x1 * y0, y1 * y0, y0, x1, y1, 1.0;
+						weight_times_x0 * x1,
+						weight_times_x0 * y1,
+						weight_times_x0,
+						weight_times_y0 * x1,
+						weight_times_y0 * y1,
+						weight_times_y0,
+						weight_times_x1,
+						weight_times_y1,
+						weight;
 				}
 
 				// Extract the null space from a minimal sampling (using LU) or non-minimal sampling (using SVD).
@@ -188,8 +215,6 @@ namespace gcransac
 
 				return models_.size() > 0;
 			}
-
-
 
 			// Multiply two degree one polynomials of variables x, y, z.
 			// E.g. p1 = a[0]x + a[1]y + a[2]z + a[3]

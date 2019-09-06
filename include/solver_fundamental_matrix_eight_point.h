@@ -67,18 +67,22 @@ namespace gcransac
 					return 8;
 				}
 
+				// Estimate the model parameters from the given point sample
+				// using weighted fitting if possible.
 				inline bool estimateModel(
-					const cv::Mat& data_,
-					const size_t *sample_,
-					size_t sample_number_,
-					std::vector<Model> &models_) const;
+					const cv::Mat& data_, // The set of data points
+					const size_t *sample_, // The sample used for the estimation
+					size_t sample_number_, // The size of the sample
+					std::vector<Model> &models_, // The estimated model parameters
+					const double *weights_ = nullptr) const; // The weight for each point
 			};
 
 			inline bool FundamentalMatrixEightPointSolver::estimateModel(
 				const cv::Mat& data_,
 				const size_t *sample_,
 				size_t sample_number_,
-				std::vector<Model> &models_) const
+				std::vector<Model> &models_,
+				const double *weights_) const
 			{
 				if (sample_ == nullptr)
 					sample_number_ = data_.rows;
@@ -89,29 +93,61 @@ namespace gcransac
 
 				// form a linear system: i-th row of A(=a) represents
 				// the equation: (m2[i], 1)'*F*(m1[i], 1) = 0
-				double x0, y0, x1, y1;
+				double weight = 1.0;
+				size_t offset;
 				for (size_t i = 0; i < sample_number_; i++)
 				{
-					int offset;
 					if (sample_ == nullptr)
+					{
 						offset = cols * i;
+						if (weights_ != nullptr)
+							weight = weights_[i];
+					} 
 					else
+					{
 						offset = cols * sample_[i];
+						if (weights_ != nullptr)
+							weight = weights_[sample_[i]];
+					}
 
-					x0 = data_ptr[offset];
-					y0 = data_ptr[offset + 1];
-					x1 = data_ptr[offset + 2];
-					y1 = data_ptr[offset + 3];
+					const double
+						x0 = data_ptr[offset],
+						y0 = data_ptr[offset + 1],
+						x1 = data_ptr[offset + 2],
+						y1 = data_ptr[offset + 3];
 
-					coefficients(i, 0) = x1 * x0;
-					coefficients(i, 1) = x1 * y0;
-					coefficients(i, 2) = x1;
-					coefficients(i, 3) = y1 * x0;
-					coefficients(i, 4) = y1 * y0;
-					coefficients(i, 5) = y1;
-					coefficients(i, 6) = x0;
-					coefficients(i, 7) = y0;
-					coefficients(i, 8) = 1;
+					// If not weighted least-squares is applied
+					if (weights_ == nullptr)
+					{
+						coefficients(i, 0) = x1 * x0;
+						coefficients(i, 1) = x1 * y0;
+						coefficients(i, 2) = x1;
+						coefficients(i, 3) = y1 * x0;
+						coefficients(i, 4) = y1 * y0;
+						coefficients(i, 5) = y1;
+						coefficients(i, 6) = x0;
+						coefficients(i, 7) = y0;
+						coefficients(i, 8) = 1;
+					}
+					else
+					{
+						// Precalculate these values to avoid calculating them multiple times
+						const double
+							weight_times_x0 = weight * x0,
+							weight_times_y0 = weight * y0,
+							weight_times_x1 = weight * x1,
+							weight_times_y1 = weight * y1;
+
+						coefficients(i, 0) = weight_times_x1 * x0;
+						coefficients(i, 1) = weight_times_x1 * y0;
+						coefficients(i, 2) = weight_times_x1;
+						coefficients(i, 3) = weight_times_y1 * x0;
+						coefficients(i, 4) = weight_times_y1 * y0;
+						coefficients(i, 5) = weight_times_y1;
+						coefficients(i, 6) = weight_times_x0;
+						coefficients(i, 7) = weight_times_y0;
+						coefficients(i, 8) = weight;
+					}
 				}
 
 				// A*(f11 f12 ... f33)' = 0 is singular (7 equations for 9 variables), so
