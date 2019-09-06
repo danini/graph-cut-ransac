@@ -25,4 +25,4 @@ Next to the executable, copy the `data` folder and, also, create a `results` fol
 
 When using the algorithm, please cite `Barath, Daniel, and Matas, Jiří. "Graph-cut RANSAC." Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. 2018`.
 
-In case you use GC-RANSAC with Progressive NAPSAC (https://arxiv.org/abs/1906.02295) sampler, please cite `Barath, Daniel, Maksym Ivashechkin, and Jiri Matas. "Progressive NAPSAC: sampling from gradually growing neighborhoods." arXiv preprint arXiv:1906.02295 (2019)`.
+In case you use GC-RANSAC with Progressive NAPSAC sampler (https://arxiv.org/abs/1906.02295), please cite `Barath, Daniel, Maksym Ivashechkin, and Jiri Matas. "Progressive NAPSAC: sampling from gradually growing neighborhoods." arXiv preprint arXiv:1906.02295 (2019)`.
