@@ -45,7 +45,7 @@ namespace gcransac
 		class UniformSampler : public Sampler < cv::Mat, size_t >
 		{
 		protected:
-			std::unique_ptr<UniformRandomGenerator<size_t>> random_generator;
+			std::unique_ptr<utils::UniformRandomGenerator<size_t>> random_generator;
 
 		public:
 			explicit UniformSampler(const cv::Mat * const container_)
@@ -71,7 +71,7 @@ namespace gcransac
 
 		bool UniformSampler::initialize(const cv::Mat * const container_)
 		{
-			random_generator = std::make_unique<UniformRandomGenerator<size_t>>();
+			random_generator = std::make_unique<utils::UniformRandomGenerator<size_t>>();
 			random_generator->resetGenerator(0,
 				static_cast<size_t>(container_->rows));
 			return true;

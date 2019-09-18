@@ -48,7 +48,7 @@ namespace gcransac
 		class GCRANSAC
 	{
 	public:
-		Settings settings;
+		utils::Settings settings;
 
 		GCRANSAC() :
 			time_limit(std::numeric_limits<double>::max()),
@@ -68,10 +68,10 @@ namespace gcransac
 		void setFPS(size_t fps_) { settings.desired_fps = fps_; time_limit = 1.0 / fps_; } // Set a desired FPS value
 
 		// Return the constant reference of the scoring function
-		const RANSACStatistics &getRansacStatistics() const { return statistics; }
+		const utils::RANSACStatistics &getRansacStatistics() const { return statistics; }
 
 		// Return the reference of the scoring function
-		RANSACStatistics &getMutableRansacStatistics() { return statistics; }
+		utils::RANSACStatistics &getMutableRansacStatistics() { return statistics; }
 
 		// Return the constant reference of the scoring function
 		const _ScoringFunction &getScoringFunction() const { return *scoring_function; }
@@ -82,7 +82,7 @@ namespace gcransac
 	protected:
 		double time_limit; // The desired time limit
 		std::vector<std::vector<cv::DMatch>> neighbours; // The neighborhood structure
-		RANSACStatistics statistics; // RANSAC statistics
+		utils::RANSACStatistics statistics; // RANSAC statistics
 		int point_number; // The point number
 		double truncated_threshold; // 3 / 2 * threshold_
 		double squared_truncated_threshold; // 9 / 4 * threshold_^2

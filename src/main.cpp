@@ -398,7 +398,7 @@ void testHomographyFitting(
 
 	// Detect or load point correspondences using AKAZE 
 	cv::Mat points;
-	detectFeatures(
+	utils::detectFeatures(
 		in_correspondence_path_, // The path where the correspondences are read from or saved to.
 		source_image, // The source image
 		destination_image, // The destination image
@@ -426,11 +426,11 @@ void testHomographyFitting(
 	}
 
 	// Apply Graph-cut RANSAC
-	DefaultHomographyEstimator estimator;
+	utils::DefaultHomographyEstimator estimator;
 	std::vector<int> inliers;
 	Homography model;
 
-	GCRANSAC<DefaultHomographyEstimator, neighborhood::GridNeighborhoodGraph> gcransac;
+	GCRANSAC<utils::DefaultHomographyEstimator, neighborhood::GridNeighborhoodGraph> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
 	gcransac.settings.threshold = inlier_outlier_threshold_; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
@@ -472,7 +472,7 @@ void testHomographyFitting(
 		model);
 
 	// Get the statistics of the results
-	const RANSACStatistics &statistics = gcransac.getRansacStatistics();
+	const utils::RANSACStatistics &statistics = gcransac.getRansacStatistics();
 
 	// Write statistics
 	printf("Elapsed time = %f secs\n", statistics.processing_time);
@@ -483,7 +483,7 @@ void testHomographyFitting(
 
 	// Draw the inlier matches to the images
 	cv::Mat match_image;
-	drawMatches(points,
+	utils::drawMatches(points,
 		statistics.inliers,
 		source_image,
 		destination_image,
@@ -492,12 +492,12 @@ void testHomographyFitting(
 	printf("Saving the matched images to file '%s'.\n", output_match_image_path_.c_str());
 	imwrite(output_match_image_path_, match_image); // Save the matched image to file
 	printf("Saving the inlier correspondences to file '%s'.\n", out_correspondence_path_.c_str());
-	savePointsToFile(points, out_correspondence_path_.c_str(), &statistics.inliers); // Save the inliers to file
+	utils::savePointsToFile(points, out_correspondence_path_.c_str(), &statistics.inliers); // Save the inliers to file
 
 	printf("Press a button to continue...\n");
 
 	// Showing the image
-	showImage(match_image,
+	utils::showImage(match_image,
 		"Inlier correspondences",
 		1600,
 		1200,
@@ -536,7 +536,7 @@ void testFundamentalMatrixFitting(
 
 	// Detect or load point correspondences using AKAZE 
 	cv::Mat points;
-	detectFeatures(
+	utils::detectFeatures(
 		in_correspondence_path_, // The path where the correspondences are read from or saved to.
 		source_image, // The source image
 		destination_image, // The destination image
@@ -569,7 +569,7 @@ void testFundamentalMatrixFitting(
 		sqrt(pow(MAX(source_image.cols, destination_image.cols), 2) + pow(MAX(source_image.rows, destination_image.rows), 2));
 	
 	// Apply Graph-cut RANSAC
-	DefaultFundamentalMatrixEstimator estimator;
+	utils::DefaultFundamentalMatrixEstimator estimator;
 	std::vector<int> inliers;
 	FundamentalMatrix model;
 
@@ -593,7 +593,7 @@ void testFundamentalMatrixFitting(
 		return;
 	}
 	
-	GCRANSAC<DefaultFundamentalMatrixEstimator, neighborhood::GridNeighborhoodGraph> gcransac;
+	GCRANSAC<utils::DefaultFundamentalMatrixEstimator, neighborhood::GridNeighborhoodGraph> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
 	gcransac.settings.threshold = inlier_outlier_threshold_ * max_image_diagonal; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
@@ -613,7 +613,7 @@ void testFundamentalMatrixFitting(
 		model);
 
 	// Get the statistics of the results
-	const RANSACStatistics &statistics = gcransac.getRansacStatistics();
+	const utils::RANSACStatistics &statistics = gcransac.getRansacStatistics();
 
 	// Write statistics
 	printf("Elapsed time = %f secs\n", statistics.processing_time);
@@ -624,7 +624,7 @@ void testFundamentalMatrixFitting(
 	
 	// Draw the inlier matches to the images
 	cv::Mat match_image;
-	drawMatches(points,
+	utils::drawMatches(points,
 		statistics.inliers,
 		source_image,
 		destination_image,
@@ -635,12 +635,12 @@ void testFundamentalMatrixFitting(
 	imwrite(output_match_image_path_, match_image); // Save the matched image to file
 	printf("Saving the inlier correspondences to file '%s'.\n",
 		out_correspondence_path_.c_str());
-	savePointsToFile(points, out_correspondence_path_.c_str(), &statistics.inliers); // Save the inliers to file
+	utils::savePointsToFile(points, out_correspondence_path_.c_str(), &statistics.inliers); // Save the inliers to file
 
 	printf("Press a button to continue...\n");
 
 	// Showing the image
-	showImage(match_image,
+	utils::showImage(match_image,
 		"Inlier correspondences",
 		1600,
 		1200,
@@ -681,7 +681,7 @@ void testEssentialMatrixFitting(
 
 	// Detect or load point correspondences using AKAZE 
 	cv::Mat points;
-	detectFeatures(
+	utils::detectFeatures(
 		in_correspondence_path_, // The path where the correspondences are read from or saved to.
 		source_image, // The source image
 		destination_image, // The destination image
@@ -691,7 +691,7 @@ void testEssentialMatrixFitting(
 	Eigen::Matrix3d intrinsics_src,
 		intrinsics_dst;
 
-	if (!loadMatrix<double, 3, 3>(source_intrinsics_path_,
+	if (!utils::loadMatrix<double, 3, 3>(source_intrinsics_path_,
 		intrinsics_src))
 	{
 		printf("An error occured when loading the intrinsics camera matrix from '%s'\n",
@@ -699,7 +699,7 @@ void testEssentialMatrixFitting(
 		return;
 	}
 
-	if (!loadMatrix<double, 3, 3>(destination_intrinsics_path_,
+	if (!utils::loadMatrix<double, 3, 3>(destination_intrinsics_path_,
 		intrinsics_dst))
 	{
 		printf("An error occured when loading the intrinsics camera matrix from '%s'\n",
@@ -709,7 +709,7 @@ void testEssentialMatrixFitting(
 
 	// Normalize the point coordinate by the intrinsic matrices
 	cv::Mat normalized_points(points.size(), CV_64F);
-	normalizeCorrespondences(points, 
+	utils::normalizeCorrespondences(points,
 		intrinsics_src,
 		intrinsics_dst,
 		normalized_points);
@@ -736,7 +736,7 @@ void testEssentialMatrixFitting(
 	}
 
 	// Apply Graph-cut RANSAC
-	DefaultEssentialMatrixEstimator estimator(intrinsics_src,
+	utils::DefaultEssentialMatrixEstimator estimator(intrinsics_src,
 		intrinsics_dst);
 	std::vector<int> inliers;
 	EssentialMatrix model;
@@ -761,7 +761,7 @@ void testEssentialMatrixFitting(
 		return;
 	}
 	
-	GCRANSAC<DefaultEssentialMatrixEstimator, neighborhood::GridNeighborhoodGraph> gcransac;
+	GCRANSAC<utils::DefaultEssentialMatrixEstimator, neighborhood::GridNeighborhoodGraph> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
 	gcransac.settings.threshold = inlier_outlier_threshold_; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
@@ -781,7 +781,7 @@ void testEssentialMatrixFitting(
 		model);
 
 	// Get the statistics of the results
-	const RANSACStatistics &statistics = gcransac.getRansacStatistics();
+	const utils::RANSACStatistics &statistics = gcransac.getRansacStatistics();
 
 	// Print the statistics
 	printf("Elapsed time = %f secs\n", statistics.processing_time);
@@ -792,7 +792,7 @@ void testEssentialMatrixFitting(
 
 	// Draw the inlier matches to the images
 	cv::Mat match_image;
-	drawMatches(points,
+	utils::drawMatches(points,
 		statistics.inliers,
 		source_image,
 		destination_image,
@@ -801,12 +801,12 @@ void testEssentialMatrixFitting(
 	printf("Saving the matched images to file '%s'.\n", output_match_image_path_.c_str());
 	imwrite(output_match_image_path_, match_image); // Save the matched image to file
 	printf("Saving the inlier correspondences to file '%s'.\n", out_correspondence_path_.c_str());
-	savePointsToFile(points, out_correspondence_path_.c_str(), &statistics.inliers); // Save the inliers to file
+	utils::savePointsToFile(points, out_correspondence_path_.c_str(), &statistics.inliers); // Save the inliers to file
 
 	printf("Press a button to continue...\n");
 
 	// Showing the image
-	showImage(match_image,
+	utils::showImage(match_image,
 		"Inlier correspondences",
 		1600,
 		1200,

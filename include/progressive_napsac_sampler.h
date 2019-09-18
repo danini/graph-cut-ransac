@@ -49,7 +49,7 @@ namespace gcransac
 		class ProgressiveNapsacSampler : public Sampler < cv::Mat, size_t >
 		{
 		protected:
-			std::unique_ptr<UniformRandomGenerator<size_t>> random_generator; // The random number generator
+			std::unique_ptr<utils::UniformRandomGenerator<size_t>> random_generator; // The random number generator
 			const size_t layer_number; // The number of overlapping neighborhood grids
 			const double sampler_length, // The length of fully blending to global sampling 
 				source_image_width, // The width of the source image
@@ -121,7 +121,7 @@ namespace gcransac
 		bool ProgressiveNapsacSampler::initialize(const cv::Mat const *container_)
 		{
 			// Initialize the random generator
-			random_generator = std::make_unique<UniformRandomGenerator<size_t>>();
+			random_generator = std::make_unique<utils::UniformRandomGenerator<size_t>>();
 			random_generator->resetGenerator(0,
 				static_cast<size_t>(point_number));
 

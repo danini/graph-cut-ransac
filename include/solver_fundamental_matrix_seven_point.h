@@ -55,7 +55,7 @@ namespace gcransac
 				}
 
 				// Determines if there is a chance of returning multiple models
-				// the function 'estimateModel' is applied.
+				// when function 'estimateModel' is applied.
 				static constexpr bool returnMultipleModels()
 				{
 					return true;

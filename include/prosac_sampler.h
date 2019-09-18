@@ -60,7 +60,7 @@ namespace gcransac
 
 			std::vector<size_t> growth_function;
 
-			std::unique_ptr<UniformRandomGenerator<size_t>> random_generator; // The random number generator
+			std::unique_ptr<utils::UniformRandomGenerator<size_t>> random_generator; // The random number generator
 
 			inline void incrementIterationNumber()
 			{
@@ -145,7 +145,7 @@ namespace gcransac
 				subset_size = sample_size; // The size of the current sampling pool		
 
 				// Initialize the random generator
-				random_generator = std::make_unique<UniformRandomGenerator<size_t>>();
+				random_generator = std::make_unique<utils::UniformRandomGenerator<size_t>>();
 				random_generator->resetGenerator(0,
 					subset_size - 1);
 				return true;
