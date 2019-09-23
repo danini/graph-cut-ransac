@@ -49,9 +49,10 @@ namespace gcransac
 		class ProgressiveNapsacSampler : public Sampler < cv::Mat, size_t >
 		{
 		protected:
-			std::unique_ptr<UniformRandomGenerator<size_t>> random_generator; // The random number generator
+			std::unique_ptr<utils::UniformRandomGenerator<size_t>> random_generator; // The random number generator
 			const size_t layer_number; // The number of overlapping neighborhood grids
-			const double source_image_width, // The width of the source image
+			const double sampler_length, // The length of fully blending to global sampling 
+				source_image_width, // The width of the source image
 				source_image_height, // The height of the source image
 				destination_image_width, // The width of the destination image
 				destination_image_height; // The height of the destination image
@@ -80,7 +81,8 @@ namespace gcransac
 				const double source_image_width_, // The width of the source image
 				const double source_image_height_, // The height of the source image
 				const double destination_image_width_, // The width of the destination image
-				const double destination_image_height_) // The height of the destination image
+				const double destination_image_height_, // The height of the destination image
+				const double sampler_length_ = 20) // The length of fully blending to global sampling 
 				: Sampler(container_),
 				layer_data(layer_data_),
 				sample_size(sample_size_),
@@ -95,7 +97,8 @@ namespace gcransac
 				destination_image_height(destination_image_height_),
 				kth_sample_number(0),
 				one_point_prosac_sampler(container_, 1, container_->rows),
-				prosac_sampler(container_, sample_size_, container_->rows)
+				prosac_sampler(container_, sample_size_, container_->rows),
+				sampler_length(sampler_length_)
 			{
 				initialized = initialize(container_);
 			}
@@ -118,12 +121,12 @@ namespace gcransac
 		bool ProgressiveNapsacSampler::initialize(const cv::Mat const *container_)
 		{
 			// Initialize the random generator
-			random_generator = std::make_unique<UniformRandomGenerator<size_t>>();
+			random_generator = std::make_unique<utils::UniformRandomGenerator<size_t>>();
 			random_generator->resetGenerator(0,
 				static_cast<size_t>(point_number));
 
 			max_progressive_napsac_iterations =
-				static_cast<size_t>(container_->rows / 2.0);
+				static_cast<size_t>(sampler_length * container_->rows);
 
 			// Initialize the grid layers. We do not need to add the last layer
 			// since it contains the whole image.

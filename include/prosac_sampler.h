@@ -60,7 +60,7 @@ namespace gcransac
 
 			std::vector<size_t> growth_function;
 
-			std::unique_ptr<UniformRandomGenerator<size_t>> random_generator; // The random number generator
+			std::unique_ptr<utils::UniformRandomGenerator<size_t>> random_generator; // The random number generator
 
 			inline void incrementIterationNumber()
 			{
@@ -88,7 +88,7 @@ namespace gcransac
 			}
 
 		public:
-			explicit ProsacSampler(const cv::Mat const *container_,
+			explicit ProsacSampler(const cv::Mat * const container_,
 				const size_t sample_size_,
 				const size_t ransac_convergence_iterations_ = 100000) :
 				sample_size(sample_size_),
@@ -104,7 +104,7 @@ namespace gcransac
 
 			const std::string getName() const { return "PROSAC Sampler"; }
 
-			bool initialize(const cv::Mat const *container_)
+			bool initialize(const cv::Mat * const container_)
 			{
 				// Set T_n according to the PROSAC paper's recommendation.
 				growth_function.resize(point_number, 0);
@@ -145,7 +145,7 @@ namespace gcransac
 				subset_size = sample_size; // The size of the current sampling pool		
 
 				// Initialize the random generator
-				random_generator = std::make_unique<UniformRandomGenerator<size_t>>();
+				random_generator = std::make_unique<utils::UniformRandomGenerator<size_t>>();
 				random_generator->resetGenerator(0,
 					subset_size - 1);
 				return true;

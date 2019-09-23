@@ -164,7 +164,7 @@ namespace gcransac
 		public:
 			GridNeighborhoodGraph() : NeighborhoodGraph() {}
 
-			GridNeighborhoodGraph(const cv::Mat const *container_, // The pointer of the container consisting of the data points.
+			GridNeighborhoodGraph(const cv::Mat * const container_, // The pointer of the container consisting of the data points.
 				const double cell_width_source_image_,
 				const double cell_height_source_image_,
 				const double cell_width_destination_image_,
@@ -180,11 +180,11 @@ namespace gcransac
 				initialized = initialize(container);
 			}
 
-			bool initialize(const cv::Mat const *container_);
+			bool initialize(const cv::Mat * const container_);
 			inline const std::vector<size_t> &getNeighbors(size_t point_idx_) const;
 		};
 
-		bool GridNeighborhoodGraph::initialize(const cv::Mat const *container_)
+		bool GridNeighborhoodGraph::initialize(const cv::Mat * const container_)
 		{
 			// The number of points
 			const size_t point_number = container_->rows;

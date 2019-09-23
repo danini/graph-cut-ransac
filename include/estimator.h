@@ -67,10 +67,13 @@ namespace gcransac
 			// Estimate a model from a non-minimal sampling of the data. E.g. for a line,
 			// use SVD on a set of points instead of constructing a line from two points.
 			// By default, this simply implements the minimal case.
+			// In case of weighted least-squares, the weights can be fed into the
+			// function.
 			inline virtual bool estimateModelNonminimal(const Datum& data,
 				const size_t *sample,
 				const size_t &sample_number,
-				std::vector<Model>* model) const = 0;
+				std::vector<Model>* model,
+				const double *weights_ = nullptr) const = 0;
 
 			// Given a model and a data point, calculate the error. Users should implement
 			// this function appropriately for the task being solved.

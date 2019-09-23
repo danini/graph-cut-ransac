@@ -47,13 +47,13 @@ namespace gcransac
 		protected:
 			// The pointer of the container consisting of the data points from which
 			// the neighborhood graph is constructed.
-			const _DataContainer const *container;
+			const _DataContainer * const container;
 
 			// A variable showing if the initialization was succesfull
 			bool initialized;
 
 		public:
-			explicit Sampler(const _DataContainer const *container_) :
+			explicit Sampler(const _DataContainer * const container_) :
 				container(container_)
 			{}
 
@@ -63,7 +63,7 @@ namespace gcransac
 
 			// Initializes any non-trivial variables and sets up sampler if
 			// necessary. Must be called before sample is called.
-			virtual bool initialize(const _DataContainer const *container_) = 0;
+			virtual bool initialize(const _DataContainer * const container_) = 0;
 
 			// Samples the input variable data and fills the std::vector subset with the
 			// samples.

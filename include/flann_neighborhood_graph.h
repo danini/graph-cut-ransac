@@ -41,7 +41,7 @@
 
 namespace gcransac
 {
-	namespace neighborhood
+	namespace neighborhood 
 	{
 		class FlannNeighborhoodGraph : NeighborhoodGraph<cv::Mat>
 		{
@@ -67,7 +67,7 @@ namespace gcransac
 		public:
 			FlannNeighborhoodGraph() : NeighborhoodGraph() {}
 
-			FlannNeighborhoodGraph(const cv::Mat const *container_, // The pointer of the container consisting of the data points.
+			FlannNeighborhoodGraph(const cv::Mat * const container_, // The pointer of the container consisting of the data points.
 				double matching_radius_, // The radius used as the radius of the neighborhood ball.
 				size_t knn_ = 0, // The k value used in the k-nearest-neighbors algorithm.
 				SearchType search_type_ = SearchType::RadiusSearch) : // The method used for building the neighborhood graph.
@@ -79,11 +79,11 @@ namespace gcransac
 				initialized = initialize(container);
 			}
 
-			bool initialize(const cv::Mat const *container_);
+			bool initialize(const cv::Mat * const container_);
 			inline const std::vector<size_t> &getNeighbors(size_t point_idx_) const;
 		};
 
-		bool FlannNeighborhoodGraph::initialize(const cv::Mat const *container_)
+		bool FlannNeighborhoodGraph::initialize(const cv::Mat * const container_)
 		{
 			// Compute the neighborhood graph
 			// TODO: replace by nanoflann

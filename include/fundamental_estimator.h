@@ -247,7 +247,8 @@ namespace gcransac
 				const cv::Mat& data_,
 				const size_t *sample_,
 				const size_t &sample_number_,
-				std::vector<Model>* models_) const
+				std::vector<Model>* models_,
+				const double *weights_ = nullptr) const
 			{
 				if (sample_number_ < nonMinimalSampleSize())
 					return false;
@@ -270,7 +271,8 @@ namespace gcransac
 				non_minimal_solver->estimateModel(normalized_points,
 					nullptr,
 					sample_number_,
-					*models_);
+					*models_,
+					weights_);
 
 				// Denormalizing the estimated fundamental matrices
 				const Eigen::Matrix3d normalizing_transform_destination_transpose = normalizing_transform_destination.transpose();
