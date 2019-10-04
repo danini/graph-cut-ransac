@@ -1,0 +1,8 @@
+README.md
+setup.py
+src/pygcransac/__init__.py
+src/pygcransac.egg-info/PKG-INFO
+src/pygcransac.egg-info/SOURCES.txt
+src/pygcransac.egg-info/dependency_links.txt
+src/pygcransac.egg-info/not-zip-safe
+src/pygcransac.egg-info/top_level.txt
