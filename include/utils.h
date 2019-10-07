@@ -60,6 +60,13 @@ namespace gcransac
 			const cv::Mat &image1_,
 			const cv::Mat &image2_,
 			cv::Mat &out_image_,
+			int circle_radius_ = 4);
+
+		void drawImagePoints(
+			const cv::Mat &points_,
+			const std::vector<size_t> &inliers_,
+			const cv::Scalar &color_,
+			cv::Mat &image_,
 			int circle_radius_ = 10);
 
 		bool savePointsToFile(
@@ -67,6 +74,9 @@ namespace gcransac
 			const char* file_,
 			const std::vector<size_t> *inliers_ = NULL);
 
+		template<size_t _Dimensions = 4, 
+			size_t _StoreEveryKth = 1, 
+			bool _PointNumberInHeader = true>
 		bool loadPointsFromFile(
 			cv::Mat &points_,
 			const char* file_);
@@ -107,6 +117,25 @@ namespace gcransac
 		/*
 			Function definition
 		*/
+		void drawImagePoints(
+			const cv::Mat &points_,
+			const std::vector<size_t> &inliers_,
+			const cv::Scalar &color_,
+			cv::Mat &image_,
+			int circle_radius_)
+		{
+			for (const auto &idx : inliers_)
+			{
+				cv::Point2d point(points_.at<double>(idx, 0),
+					points_.at<double>(idx, 1));
+				
+				cv::circle(image_, 
+					point, 
+					circle_radius_, 
+					color_, 
+					static_cast<int>(circle_radius_));
+			}
+		}
 
 		void drawMatches(
 			const cv::Mat &points_,
@@ -211,6 +240,7 @@ namespace gcransac
 			printf("Match number: %d\n", static_cast<int>(points_.rows));
 		}
 
+		template<size_t _Dimensions, size_t _StoreEveryKth, bool _PointNumberInHeader>
 		bool loadPointsFromFile(cv::Mat &points,
 			const char* file)
 		{
@@ -221,24 +251,54 @@ namespace gcransac
 
 			int N;
 			std::string line;
-			int line_idx = 0;
+			int line_idx = 0, 
+				loaded_lines = 0;
 			double *points_ptr = NULL;
+			cv::Mat point;
 
 			while (getline(infile, line))
 			{
-				if (line_idx++ == 0)
+				// If the number of points to be loaded is stored in the file's header
+				if (_PointNumberInHeader)
 				{
-					N = atoi(line.c_str());
-					points = cv::Mat(N, 4, CV_64F);
-					points_ptr = reinterpret_cast<double*>(points.data);
-					continue;
-				}
+					if (line_idx++ == 0)
+					{
+						N = atoi(line.c_str()) / _StoreEveryKth;
+						points = cv::Mat(N, _Dimensions, CV_64F);
+						points_ptr = reinterpret_cast<double*>(points.data);
+						continue;
+					}
 
-				std::istringstream split(line);
-				split >> *(points_ptr++);
-				split >> *(points_ptr++);
-				split >> *(points_ptr++);
-				split >> *(points_ptr++);
+					if (line_idx % _StoreEveryKth)
+						continue;
+
+					std::istringstream split(line);
+					for (size_t dim = 0; dim < _Dimensions; ++dim)
+						split >> *(points_ptr++);
+
+					if (++loaded_lines >= N)
+						break;
+				}
+				else // Otherwise
+				{
+					if (++loaded_lines % _StoreEveryKth)
+						continue;
+					
+					if (point.rows != 1 || point.cols != _Dimensions)
+					{
+						point.create(1, _Dimensions, CV_64F);
+						points_ptr = reinterpret_cast<double*>(point.data);
+					}
+
+					std::istringstream split(line);
+					for (size_t dim = 0; dim < _Dimensions; ++dim)
+						split >> points_ptr[dim];
+
+					// Add the new point as the last row
+					if (points.cols != _Dimensions)
+						points.create(0, _Dimensions, CV_64F);
+					points.push_back(point);
+				}
 			}
 
 			infile.close();
@@ -383,6 +443,36 @@ namespace gcransac
 				*(normalized_points_ptr++) = normalized_point_src(1);
 				*(normalized_points_ptr++) = normalized_point_dst(0);
 				*(normalized_points_ptr++) = normalized_point_dst(1);
+			}
+		}
+
+		void normalizeImagePoints(const cv::Mat &points_,
+			const Eigen::Matrix3d &intrinsics_,
+			cv::Mat &normalized_points_)
+		{
+			const Eigen::Matrix3d inverse_intrinsics = intrinsics_.inverse();
+
+			// Most likely, this is not the fastest solution, but it does
+			// not affect the speed of Graph-cut RANSAC, so not a crucial part of
+			// this example.
+			double x0, y0, x1, y1;
+			for (auto r = 0; r < points_.rows; ++r)
+			{
+				Eigen::Vector3d point,
+					normalized_point;
+
+				x0 = points_.at<double>(r, 0);
+				y0 = points_.at<double>(r, 1);
+
+				point << x0, y0, 1.0; // Homogeneous point in the image
+
+				// Normalized homogeneous point in the first image
+				normalized_point =
+					inverse_intrinsics * point;
+
+				// The second four columns contain the normalized coordinates.
+				normalized_points_.at<double>(r, 0) = normalized_point(0);
+				normalized_points_.at<double>(r, 1) = normalized_point(1);
 			}
 		}
 
