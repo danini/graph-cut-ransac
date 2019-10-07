@@ -123,67 +123,71 @@ namespace gcransac
 				return models->size() > 0;
 			}
 
-			inline double squaredSampsonDistance(const cv::Mat& point,
-				const Eigen::Matrix3d& descriptor) const
-			{
-				const double residual = sampsonDistance(point, descriptor);
-				return residual * residual;
-			}
-
+			// The sampson distance between a point correspondence and an essential matrix
 			inline double sampsonDistance(const cv::Mat& point_,
 				const Eigen::Matrix3d& descriptor_) const
 			{
-				const double* s = reinterpret_cast<double *>(point_.data);
-				const double x1 = *s;
-				const double y1 = *(s + 1);
-				const double x2 = *(s + 2);
-				const double y2 = *(s + 3);
-
-				const double f11 = descriptor_(0, 0);
-				const double f12 = descriptor_(0, 1);
-				const double f13 = descriptor_(0, 2);
-				const double f21 = descriptor_(1, 0);
-				const double f22 = descriptor_(1, 1);
-				const double f23 = descriptor_(1, 2);
-				const double f31 = descriptor_(2, 0);
-				const double f32 = descriptor_(2, 1);
-				const double f33 = descriptor_(2, 2);
-
-				double rxc = f11 * x2 + f21 * y2 + f31;
-				double ryc = f12 * x2 + f22 * y2 + f32;
-				double rwc = f13 * x2 + f23 * y2 + f33;
-				double r = (x1 * rxc + y1 * ryc + rwc);
-				double rx = f11 * x1 + f12 * y1 + f13;
-				double ry = f21 * x1 + f22 * y1 + f23;
-
-				return r * r / (rxc * rxc + ryc * ryc + rx * rx + ry * ry);
+				const double squared_distance = squaredSampsonDistance(point_, descriptor_);
+				return sqrt(squared_distance);
 			}
 
-			inline double symmetricEpipolarDistance(const cv::Mat& point_,
+			// The sampson distance between a point_ correspondence and an essential matrix
+			inline double squaredSampsonDistance(const cv::Mat& point_,
+				const Eigen::Matrix3d& descriptor_) const
+			{
+				const double* s = reinterpret_cast<double *>(point_.data);
+				const double x1 = *s,
+					y1 = *(s + 1),
+					x2 = *(s + 2),
+					y2 = *(s + 3);
+
+				const double e11 = descriptor_(0, 0),
+					e12 = descriptor_(0, 1),
+					e13 = descriptor_(0, 2),
+					e21 = descriptor_(1, 0),
+					e22 = descriptor_(1, 1),
+					e23 = descriptor_(1, 2),
+					e31 = descriptor_(2, 0),
+					e32 = descriptor_(2, 1),
+					e33 = descriptor_(2, 2);
+
+				double rxc = e11 * x2 + e21 * y2 + e31;
+				double ryc = e12 * x2 + e22 * y2 + e32;
+				double rwc = e13 * x2 + e23 * y2 + e33;
+				double r = (x1 * rxc + y1 * ryc + rwc);
+				double rx = e11 * x1 + e12 * y1 + e13;
+				double ry = e21 * x1 + e22 * y1 + e23;
+
+				return r * r /
+					(rxc * rxc + ryc * ryc + rx * rx + ry * ry);
+			}
+
+			// The symmetric epipolar distance between a point_ correspondence and an essential matrix
+			inline double squaredSymmetricEpipolarDistance(const cv::Mat& point_,
 				const Eigen::MatrixXd& descriptor_) const
 			{
 				const double* s = reinterpret_cast<double *>(point_.data);
-				const double x1 = *s;
-				const double y1 = *(s + 1);
-				const double x2 = *(s + 2);
-				const double y2 = *(s + 3);
+				const double x1 = *s,
+					y1 = *(s + 1),
+					x2 = *(s + 2),
+					y2 = *(s + 3);
 
-				const double f11 = descriptor_(0, 0);
-				const double f12 = descriptor_(0, 1);
-				const double f13 = descriptor_(0, 2);
-				const double f21 = descriptor_(1, 0);
-				const double f22 = descriptor_(1, 1);
-				const double f23 = descriptor_(1, 2);
-				const double f31 = descriptor_(2, 0);
-				const double f32 = descriptor_(2, 1);
-				const double f33 = descriptor_(2, 2);
+				const double e11 = descriptor_(0, 0),
+					e12 = descriptor_(0, 1),
+					e13 = descriptor_(0, 2),
+					e21 = descriptor_(1, 0),
+					e22 = descriptor_(1, 1),
+					e23 = descriptor_(1, 2),
+					e31 = descriptor_(2, 0),
+					e32 = descriptor_(2, 1),
+					e33 = descriptor_(2, 2);
 
-				const double rxc = f11 * x2 + f21 * y2 + f31;
-				const double ryc = f12 * x2 + f22 * y2 + f32;
-				const double rwc = f13 * x2 + f23 * y2 + f33;
+				const double rxc = e11 * x2 + e21 * y2 + e31;
+				const double ryc = e12 * x2 + e22 * y2 + e32;
+				const double rwc = e13 * x2 + e23 * y2 + e33;
 				const double r = (x1 * rxc + y1 * ryc + rwc);
-				const double rx = f11 * x1 + f12 * y1 + f13;
-				const double ry = f21 * x1 + f22 * y1 + f23;
+				const double rx = e11 * x1 + e12 * y1 + e13;
+				const double ry = e21 * x1 + e22 * y1 + e23;
 				const double a = rxc * rxc + ryc * ryc;
 				const double b = rx * rx + ry * ry;
 
@@ -193,21 +197,24 @@ namespace gcransac
 			inline double squaredResidual(const cv::Mat& point_,
 				const Model& model_) const
 			{
-				return squaredSampsonDistance(point_, model_.descriptor);
+				return squaredResidual(point_, model_.descriptor);
 			}
 
+			// The squared residual function used for deciding which points are inliers
 			inline double squaredResidual(const cv::Mat& point_,
 				const Eigen::MatrixXd& descriptor_) const
 			{
 				return squaredSampsonDistance(point_, descriptor_);
 			}
 
+			// The residual function used for deciding which points are inliers
 			inline double residual(const cv::Mat& point_,
 				const Model& model_) const
 			{
 				return residual(point_, model_.descriptor);
 			}
 
+			// The residual function used for deciding which points are inliers
 			inline double residual(const cv::Mat& point_,
 				const Eigen::MatrixXd& descriptor_) const
 			{
@@ -219,7 +226,7 @@ namespace gcransac
 			// robust to degenerate solutions than the symmetric epipolar distance. Therefore,
 			// every so-far-the-best model is checked if it has enough inlier with symmetric
 			// epipolar distance as well. 
-			inline bool isValidModel(const Model& model_,
+			bool isValidModel(const Model& model_,
 				const cv::Mat& data_,
 				const std::vector<size_t> &inliers_,
 				const double threshold_) const
@@ -230,16 +237,18 @@ namespace gcransac
 				// Minimum number of inliers which should be inlier as well when using symmetric epipolar distance instead of Sampson distance
 				const size_t minimum_inlier_number =
 					MAX(sample_size, inliers_.size() * minimum_inlier_ratio_in_validity_check);
+				// Squared inlier-outlier threshold
+				const double squared_threshold = threshold_ * threshold_;
 
-				// Iterate through the inliers determined by Sampson distance
+				// Iterate through the inliers_ determined by Sampson distance
 				for (const auto &idx : inliers_)
 					// Calculate the residual using symmetric epipolar distance and check if
 					// it is smaller than the threshold_.
-					if (symmetricEpipolarDistance(data_.row(idx), descriptor) < threshold_)
-						// Increase the inlier number and terminate if enough inliers have been found.
-						if (++inlier_number > minimum_inlier_number)
+					if (squaredSymmetricEpipolarDistance(data_.row(idx), descriptor) < squared_threshold)
+						// Increase the inlier number and terminate if enough inliers_ have been found.
+						if (++inlier_number >= minimum_inlier_number)
 							return true;
-				// If the algorithm has not terminated earlier, there are not enough inliers.
+				// If the algorithm has not terminated earlier, there are not enough inliers_.
 				return false;
 			}
 
@@ -280,8 +289,6 @@ namespace gcransac
 				{
 					// Transform the estimated fundamental matrix back to the not normalized space
 					model.descriptor = normalizing_transform_destination_transpose * model.descriptor * normalizing_transform_source;
-					// Enforce the rank-two constraint on the estimated fundamental matrix
-					enforceRankTwoConstraint(model);
 
 					// Normalizing the fundamental matrix elements
 					model.descriptor.normalize();

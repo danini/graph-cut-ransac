@@ -141,32 +141,32 @@ namespace gcransac
 			}
 
 			// The squared sampson distance between a point_ correspondence and an essential matrix
-			inline double squaredSampsonDistance(const cv::Mat& point_,
-				const Eigen::Matrix3d& descriptor_) const
-			{
-				const double residual = sampsonDistance(point_, descriptor_);
-				return residual * residual;
-			}
-
-			// The sampson distance between a point_ correspondence and an essential matrix
 			inline double sampsonDistance(const cv::Mat& point_,
 				const Eigen::Matrix3d& descriptor_) const
 			{
-				const double* s = reinterpret_cast<double *>(point_.data);
-				const double x1 = *s;
-				const double y1 = *(s + 1);
-				const double x2 = *(s + 2);
-				const double y2 = *(s + 3);
+				const double squared_distance = squaredSampsonDistance(point_, descriptor_);
+				return sqrt(squared_distance);
+			}
 
-				const double e11 = descriptor_(0, 0);
-				const double e12 = descriptor_(0, 1);
-				const double e13 = descriptor_(0, 2);
-				const double e21 = descriptor_(1, 0);
-				const double e22 = descriptor_(1, 1);
-				const double e23 = descriptor_(1, 2);
-				const double e31 = descriptor_(2, 0);
-				const double e32 = descriptor_(2, 1);
-				const double e33 = descriptor_(2, 2);
+			// The sampson distance between a point_ correspondence and an essential matrix
+			inline double squaredSampsonDistance(const cv::Mat& point_,
+				const Eigen::Matrix3d& descriptor_) const
+			{
+				const double* s = reinterpret_cast<double *>(point_.data);
+				const double x1 = *s,
+					y1 = *(s + 1),
+					x2 = *(s + 2),
+					y2 = *(s + 3);
+
+				const double e11 = descriptor_(0, 0),
+					e12 = descriptor_(0, 1),
+					e13 = descriptor_(0, 2),
+					e21 = descriptor_(1, 0),
+					e22 = descriptor_(1, 1),
+					e23 = descriptor_(1, 2),
+					e31 = descriptor_(2, 0),
+					e32 = descriptor_(2, 1),
+					e33 = descriptor_(2, 2);
 
 				double rxc = e11 * x2 + e21 * y2 + e31;
 				double ryc = e12 * x2 + e22 * y2 + e32;
@@ -180,24 +180,24 @@ namespace gcransac
 			}
 
 			// The symmetric epipolar distance between a point_ correspondence and an essential matrix
-			inline double symmetricEpipolarDistance(const cv::Mat& point_,
+			inline double squaredSymmetricEpipolarDistance(const cv::Mat& point_,
 				const Eigen::MatrixXd& descriptor_) const
 			{
 				const double* s = reinterpret_cast<double *>(point_.data);
-				const double x1 = *s;
-				const double y1 = *(s + 1);
-				const double x2 = *(s + 2);
-				const double y2 = *(s + 3);
+				const double x1 = *s,
+					y1 = *(s + 1),
+					x2 = *(s + 2),
+					y2 = *(s + 3);
 
-				const double e11 = descriptor_(0, 0);
-				const double e12 = descriptor_(0, 1);
-				const double e13 = descriptor_(0, 2);
-				const double e21 = descriptor_(1, 0);
-				const double e22 = descriptor_(1, 1);
-				const double e23 = descriptor_(1, 2);
-				const double e31 = descriptor_(2, 0);
-				const double e32 = descriptor_(2, 1);
-				const double e33 = descriptor_(2, 2);
+				const double e11 = descriptor_(0, 0),
+					e12 = descriptor_(0, 1),
+					e13 = descriptor_(0, 2),
+					e21 = descriptor_(1, 0),
+					e22 = descriptor_(1, 1),
+					e23 = descriptor_(1, 2),
+					e31 = descriptor_(2, 0),
+					e32 = descriptor_(2, 1),
+					e33 = descriptor_(2, 2);
 
 				const double rxc = e11 * x2 + e21 * y2 + e31;
 				const double ryc = e12 * x2 + e22 * y2 + e32;
@@ -215,7 +215,7 @@ namespace gcransac
 			inline double squaredResidual(const cv::Mat& point_,
 				const Model& model_) const
 			{
-				return squaredSampsonDistance(point_, model_.descriptor);
+				return squaredResidual(point_, model_.descriptor);
 			}
 
 			// The squared residual function used for deciding which points are inliers
@@ -255,12 +255,14 @@ namespace gcransac
 				// Minimum number of inliers which should be inlier as well when using symmetric epipolar distance instead of Sampson distance
 				const size_t minimum_inlier_number =
 					MAX(sample_size, inliers_.size() * minimum_inlier_ratio_in_validity_check);
+				// Squared inlier-outlier threshold
+				const double squared_threshold = threshold_ * threshold_;
 
 				// Iterate through the inliers_ determined by Sampson distance
 				for (const auto &idx : inliers_)
 					// Calculate the residual using symmetric epipolar distance and check if
 					// it is smaller than the threshold_.
-					if (symmetricEpipolarDistance(data_.row(idx), descriptor) < threshold_)
+					if (squaredSymmetricEpipolarDistance(data_.row(idx), descriptor) < squared_threshold)
 						// Increase the inlier number and terminate if enough inliers_ have been found.
 						if (++inlier_number >= minimum_inlier_number)
 							return true;
