@@ -111,6 +111,8 @@ namespace gcransac
 			neighbours.resize(tmp_neighbours.size());
 			for (size_t i = 0; i < tmp_neighbours.size(); ++i)
 			{
+				if (tmp_neighbours[i].size() == 0)
+					continue;
 				const size_t n = tmp_neighbours[i].size() - 1;
 				neighbor_number += static_cast<int>(n);
 
