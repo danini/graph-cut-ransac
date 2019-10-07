@@ -106,9 +106,13 @@ namespace gcransac
 	protected:
 		double squared_truncated_threshold; // Squared truncated threshold
 		size_t point_number; // Number of points
+		// Verify only every k-th point when doing the score calculation. This maybe is beneficial if
+		// there is a time sensitive application and verifying the model on a subset of points
+		// is enough.
+		size_t verify_every_kth_point;
 
 	public:
-		MSACScoringFunction()
+		MSACScoringFunction() : verify_every_kth_point(1)
 		{
 
 		}
@@ -116,6 +120,11 @@ namespace gcransac
 		~MSACScoringFunction()
 		{
 
+		}
+
+		void setSkippingParameter(const size_t verify_every_kth_point_)
+		{
+			verify_every_kth_point = verify_every_kth_point_;
 		}
 
 		void initialize(const double squared_truncated_threshold_,
@@ -140,7 +149,7 @@ namespace gcransac
 			double squared_residual; // The point-to-model residual
 
 			// Iterate through all points, calculate the squared_residuals and store the points as inliers if needed.
-			for (size_t point_idx = 0; point_idx < point_number; ++point_idx)
+			for (size_t point_idx = 0; point_idx < point_number; point_idx += verify_every_kth_point)
 			{
 				// Calculate the point-to-model residual
 				squared_residual = estimator_.squaredResidual(points_.row(point_idx), model_.descriptor);
