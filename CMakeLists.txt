@@ -75,6 +75,7 @@ source_group(third_party\\GCOptimization FILES
 source_group(Models FILES
 	include/solver_engine.h
 	include/solver_essential_matrix_five_point_stewenius.h
+	include/solver_p3p.h
 	include/solver_fundamental_matrix_eight_point.h
 	include/solver_fundamental_matrix_seven_point.h
 	include/solver_homography_four_point.h

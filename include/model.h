@@ -81,6 +81,18 @@ namespace gcransac
 		}
 	};
 
+	class Pose6D : public Model
+	{
+	public:
+		Pose6D() :
+			Model(Eigen::MatrixXd(3, 4))
+		{}
+		Pose6D(const Pose6D& other_)
+		{
+			descriptor = other_.descriptor;
+		}
+	};
+
 	class Homography : public Model
 	{
 	public:

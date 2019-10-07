@@ -39,9 +39,12 @@
 #include "fundamental_estimator.h"
 #include "homography_estimator.h"
 #include "essential_estimator.h"
+#include "perspective_n_point_estimator.h"
 
 #include "solver_fundamental_matrix_seven_point.h"
 #include "solver_fundamental_matrix_eight_point.h"
+#include "solver_p3p.h"
+#include "solver_dls_pnp.h"
 #include "solver_homography_four_point.h"
 #include "solver_essential_matrix_five_point_stewenius.h"
 
@@ -63,6 +66,11 @@ namespace gcransac
 		typedef estimator::EssentialMatrixEstimator<estimator::solver::EssentialMatrixFivePointSteweniusSolver, // The solver used for fitting a model to a minimal sample
 			estimator::solver::EssentialMatrixFivePointSteweniusSolver> // The solver used for fitting a model to a non-minimal sample
 			DefaultEssentialMatrixEstimator;
+
+		// The default estimator for PnP fitting
+		typedef estimator::PerspectiveNPointEstimator<estimator::solver::P3PSolver, // The solver used for fitting a model to a minimal sample
+			estimator::solver::DLSPnP> // The solver used for fitting a model to a non-minimal sample
+			DefaultPnPEstimator;
 
 		struct Settings {
 			bool do_final_iterated_least_squares, // Flag to decide a final iterated least-squares fitting is needed to polish the output model parameters.
@@ -92,9 +100,9 @@ namespace gcransac
 				do_graph_cut(true),
 				use_inlier_limit(false),
 				desired_fps(-1),
-				max_local_optimization_number(std::numeric_limits<size_t>::max()),
-				max_graph_cut_number(std::numeric_limits<size_t>::max()),
-				max_least_squares_iterations(20),
+				max_local_optimization_number(10),
+				max_graph_cut_number(10),
+				max_least_squares_iterations(10),
 				min_iteration_number_before_lo(20),
 				min_iteration_number(20),
 				neighborhood_sphere_radius(20),
