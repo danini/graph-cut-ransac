@@ -7,10 +7,6 @@ When using the algorithm, please cite `Barath, Daniel, and Matas, Jiří. "Graph
 
 In case you use GC-RANSAC with Progressive NAPSAC sampler (https://arxiv.org/abs/1906.02295), please cite `Barath, Daniel, Maksym Ivashechkin, and Jiri Matas. "Progressive NAPSAC: sampling from gradually growing neighborhoods." arXiv preprint arXiv:1906.02295 (2019)`.
 
-# Python binding
-
-You can find the python code of GC-RANSAC in the other branch thanks to Dmytro Mischkin.
-
 # Installation
 
 To build and install `GraphCutRANSAC`, clone or download this repository and then build the project by CMAKE. 
@@ -27,3 +23,7 @@ Next to the executable, copy the `data` folder and, also, create a `results` fol
 - CMake 2.8.12 or higher
 - OpenCV 3.0 or higher
 - A modern compiler with C++17 support
+
+# Python binding
+
+You can find the python code of GC-RANSAC in the other branch thanks to Dmytro Mischkin.
