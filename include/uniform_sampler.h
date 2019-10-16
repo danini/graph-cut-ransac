@@ -60,7 +60,13 @@ namespace gcransac
 
 			// Initializes any non-trivial variables and sets up sampler if
 			// necessary. Must be called before sample is called.
-			bool initialize(const cv::Mat * const container_);
+			bool initialize(const cv::Mat * const container_)
+			{
+				random_generator = std::make_unique<utils::UniformRandomGenerator<size_t>>();
+				random_generator->resetGenerator(0,
+					static_cast<size_t>(container_->rows));
+				return true;
+			}
 
 			// Samples the input variable data and fills the std::vector subset with the
 			// samples.
@@ -68,14 +74,6 @@ namespace gcransac
 				size_t * const subset_,
 				size_t sample_size_);
 		};
-
-		bool UniformSampler::initialize(const cv::Mat * const container_)
-		{
-			random_generator = std::make_unique<utils::UniformRandomGenerator<size_t>>();
-			random_generator->resetGenerator(0,
-				static_cast<size_t>(container_->rows));
-			return true;
-		}
 
 		inline bool UniformSampler::sample(
 			const std::vector<size_t> &pool_,
