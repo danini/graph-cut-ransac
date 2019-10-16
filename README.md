@@ -23,3 +23,7 @@ Next to the executable, copy the `data` folder and, also, create a `results` fol
 - CMake 2.8.12 or higher
 - OpenCV 3.0 or higher
 - A modern compiler with C++17 support
+
+# Python binding
+
+You can find the python code of GC-RANSAC in the other branch thanks to Dmytro Mischkin.
