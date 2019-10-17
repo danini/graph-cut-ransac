@@ -75,7 +75,7 @@ namespace gcransac
 
 		public:
 			explicit ProgressiveNapsacSampler(
-				const cv::Mat const *container_, // The pointer pointing to the data points
+				const cv::Mat *container_, // The pointer pointing to the data points
 				const std::vector<size_t> layer_data_, // The number of cells for each neighborhood grid. This must be in descending order.
 				const size_t sample_size_, // The size of a minimal sample.
 				const double source_image_width_, // The width of the source image
@@ -107,7 +107,7 @@ namespace gcransac
 
 			// Initializes any non-trivial variables and sets up sampler if
 			// necessary. Must be called before sample is called.
-			bool initialize(const cv::Mat const *container_);
+			bool initialize(const cv::Mat *container_);
 
 			const std::string getName() const { return "Progressive NAPSAC Sampler"; }
 
@@ -118,7 +118,7 @@ namespace gcransac
 				size_t sample_size_);
 		};
 
-		bool ProgressiveNapsacSampler::initialize(const cv::Mat const *container_)
+		bool ProgressiveNapsacSampler::initialize(const cv::Mat *container_)
 		{
 			// Initialize the random generator
 			random_generator = std::make_unique<utils::UniformRandomGenerator<size_t>>();
