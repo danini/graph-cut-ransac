@@ -810,13 +810,13 @@ void test6DPoseFitting(
 		reference_pose.rightCols<1>();
 
 	// Normalize the point coordinate by the intrinsic matrix
-	const cv::Rect roi(0, 0, 2, points.rows); // A rectangle covering the 2D image points in the matrix
-	cv::Mat normalized_points = points.clone(); // The 2D image points normalized by the intrinsic camera matrix
+	cv::Rect roi(0, 0, 2, points.rows); // A rectangle covering the 2D image points in the matrix
+	cv::Mat normalized_points = points.clone()(roi); // The 2D image points normalized by the intrinsic camera matrix
 	// Normalizing the image points by the camera matrix
 	utils::normalizeImagePoints(
 		points(roi), // The loaded image points
 		intrinsics, // The intrinsic camera matrix
-		normalized_points(roi)); // The normalized points
+		normalized_points); // The normalized points
 
 	// Normalize the threshold by the average of the focal lengths
 	const double normalized_threshold =
@@ -938,7 +938,7 @@ void test6DPoseFitting(
 			cv_rodrigues, // The initial rotation
 			cv_translation, // The initial translation
 			true, // Use the initial values
-			CV_ITERATIVE); // Apply numerical refinement
+			cv::SOLVEPNP_ITERATIVE); // Apply numerical refinement
 		
 		// Convert the rotation vector back to a rotation matrix
 		cv::Rodrigues(cv_rodrigues, cv_rotation);
