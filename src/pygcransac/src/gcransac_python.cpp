@@ -30,7 +30,7 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
                            std::vector<double>& dstPts,
                            std::vector<bool>& inliers,
                            std::vector<double>&F,
-                           int h1, int w1, int h2, int w2,
+    //                       int h1, int w1, int h2, int w2,
                            double threshold,
                            double conf,
                            int max_iters)
@@ -45,29 +45,32 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
         points.at<double>(i, 2) = dstPts[2*i];
         points.at<double>(i, 3) = dstPts[2*i + 1];
     }
-    const size_t cell_number_in_neighborhood_graph_ = 8;
-    neighborhood::GridNeighborhoodGraph neighborhood1(&points,
-		w1 / static_cast<double>(cell_number_in_neighborhood_graph_),
-		h1 / static_cast<double>(cell_number_in_neighborhood_graph_),
-		w2 / static_cast<double>(cell_number_in_neighborhood_graph_),
-		h2 / static_cast<double>(cell_number_in_neighborhood_graph_),
+  //  const size_t cell_number_in_neighborhood_graph_ = 8;
+ //   neighborhood::GridNeighborhoodGraph neighborhood1(&points,
+//		w1 / static_cast<double>(cell_number_in_neighborhood_graph_),
+//		h1 / static_cast<double>(cell_number_in_neighborhood_graph_),
+//		w2 / static_cast<double>(cell_number_in_neighborhood_graph_),
+//		h2 / static_cast<double>(cell_number_in_neighborhood_graph_),
 //		source_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
 //		source_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_),
 //		destination_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
 //		destination_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_),
-		cell_number_in_neighborhood_graph_);
+//		cell_number_in_neighborhood_graph_);
 
 	// Checking if the neighborhood graph is initialized successfully.
-	if (!neighborhood1.isInitialized())
-	{
-		fprintf(stderr, "The neighborhood graph is not initialized successfully.\n");
-		return 0;
-	}
+	float sphere_radius_ = 20;
+    neighborhood::FlannNeighborhoodGraph neighborhood1(&points, // The data points
+		sphere_radius_);
+//	if (!neighborhood1.isInitialized())
+//	{
+//		fprintf(stderr, "The neighborhood graph is not initialized successfully.\n");
+//		return 0;
+//	}
 
 	// Calculating the maximum image diagonal to be used for setting the threshold
 	// adaptively for each image pair. 
-	const double max_image_diagonal =
-		sqrt(pow(MAX(w1, w2), 2) + pow(MAX(h1, h2), 2));
+//	const double max_image_diagonal =
+//		sqrt(pow(MAX(w1, w2), 2) + pow(MAX(h1, h2), 2));
 	
 	// Apply Graph-cut RANSAC
 	utils::DefaultFundamentalMatrixEstimator estimator;
@@ -75,7 +78,7 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
 
 	// Initialize the samplers
 	// The main sampler is used inside the local optimization
-	sampler::ProgressiveNapsacSampler main_sampler(&points,
+/*	sampler::ProgressiveNapsacSampler main_sampler(&points,
 		{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
 							// (source_image_width / 16) * (source_image_height / 16)  * (destination_image_width / 16)  (destination_image_height / 16), etc.
 		estimator.sampleSize(), // The size of a minimal sample
@@ -83,7 +86,9 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
 		static_cast<double>(h1), // The height of the source image
 		static_cast<double>(w2), // The width of the destination image
 		static_cast<double>(h2));  // The height of the destination image
-	sampler::UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
+*/
+		sampler::UniformSampler main_sampler(&points); // The local optimization sampler is used inside the local optimization
+		sampler::UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
 
 	// Checking if the samplers are initialized successfully.
 	if (!main_sampler.isInitialized() ||
@@ -93,9 +98,11 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
 		return 0;
 	}
 	
-	GCRANSAC<utils::DefaultFundamentalMatrixEstimator, neighborhood::GridNeighborhoodGraph> gcransac;
+	//GCRANSAC<utils::DefaultFundamentalMatrixEstimator, neighborhood::GridNeighborhoodGraph> gcransac;
+	GCRANSAC<utils::DefaultFundamentalMatrixEstimator, neighborhood::FlannNeighborhoodGraph> gcransac;
 	gcransac.setFPS(-1); // Set the desired FPS (-1 means no limit)
-	gcransac.settings.threshold = 0.0005 * threshold * max_image_diagonal; // The inlier-outlier threshold
+	//gcransac.settings.threshold = 0.0005 * threshold * max_image_diagonal; // The inlier-outlier threshold
+    gcransac.settings.threshold = threshold; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = 0.14; // The weight of the spatial coherence term
 	gcransac.settings.confidence = conf; // The required confidence in the results
 	gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations

@@ -10,7 +10,7 @@ namespace py = pybind11;
 
 py::tuple findFundamentalMatrix(py::array_t<double>  x1y1_,
                                 py::array_t<double>  x2y2_,
-                                   int h1, int w1, int h2, int w2,
+      //                             int h1, int w1, int h2, int w2,
                         double threshold,
                                 double conf,
                                 int max_iters) {
@@ -49,7 +49,7 @@ py::tuple findFundamentalMatrix(py::array_t<double>  x1y1_,
                            x2y2,
                            inliers,
                            F,    
-                           h1, w1,h2,w2,
+         //                  h1, w1,h2,w2,
                          threshold,
                     conf,
                     max_iters);
@@ -242,10 +242,10 @@ PYBIND11_PLUGIN(pygcransac) {
     m.def("findFundamentalMatrix", &findFundamentalMatrix, R"doc(some doc)doc",
           py::arg("x1y1"),
           py::arg("x2y2"),
-                  py::arg("h1"),
-        py::arg("w1"),
-        py::arg("h2"),
-        py::arg("w2"),
+   //               py::arg("h1"),
+   //     py::arg("w1"),
+   //     py::arg("h2"),
+   //     py::arg("w2"),
           py::arg("threshold") = 1.0,
           py::arg("conf") = 0.99,
           py::arg("max_iters") = 10000);
