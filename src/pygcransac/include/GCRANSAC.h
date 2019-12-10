@@ -131,7 +131,8 @@ namespace gcransac
 			const _ModelEstimator &estimator_, // The model estimator
 			const double threshold_, // The inlier-outlier threshold
 			std::vector<size_t> &inliers_, // The resulting inlier set
-			Model &model_); // The estimated model
+			Model &model_, // The estimated model
+			const bool use_weighting_ = true); // Use iteratively re-weighted least-squares
 	};
 
 	// Computes the desired iteration number for RANSAC w.r.t. to the current inlier number
@@ -257,13 +258,27 @@ namespace gcransac
 					so_far_the_best_score, // The score of the current so-far-the-best model
 					true); // Flag to decide if the inliers are needed
 
+				bool is_model_updated = false;
+
 				// Store the model of its score is higher than that of the previous best
 				if (so_far_the_best_score < score && // Comparing the so-far-the-best model's score and current model's score
 					estimator_.isValidModel(model, // The current model parameters
 						points_, // All input points
 						temp_inner_inliers[inl_offset], // The inliers of the current model
-						truncated_threshold)) // The truncated inlier-outlier threshold
+						current_sample.get(), // The minimal sample initializing the model
+						truncated_threshold, // The truncated inlier-outlier threshold
+						is_model_updated))
 				{
+					// Get the inliers and the score of the non-optimized model
+					if (is_model_updated)
+						score = scoring_function->getScore(points_, // All points
+							model, // The current model parameters
+							estimator_, // The estimator 
+							settings.threshold, // The current threshold
+							temp_inner_inliers[inl_offset], // The current inlier set
+							so_far_the_best_score, // The score of the current so-far-the-best model
+							true); // Flag to decide if the inliers are needed
+
 					inl_offset = (inl_offset + 1) % 2;
 					so_far_the_best_model = model; // The new so-far-the-best model
 					so_far_the_best_score = score; // The new so-far-the-best model's score
@@ -344,6 +359,9 @@ namespace gcransac
 		// Recalculate the score if needed (i.e. there is some inconstistency in
 		// in the number of inliers stored and calculated).
 		if (temp_inner_inliers[inl_offset].size() != so_far_the_best_score.inlier_number)
+			inl_offset = (inl_offset + 1) % 2;
+
+		if (temp_inner_inliers[inl_offset].size() != so_far_the_best_score.inlier_number)
 			Score score = scoring_function->getScore(points_, // All points
 				so_far_the_best_model, // Best model parameters
 				estimator_, // The estimator
@@ -351,9 +369,10 @@ namespace gcransac
 				temp_inner_inliers[inl_offset]); // The current inliers
 
 		// Apply iteration least-squares fitting to get the final model parameters if needed
+		bool iterative_refitting_applied = false;
 		if (settings.do_final_iterated_least_squares)
 		{
-			Model model;
+			Model model = so_far_the_best_model; // The model which is re-estimated by iteratively re-weighted least-squares
 			bool success = iteratedLeastSquaresFitting(
 				points_, // The input data points
 				estimator_, // The model estimator
@@ -362,9 +381,24 @@ namespace gcransac
 				model); // The estimated model
 
 			if (success)
-				so_far_the_best_model.descriptor = model.descriptor;
+			{
+				std::vector<size_t> tmp_inliers;
+				Score score = scoring_function->getScore(points_, // All points
+					model, // Best model parameters
+					estimator_, // The estimator
+					settings.threshold, // The inlier-outlier threshold
+					tmp_inliers); // The current inliers
+
+				if (so_far_the_best_score < score)
+				{
+					iterative_refitting_applied = true;
+					so_far_the_best_model.descriptor = model.descriptor;
+					tmp_inliers.swap(temp_inner_inliers[inl_offset]);
+				}
+			}
 		}
-		else // Otherwise, do only one least-squares fitting on all of the inliers
+		
+		if (!iterative_refitting_applied) // Otherwise, do only one least-squares fitting on all of the inliers
 		{
 			// Estimate the final model using the full inlier set
 			std::vector<Model> models;
@@ -392,7 +426,8 @@ namespace gcransac
 		const _ModelEstimator &estimator_,
 		const double threshold_,
 		std::vector<size_t> &inliers_,
-		Model &model_)
+		Model &model_,
+		const bool use_weighting_)
 	{
 		const size_t sample_size = estimator_.sampleSize(); // The minimal sample size
 		if (inliers_.size() <= sample_size) // Return if there are not enough points
@@ -402,16 +437,45 @@ namespace gcransac
 		std::vector<size_t> tmp_inliers; // Inliers of the current model
 
 		// Iterated least-squares model fitting
+		std::unique_ptr<double []> weights = std::make_unique<double []>(points_.rows);
 		Score best_score; // The score of the best estimated model
 		while (++iterations < settings.max_least_squares_iterations)
 		{
 			std::vector<Model> models; // Estimated models
 
-			// Estimate the model from the current inlier set
-			estimator_.estimateModelNonminimal(points_,
-				&(inliers_)[0], // The current inliers
-				inliers_.size(), // The number of inliers
-				&models); // The estimated model parameters
+			// Calculate the weights if iteratively re-weighted least-squares is used			
+			if (_ModelEstimator::isWeightingApplicable() && // The weighted is applied only if the model estimator can handles it, and
+				use_weighting_) // the user wants to apply it.
+			{
+				// Calculate Tukey bisquare weights of the inliers
+				for (size_t inlier_idx = 0; inlier_idx < inliers_.size(); ++inlier_idx)
+				{
+					// The real index of the current inlier
+					const size_t &point_idx = inliers_[inlier_idx];
+
+					// The squares residual of the current inlier
+					const double squared_residual = estimator_.squaredResidual(points_.row(point_idx), model_);
+
+					// Calculate the Tukey bisquare weights
+					const double weight = MAX(0.0, 1.0 - squared_residual / squared_truncated_threshold);
+					weights[point_idx] = weight * weight;
+				}
+
+				// Estimate the model from the current inlier set
+				estimator_.estimateModelNonminimal(points_,
+					&(inliers_)[0], // The current inliers
+					inliers_.size(), // The number of inliers
+					&models, // The estimated model parameters
+					weights.get()); // The weights used in the weighted least-squares fitting
+			}
+			else
+			{
+				// Estimate the model from the current inlier set
+				estimator_.estimateModelNonminimal(points_,
+					&(inliers_)[0], // The current inliers
+					inliers_.size(), // The number of inliers
+					&models); // The estimated model parameters
+			}
 
 			if (models.size() == 0) // If there is no model estimated, interrupt the procedure
 				break;
@@ -431,7 +495,7 @@ namespace gcransac
 
 				// Interrupt the procedure if the inlier number has not changed.
 				// Therefore, the previous and current model parameters are likely the same.
-				if (score.inlier_number == inliers_.size())
+				if (score.inlier_number <= inliers_.size())
 					break;
 
 				// Update the output model
@@ -460,7 +524,7 @@ namespace gcransac
 
 					// Do not test the model if the inlier number has not changed.
 					// Therefore, the previous and current model parameters are likely the same.
-					if (score.inlier_number == inliers_.size())
+					if (score.inlier_number <= inliers_.size())
 						continue;
 
 					// Update the model if its score is higher than that of the current best
