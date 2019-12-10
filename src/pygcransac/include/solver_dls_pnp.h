@@ -255,6 +255,8 @@ namespace gcransac
 						}
 					}
 				}
+
+				return true;
 			}
 
 			// Transforms a 3 - vector in a 3x9 matrix such that :

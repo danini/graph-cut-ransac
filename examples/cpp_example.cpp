@@ -131,7 +131,8 @@ using namespace gcransac;
 int main(int argc, const char* argv[])
 {
 	srand(static_cast<int>(time(NULL)));
-	 
+
+	const std::string data_directory = "";
 	const double confidence = 0.99; // The RANSAC confidence value
 	const int fps = -1; // The required FPS limit. If it is set to -1, the algorithm will not be interrupted before finishing.
 	const double inlier_outlier_threshold_essential_matrix = 3.00; // The used inlier-outlier threshold in GC-RANSAC for essential matrix estimation.
@@ -155,7 +156,8 @@ int main(int argc, const char* argv[])
 			intrinsics_path,
 			ground_truth_pose_path,
 			points_path,
-			inlier_points_path);
+			inlier_points_path,
+			data_directory);
 
 		// Estimating the fundamental matrix by the Graph-Cut RANSAC algorithm
 		test6DPoseFitting(
@@ -187,7 +189,8 @@ int main(int argc, const char* argv[])
 			dst_image_path,
 			input_correspondence_path,
 			output_correspondence_path,
-			output_matched_image_path);
+			output_matched_image_path,
+			data_directory);
 
 		// Estimating the fundamental matrix by the Graph-Cut RANSAC algorithm
 		testFundamentalMatrixFitting(
@@ -224,7 +227,8 @@ int main(int argc, const char* argv[])
 			dst_intrinsics_path,
 			input_correspondence_path,
 			output_correspondence_path,
-			output_matched_image_path);
+			output_matched_image_path,
+			data_directory);
 
 		// Estimating the fundamental matrix by the Graph-Cut RANSAC algorithm
 		testEssentialMatrixFitting(
@@ -259,7 +263,8 @@ int main(int argc, const char* argv[])
 			dst_image_path,
 			input_correspondence_path,
 			output_correspondence_path,
-			output_matched_image_path);
+			output_matched_image_path,
+			data_directory);
 
 		// Estimating the fundamental matrix by the Graph-Cut RANSAC algorithm
 		testHomographyFitting(
@@ -917,9 +922,9 @@ void test6DPoseFitting(
 			const size_t &idx = statistics.inliers[i];
 			inlier_image_points.at<double>(i, 0) = normalized_points.at<double>(idx, 0);
 			inlier_image_points.at<double>(i, 1) = normalized_points.at<double>(idx, 1);
-			inlier_object_points.at<double>(i, 0) = normalized_points.at<double>(idx, 2);
-			inlier_object_points.at<double>(i, 1) = normalized_points.at<double>(idx, 3);
-			inlier_object_points.at<double>(i, 2) = normalized_points.at<double>(idx, 4);
+			inlier_object_points.at<double>(i, 0) = points.at<double>(idx, 2);
+			inlier_object_points.at<double>(i, 1) = points.at<double>(idx, 3);
+			inlier_object_points.at<double>(i, 2) = points.at<double>(idx, 4);
 		}
 
 		// Converting the estimated pose parameters OpenCV format
