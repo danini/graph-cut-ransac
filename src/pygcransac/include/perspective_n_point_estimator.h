@@ -92,6 +92,11 @@ namespace gcransac
 				return _MinimalSolverEngine::sampleSize();
 			}
 
+			// A flag deciding if the points can be weighted when the non-minimal fitting is applied 
+			static constexpr bool isWeightingApplicable() {
+				return false;
+			}
+
 			// The size of a sample when doing inner RANSAC on a non-minimal sample
 			inline size_t inlierLimit() const {
 				return 7 * sampleSize();
@@ -179,10 +184,12 @@ namespace gcransac
 				return sqrt(squaredReprojectionError(point_, descriptor_));
 			}
 
-			inline bool isValidModel(const Model& model_,
+			inline bool isValidModel(Model& model_,
 				const cv::Mat& data_,
 				const std::vector<size_t> &inliers_,
-				const double threshold_) const
+				const size_t *minimal_sample_,
+				const double threshold_,
+				bool &model_updated_) const
 			{
 				return true;
 			}

@@ -81,6 +81,11 @@ namespace gcransac
 				return _MinimalSolverEngine::sampleSize();
 			}
 
+			// A flag deciding if the points can be weighted when the non-minimal fitting is applied 
+			static constexpr bool isWeightingApplicable() {
+				return true;
+			}
+
 			// The size of a sample when doing inner RANSAC on a non-minimal sample
 			inline size_t inlierLimit() const {
 				return 7 * sampleSize();

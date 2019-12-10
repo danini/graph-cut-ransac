@@ -44,9 +44,11 @@
 #include <Eigen/Eigen>
 
 #include "estimator.h"
+#include "homography_estimator.h"
 #include "model.h"
 
 #include "solver_fundamental_matrix_seven_point.h"
+#include "solver_fundamental_matrix_plane_and_parallax.h"
 #include "solver_fundamental_matrix_eight_point.h"
 
 namespace gcransac
@@ -60,28 +62,56 @@ namespace gcransac
 		{
 		protected:
 			// Minimal solver engine used for estimating a model from a minimal sample
-			const std::shared_ptr<const _MinimalSolverEngine> minimal_solver;
+			const std::shared_ptr<_MinimalSolverEngine> minimal_solver;
 
 			// Non-minimal solver engine used for estimating a model from a bigger than minimal sample
-			const std::shared_ptr<const _NonMinimalSolverEngine> non_minimal_solver;
+			const std::shared_ptr<_NonMinimalSolverEngine> non_minimal_solver;
 
 			// The lower bound of the inlier ratio which is required to pass the validity test.
 			// The validity test measures what proportion of the inlier (by Sampson distance) is inlier
 			// when using symmetric epipolar distance. 
 			const double minimum_inlier_ratio_in_validity_check;
 
+			// A flag deciding if DEGENSAC should be used. DEGENSAC handles the cases when the points of the model originates from 
+			// a single plane, or almost from single plane.
+			// DEGENSAC paper: Chum, Ondrej, Tomas Werner, and Jiri Matas. "Two-view geometry estimation unaffected by a dominant plane." 
+			// 2005 IEEE Computer Society Conference on Computer Vision and Pattern Recognition(CVPR'05). Vol. 1. IEEE, 2005.
+			const bool use_degensac;
+			
+			// The threshold (in pixels) for deciding if a sample is H-degenerate in DEGENSAC
+			const double homography_threshold,
+				// The squared threshold (in pixels) for deciding if a sample is H-degenerate in DEGENSAC
+				squared_homography_threshold;
+
 		public:
-			FundamentalMatrixEstimator(const double minimum_inlier_ratio_in_validity_check_ = 0.5) :
+			FundamentalMatrixEstimator(const double minimum_inlier_ratio_in_validity_check_ = 0.5,
+				const bool use_degensac_ = true,
+				const double homography_threshold_ = 2.0) :
 				// Minimal solver engine used for estimating a model from a minimal sample
-				minimal_solver(std::make_shared<const _MinimalSolverEngine>()),
+				minimal_solver(std::make_shared<_MinimalSolverEngine>()),
 				// Non-minimal solver engine used for estimating a model from a bigger than minimal sample
-				non_minimal_solver(std::make_shared<const _NonMinimalSolverEngine>()),
+				non_minimal_solver(std::make_shared<_NonMinimalSolverEngine>()),
 				// The lower bound of the inlier ratio which is required to pass the validity test.
 				// It is clamped to be in interval [0, 1].
-				minimum_inlier_ratio_in_validity_check(std::clamp(minimum_inlier_ratio_in_validity_check_, 0.0, 1.0))
+				minimum_inlier_ratio_in_validity_check(std::clamp(minimum_inlier_ratio_in_validity_check_, 0.0, 1.0)),
+				// A flag deciding if DEGENSAC should be used. DEGENSAC handles the cases when the points of the model originates from 
+				// a single plane, or almost from single plane.
+				use_degensac(use_degensac_),
+				// The threshold (in pixels) for deciding if a sample is H-degenerate in DEGENSAC
+				homography_threshold(homography_threshold_),
+				// The squared threshold (in pixels) for deciding if a sample is H-degenerate in DEGENSAC
+				squared_homography_threshold(homography_threshold_ * homography_threshold_)
 			{}
 
 			~FundamentalMatrixEstimator() {}
+
+			_MinimalSolverEngine *getMinimalSolver() {
+				return minimal_solver.get();
+			}
+
+			_NonMinimalSolverEngine *getNonMinimalSolver() {
+				return non_minimal_solver.get();
+			}
 
 			// The size of a non-minimal sample required for the estimation
 			static constexpr size_t nonMinimalSampleSize() {
@@ -91,6 +121,11 @@ namespace gcransac
 			// The size of a minimal sample required for the estimation
 			static constexpr size_t sampleSize() {
 				return _MinimalSolverEngine::sampleSize();
+			}
+
+			// A flag deciding if the points can be weighted when the non-minimal fitting is applied 
+			static constexpr bool isWeightingApplicable() {
+				return true;
 			}
 
 			// The size of a sample when doing inner RANSAC on a non-minimal sample
@@ -103,7 +138,7 @@ namespace gcransac
 				std::vector<Model>* models) const
 			{
 				// Model calculation by the seven point algorithm
-				constexpr size_t sample_size = 7;
+				constexpr size_t sample_size = sampleSize();
 
 				// Estimate the model parameters by the minimal solver
 				minimal_solver->estimateModel(data,
@@ -226,11 +261,18 @@ namespace gcransac
 			// robust to degenerate solutions than the symmetric epipolar distance. Therefore,
 			// every so-far-the-best model is checked if it has enough inlier with symmetric
 			// epipolar distance as well. 
-			bool isValidModel(const Model& model_,
+			bool isValidModel(Model& model_,
 				const cv::Mat& data_,
 				const std::vector<size_t> &inliers_,
-				const double threshold_) const
+				const size_t *minimal_sample_,
+				const double threshold_,
+				bool &model_updated_) const
 			{
+				// Validate the model by checking the number of inlier with symmetric epipolar distance
+				// instead of Sampson distance. In general, Sampson distance is more accurate but less
+				// robust to degenerate solutions than the symmetric epipolar distance. Therefore,
+				// every so-far-the-best model is checked if it has enough inlier with symmetric
+				bool passed = false;
 				size_t inlier_number = 0; // Number of inlier if using symmetric epipolar distance
 				const Eigen::Matrix3d &descriptor = model_.descriptor; // The decriptor of the current model
 				constexpr size_t sample_size = sampleSize(); // Size of a minimal sample
@@ -247,9 +289,262 @@ namespace gcransac
 					if (squaredSymmetricEpipolarDistance(data_.row(idx), descriptor) < squared_threshold)
 						// Increase the inlier number and terminate if enough inliers_ have been found.
 						if (++inlier_number >= minimum_inlier_number)
-							return true;
-				// If the algorithm has not terminated earlier, there are not enough inliers_.
-				return false;
+						{
+							passed = true;
+							break;
+						}
+
+				// If the fundamental matrix has not passed the symmetric epipolar tests,
+				// terminate.
+				if (!passed)
+					return false;
+
+				// Validate the model by checking if the scene is dominated by a single plane.
+				if (use_degensac)
+					return applyDegensac(model_,
+						data_,
+						inliers_,
+						minimal_sample_,
+						threshold_,
+						model_updated_);
+
+				// If DEGENSAC is not applied and the model passed the previous tests,
+				// assume that it is a valid model.
+				return true;
+			}
+
+			//  Evaluate the H-degenerate sample test and apply DEGENSAC if needed
+			inline bool applyDegensac(Model& model_, // The input model to be tested
+				const cv::Mat& data_, // All data points
+				const std::vector<size_t> &inliers_, // The inliers of the input model
+				const size_t *minimal_sample_, // The minimal sample used for estimating the model
+				const double threshold_, // The inlier-outlier threshold
+				bool &model_updated_) const // A flag saying if the model has been updated here
+			{
+				// Set the flag initially to false since the model has not been yet updated.
+				model_updated_ = false;
+
+				// The possible triplets of points
+				constexpr size_t triplets[] = {
+					0, 1, 2,
+					3, 4, 5,
+					0, 1, 6,
+					3, 4, 6,
+					2, 5, 6 };
+				constexpr size_t number_of_triplets = 5; // The number of triplets to be tested
+				const size_t columns = data_.cols; // The number of columns in the data matrix
+
+				// The fundamental matrix coming from the minimal sample
+				const Eigen::Matrix3d &fundamental_matrix =
+					model_.descriptor.block<3, 3>(0, 0);
+				
+				// Applying SVD decomposition to the estimated fundamental matrix
+				Eigen::JacobiSVD<Eigen::Matrix3d> svd(
+					fundamental_matrix,
+					Eigen::ComputeFullU | Eigen::ComputeFullV);
+				
+				// Calculate the epipole in the second image
+				const Eigen::Vector3d epipole =
+					svd.matrixU().rightCols<1>().head<3>() / svd.matrixU()(2,2);
+				
+				// The calculate the cross-produced matrix of the epipole
+				Eigen::Matrix3d epipolar_cross;
+				epipolar_cross << 0, -epipole(2), epipole(1),
+					epipole(2), 0, -epipole(0),
+					-epipole(1), epipole(0), 0;
+
+				const Eigen::Matrix3d A = 
+					epipolar_cross * model_.descriptor;
+
+				// A flag deciding if the sample is H-degenerate
+				bool h_degenerate_sample = false;
+				// The homography which the H-degenerate part of the sample implies
+				Eigen::Matrix3d best_homography;
+				// Iterate through the triplets of points in the sample
+				for (size_t triplet_idx = 0; triplet_idx < number_of_triplets; ++triplet_idx)
+				{
+					// The index of the first point of the triplet
+					const size_t triplet_offset = triplet_idx * 3;
+					// The indices of the other points
+					const size_t point_1_idx = minimal_sample_[triplets[triplet_offset]],
+						point_2_idx = minimal_sample_[triplets[triplet_offset + 1]],
+						point_3_idx = minimal_sample_[triplets[triplet_offset + 2]];
+
+					// A pointer to the first point's first coordinate
+					const double *point_1_ptr =
+						reinterpret_cast<double *>(data_.data) + point_1_idx * columns;
+					// A pointer to the second point's first coordinate
+					const double *point_2_ptr =
+						reinterpret_cast<double *>(data_.data) + point_2_idx * columns;
+					// A pointer to the third point's first coordinate
+					const double *point_3_ptr =
+						reinterpret_cast<double *>(data_.data) + point_3_idx * columns;
+
+					// Copy the point coordinates into Eigen vectors
+					Eigen::Vector3d point_1_1, point_1_2, point_1_3,
+						point_2_1, point_2_2, point_2_3;
+
+					point_1_1 << point_1_ptr[0], point_1_ptr[1], 1;
+					point_2_1 << point_1_ptr[2], point_1_ptr[3], 1;
+					point_1_2 << point_2_ptr[0], point_2_ptr[1], 1;
+					point_2_2 << point_2_ptr[2], point_2_ptr[3], 1;
+					point_1_3 << point_3_ptr[0], point_3_ptr[1], 1;
+					point_2_3 << point_3_ptr[2], point_3_ptr[3], 1;
+
+					// Calculate the cross-product of the epipole end each point
+					Eigen::Vector3d point_1_cross_epipole = point_2_1.cross(epipole);
+					Eigen::Vector3d point_2_cross_epipole = point_2_2.cross(epipole);
+					Eigen::Vector3d point_3_cross_epipole = point_2_3.cross(epipole);
+
+					Eigen::Vector3d b;
+					b << point_2_1.cross(A * point_1_1).transpose() * point_1_cross_epipole / point_1_cross_epipole.squaredNorm(),
+						point_2_2.cross(A * point_1_2).transpose() * point_2_cross_epipole / point_2_cross_epipole.squaredNorm(),
+						point_2_3.cross(A * point_1_3).transpose() * point_3_cross_epipole / point_3_cross_epipole.squaredNorm();
+
+					Eigen::Matrix3d M;
+					M << point_1_1(0), point_1_1(1), point_1_1(2),
+						point_1_2(0), point_1_2(1), point_1_2(2),
+						point_1_3(0), point_1_3(1), point_1_3(2);
+					
+					Eigen::Matrix3d homography =
+						A - epipole * (M.inverse() * b).transpose();
+
+					// The number of point consistent with the implied homography
+					size_t inlier_number = 3;
+
+					// Count the inliers of the homography
+					for (size_t i = 0; i < sampleSize(); ++i)
+					{
+						// Get the point's index from the minimal sample
+						size_t idx = minimal_sample_[i];
+
+						// Check if the point is not included in the current triplet
+						if (idx == point_1_idx ||
+							idx == point_2_idx ||
+							idx == point_3_idx)
+							continue; // If yes, the error does not have to be calculated
+					
+						// Calculate the re-projection error
+						const double *point_ptr =
+							reinterpret_cast<double *>(data_.data) + idx * columns;
+
+						const double &x1 = point_ptr[0], // The x coordinate in the first image
+							&y1 = point_ptr[1], // The y coordinate in the first image
+							&x2 = point_ptr[2], // The x coordinate in the second image
+							&y2 = point_ptr[3]; // The y coordinate in the second image
+
+						// Calculating H * p
+						const double t1 = homography(0, 0) * x1 + homography(0, 1) * y1 + homography(0, 2),
+							t2 = homography(1, 0) * x1 + homography(1, 1) * y1 + homography(1, 2),
+							t3 = homography(2, 0) * x1 + homography(2, 1) * y1 + homography(2, 2);
+
+						// Calculating the difference of the projected and original points
+						const double d1 = x2 - (t1 / t3),
+							d2 = y2 - (t2 / t3);
+
+						// Calculating the squared re-projection error
+						const double squared_residual = d1 * d1 + d2 * d2;
+
+						// If the squared re-projection error is smaller than the threshold, 
+						// consider the point inlier.
+						if (squared_residual < squared_homography_threshold)
+							++inlier_number;
+					}
+
+					// If at least 5 points are correspondences are consistent with the homography,
+					// consider the sample as H-degenerate.
+					if (inlier_number >= 5)
+					{
+						// Saving the parameters of the homography
+						best_homography = homography; 
+						// Setting the flag of being a h-degenerate sample
+						h_degenerate_sample = true;
+						break;
+					}
+				}
+
+				// If the sample is H-degenerate
+				if (h_degenerate_sample)
+				{
+					// Declare a homography estimator to be able to calculate the residual and the homography from a non-minimal sample
+					static const utils::DefaultHomographyEstimator homography_estimator;
+
+					// The inliers of the homography
+					std::vector<size_t> homography_inliers;
+					homography_inliers.reserve(inliers_.size());
+
+					// Iterate through the inliers of the fundamental matrix
+					// and select those which are inliers of the homography as well.
+					//for (size_t inlier_idx = 0; inlier_idx < data_.rows; ++inlier_idx)
+					for (const size_t &inlier_idx : inliers_)
+						if (homography_estimator.squaredResidual(data_.row(inlier_idx), best_homography) < squared_homography_threshold)
+							homography_inliers.emplace_back(inlier_idx);
+
+					// If the homography does not have enough inliers to be estimated, terminate.
+					if (homography_inliers.size() < homography_estimator.nonMinimalSampleSize())
+						return false;
+
+					// The set of estimated homographies. For all implemented solvers,
+					// this should be of size 1.
+					std::vector<Model> homographies;
+
+					// Estimate the homography parameters from the provided inliers.
+					homography_estimator.estimateModelNonminimal(data_, // All data points
+ 						&homography_inliers[0], // The inliers of the homography
+						homography_inliers.size(), // The number of inliers
+						&homographies); // The estimated homographies
+
+					// If the number of estimated homographies is not 1, there is some problem
+					// and, thus, terminate.
+					if (homographies.size() != 1)
+						return false;
+
+					// Get the reference of the homography fit to the non-minimal sample
+					const Eigen::Matrix3d &nonminimal_homography = 
+						homographies[0].descriptor;
+
+					// Do a local GC-RANSAC to determine the parameters of the fundamental matrix by
+					// the plane-and-parallax algorithm using the determined homography.
+					estimator::FundamentalMatrixEstimator<estimator::solver::FundamentalMatrixPlaneParallaxSolver, // The solver used for fitting a model to a minimal sample
+						estimator::solver::FundamentalMatrixEightPointSolver> estimator(0.0, false);
+					estimator.getMinimalSolver()->setHomography(&nonminimal_homography);
+
+					std::vector<int> inliers;
+					Model model;
+
+					GCRANSAC<estimator::FundamentalMatrixEstimator<estimator::solver::FundamentalMatrixPlaneParallaxSolver, // The solver used for fitting a model to a minimal sample
+						estimator::solver::FundamentalMatrixEightPointSolver>, neighborhood::GridNeighborhoodGraph> gcransac;
+					gcransac.settings.threshold = threshold_; // The inlier-outlier threshold
+					gcransac.settings.spatial_coherence_weight = 0; // The weight of the spatial coherence term
+					gcransac.settings.confidence = 0.99; // The required confidence in the results
+					gcransac.settings.neighborhood_sphere_radius = 8; // The radius of the neighborhood ball
+
+					sampler::UniformSampler sampler(&data_); // The local optimization sampler is used inside the local optimization
+
+					gcransac.run(data_, // All data points
+						estimator, // The fundamental matrix estimator
+						&sampler, // The main sampler 
+						&sampler, // The sampler for local optimization
+						nullptr, // There is no neighborhood graph now  
+						model); // The estimated model parameters
+					
+					// The statistics of the inner GC-RANSAC
+					const utils::RANSACStatistics &statistics = 
+						gcransac.getRansacStatistics();
+
+					// If more inliers are found the what initially was given,
+					// update the model parameters.
+					if (statistics.inliers.size() > inliers_.size())
+					{
+						// Consider the model to be updated
+						model_updated_ = true;
+						// Update the parameters
+						model_ = model;
+					}
+				}
+
+				// If we get to this point, the procedure was successfull
+				return true;
 			}
 
 			inline bool estimateModelNonminimal(

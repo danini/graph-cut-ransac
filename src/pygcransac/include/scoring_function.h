@@ -63,8 +63,7 @@ namespace gcransac
 
 		inline bool operator<(const Score& score_)
 		{
-			return value < score_.value &&
-				inlier_number <= score_.inlier_number;
+			return value < score_.value;
 		}
 
 		inline bool operator>(const Score& score_)

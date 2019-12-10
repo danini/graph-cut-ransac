@@ -109,6 +109,11 @@ namespace gcransac
 				return _MinimalSolverEngine::sampleSize();
 			}
 
+			// A flag deciding if the points can be weighted when the non-minimal fitting is applied 
+			static constexpr bool isWeightingApplicable() {
+				return true;
+			}
+
 			// The size of a sample_ when doing inner RANSAC on a non-minimal sample
 			inline size_t inlierLimit() const {
 				return 7 * sampleSize();
@@ -244,10 +249,12 @@ namespace gcransac
 			// robust to degenerate solutions than the symmetric epipolar distance. Therefore,
 			// every so-far-the-best model is checked if it has enough inlier with symmetric
 			// epipolar distance as well. 
-			bool isValidModel(const Model& model_,
+			bool isValidModel(Model& model_,
 				const cv::Mat& data_,
 				const std::vector<size_t> &inliers_,
-				const double threshold_) const
+				const size_t *minimal_sample_,
+				const double threshold_,
+				bool &model_updated_) const
 			{
 				size_t inlier_number = 0; // Number of inlier if using symmetric epipolar distance
 				const Eigen::Matrix3d &descriptor = model_.descriptor; // The decriptor of the current model

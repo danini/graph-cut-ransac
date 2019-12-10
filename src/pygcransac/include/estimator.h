@@ -86,10 +86,12 @@ namespace gcransac
 
 			// Enable a quick check to see if the model is valid. This can be a geometric
 			// check or some other verification of the model structure.
-			inline virtual bool isValidModel(const Model& model,
+			inline virtual bool isValidModel(Model& model,
 				const Datum& data,
 				const std::vector<size_t> &inliers,
-				const double threshold) const
+				const size_t *minimal_sample_,
+				const double threshold_,
+				bool &model_updated_) const
 			{
 				return true;
 			}
