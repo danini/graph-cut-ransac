@@ -66,5 +66,35 @@ See also this [notebook](examples/example.ipynb)
 
 # Acknowledgements
 
-When using the algorithm, please cite `Barath, Daniel, and Matas, Jiří. "Graph-cut RANSAC." Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. 2018`.
-Python wrapper part is based on great [Benjamin Jack `python_cpp_example`](https://github.com/benjaminjack/python_cpp_example).
+When using the algorithm, please cite
+
+```
+@inproceedings{GCRansac2018,
+	author = {Barath, Daniel and Matas, Jiri},
+	title = {Graph-cut {RANSAC}},
+	booktitle = {Conference on Computer Vision and Pattern Recognition},
+	year = {2018},
+}
+
+```
+
+If you use it together with DEGENSAC or PROSAC sampling, please cite 
+
+```
+@inproceedings{Degensac2005,
+	author = {Chum, Ondrej and Werner, Tomas and Matas, Jiri},
+	title = {Two-View Geometry Estimation Unaffected by a Dominant Plane},
+	booktitle = {Conference on Computer Vision and Pattern Recognition},
+	year = {2005},
+}
+
+@inproceedings{PROSAC2005,
+	author = {Chum, Ondrej and Matas, Jiri},
+	title = {Matching with {PROSAC}-progressive sample consensus},
+	booktitle = {Conference on Computer Vision and Pattern Recognition},
+	year = {2005},
+}
+
+```
+
+The Python wrapper part is based on the great [Benjamin Jack `python_cpp_example`](https://github.com/benjaminjack/python_cpp_example).
