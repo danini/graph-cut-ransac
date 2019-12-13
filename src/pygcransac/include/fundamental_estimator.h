@@ -47,6 +47,7 @@
 #include "homography_estimator.h"
 #include "grid_neighborhood_graph.h"
 #include "model.h"
+#include "uniform_sampler.h"
 
 #include "GCRANSAC.h"
 
