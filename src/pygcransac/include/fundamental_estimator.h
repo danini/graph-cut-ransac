@@ -47,6 +47,8 @@
 #include "homography_estimator.h"
 #include "model.h"
 
+#include "GCRANSAC.h"
+
 #include "solver_fundamental_matrix_seven_point.h"
 #include "solver_fundamental_matrix_plane_and_parallax.h"
 #include "solver_fundamental_matrix_eight_point.h"
@@ -467,7 +469,8 @@ namespace gcransac
 				if (h_degenerate_sample)
 				{
 					// Declare a homography estimator to be able to calculate the residual and the homography from a non-minimal sample
-					static const utils::DefaultHomographyEstimator homography_estimator;
+					static const estimator::RobustHomographyEstimator<estimator::solver::HomographyFourPointSolver, // The solver used for fitting a model to a minimal sample
+						estimator::solver::HomographyFourPointSolver> homography_estimator;
 
 					// The inliers of the homography
 					std::vector<size_t> homography_inliers;

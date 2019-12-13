@@ -46,6 +46,7 @@
 #include <Eigen/Eigen>
 
 #include "types.h"
+#include "statistics.h"
 
 namespace gcransac
 {

@@ -36,9 +36,9 @@
 #include "GCoptimization.h"
 #include "sampler.h"
 #include "model.h"
-#include "types.h"
+#include "settings.h"
+#include "statistics.h"
 #include "scoring_function.h"
-#include "neighborhood_graph.h"
 
 namespace gcransac
 {
