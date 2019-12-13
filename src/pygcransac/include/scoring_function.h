@@ -40,9 +40,6 @@
 #include <unsupported/Eigen/Polynomials>
 #include <Eigen/Eigen>
 
-#include "estimator.h"
-#include "model.h"
-
 namespace gcransac
 {
 	/* RANSAC Scoring */

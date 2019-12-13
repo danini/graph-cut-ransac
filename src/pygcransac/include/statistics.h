@@ -36,40 +36,33 @@
 #include <vector>
 #include <numeric>
 
-#include "fundamental_estimator.h"
-#include "homography_estimator.h"
-#include "essential_estimator.h"
-#include "perspective_n_point_estimator.h"
-
-#include "solver_fundamental_matrix_seven_point.h"
-#include "solver_fundamental_matrix_eight_point.h"
-#include "solver_p3p.h"
-#include "solver_dls_pnp.h"
-#include "solver_homography_four_point.h"
-#include "solver_essential_matrix_five_point_stewenius.h"
-
 namespace gcransac
 {
 	namespace utils
 	{
-		// The default estimator for fundamental matrix fitting
-		typedef estimator::FundamentalMatrixEstimator<estimator::solver::FundamentalMatrixSevenPointSolver, // The solver used for fitting a model to a minimal sample
-			estimator::solver::FundamentalMatrixEightPointSolver> // The solver used for fitting a model to a non-minimal sample
-			DefaultFundamentalMatrixEstimator;
+		struct RANSACStatistics
+		{
+			size_t graph_cut_number,
+				local_optimization_number,
+				iteration_number,
+				neighbor_number;
 
-		// The default estimator for homography fitting
-		typedef estimator::RobustHomographyEstimator<estimator::solver::HomographyFourPointSolver, // The solver used for fitting a model to a minimal sample
-			estimator::solver::HomographyFourPointSolver> // The solver used for fitting a model to a non-minimal sample
-			DefaultHomographyEstimator;
+			std::string main_sampler_name,
+				local_optimizer_sampler_name;
 
-		// The default estimator for essential matrix fitting
-		typedef estimator::EssentialMatrixEstimator<estimator::solver::EssentialMatrixFivePointSteweniusSolver, // The solver used for fitting a model to a minimal sample
-			estimator::solver::EssentialMatrixFivePointSteweniusSolver> // The solver used for fitting a model to a non-minimal sample
-			DefaultEssentialMatrixEstimator;
+			double processing_time;
 
-		// The default estimator for PnP fitting
-		typedef estimator::PerspectiveNPointEstimator<estimator::solver::P3PSolver, // The solver used for fitting a model to a minimal sample
-			estimator::solver::DLSPnP> // The solver used for fitting a model to a non-minimal sample
-			DefaultPnPEstimator;
+			std::vector<size_t> inliers;
+
+			RANSACStatistics() :
+				graph_cut_number(0),
+				local_optimization_number(0),
+				iteration_number(0),
+				neighbor_number(0),
+				processing_time(0.0)
+			{
+
+			}
+		};
 	}
 }
