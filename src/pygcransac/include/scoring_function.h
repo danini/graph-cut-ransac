@@ -161,7 +161,7 @@ namespace gcransac
 					++(score.inlier_number);
 					// Increase the score. The original truncated quadratic loss is as follows: 
 					// 1 - residual^2 / threshold^2. For RANSAC, -residual^2 is enough.
-					score.value += squared_residual; // Truncated quadratic cost
+					score.value += 1.0 - squared_residual * squared_residual / squared_truncated_threshold; // Truncated quadratic cost
 				}
 
 				// Interrupt if there is no chance of being better than the best model
