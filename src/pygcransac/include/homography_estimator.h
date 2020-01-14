@@ -276,6 +276,54 @@ namespace gcransac
 					0, 0, 1;
 				return true;
 			}
+
+			// Calculates the cross-product of two vectors
+			inline void cross_product(
+				Eigen::Vector3d &result_,
+				const double *vector1_,
+				const double *vector2_,
+				const unsigned int st_) const
+			{
+				result_[0] = vector1_[st_] - vector2_[st_];
+				result_[1] = vector2_[0] - vector1_[0];
+				result_[2] = vector1_[0] * vector2_[st_] - vector1_[st_] * vector2_[0];
+			}
+
+			// A function to decide if the selected sample is degenerate or not
+			// before calculating the model parameters
+			inline bool isValidSample(
+				const cv::Mat& data_, // All data points
+				const size_t *sample_) const // The indices of the selected points
+			{
+				// The size of a minimal sample
+				constexpr size_t sample_size = sampleSize();
+
+				// Check oriented constraints
+				Eigen::Vector3d p, q;
+
+				const double *a = reinterpret_cast<const double *>(data_.row(sample_[0]).data),
+					*b = reinterpret_cast<const double *>(data_.row(sample_[1]).data),
+					*c = reinterpret_cast<const double *>(data_.row(sample_[2]).data),
+					*d = reinterpret_cast<const double *>(data_.row(sample_[3]).data);
+
+				cross_product(p, a, b, 1);
+				cross_product(q, a + 2, b + 2, 1);
+
+				if ((p[0] * c[0] + p[1] * c[1] + p[2])*(q[0] * c[2] + q[1] * c[3] + q[2]) < 0)
+					return false;
+				if ((p[0] * d[0] + p[1] * d[1] + p[2])*(q[0] * d[2] + q[1] * d[3] + q[2]) < 0)
+					return false;
+
+				cross_product(p, c, d, 1);
+				cross_product(q, c + 2, d + 2, 1);
+
+				if ((p[0] * a[0] + p[1] * a[1] + p[2])*(q[0] * a[2] + q[1] * a[3] + q[2]) < 0)
+					return false;
+				if ((p[0] * b[0] + p[1] * b[1] + p[2])*(q[0] * b[2] + q[1] * b[3] + q[2]) < 0)
+					return false;
+
+				return true;
+			}
 		};
 	}
 }

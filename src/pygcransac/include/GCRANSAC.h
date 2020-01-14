@@ -239,6 +239,12 @@ namespace gcransac
 					current_sample.get())) // The current sample
 					continue;
 
+				// Check if the selected sample is valid before estimating the model
+				// parameters which usually takes more time. 
+				if (!estimator_.isValidSample(points_, // All points
+					current_sample.get())) // The current sample
+					continue;
+
 				// Estimate the model parameters using the current sample
 				if (estimator_.estimateModel(points_,  // All points
 					current_sample.get(), // The current sample

@@ -79,6 +79,15 @@ namespace gcransac
 			// this function appropriately for the task being solved.
 			inline virtual double residual(const Datum& data, const Model& model) const = 0;
 			inline virtual double squaredResidual(const Datum& data, const Model& model) const = 0;
+			
+			// A function to decide if the selected sample is degenerate or not
+			// before calculating the model parameters
+			inline virtual bool isValidSample(
+				const cv::Mat& data, // All data points
+				const size_t *sample) const // The indices of the selected points
+			{
+				return true;
+			}
 
 			// Enable a quick check to see if the model is valid. This can be a geometric
 			// check or some other verification of the model structure.
