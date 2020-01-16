@@ -115,12 +115,12 @@ namespace gcransac
 			}
 
 			// The size of a sample_ when doing inner RANSAC on a non-minimal sample
-			inline size_t inlierLimit() const {
+			OLGA_INLINE size_t inlierLimit() const {
 				return 7 * sampleSize();
 			}
 
 			// Estimating the essential matrix from a minimal sample
-			inline bool estimateModel(const cv::Mat& data, // The data_ points
+			OLGA_INLINE bool estimateModel(const cv::Mat& data, // The data_ points
 				const size_t *sample, // The selected sample_ which will be used for estimation
 				std::vector<Model>* models) const // The estimated model_ parameters
 			{
@@ -146,7 +146,7 @@ namespace gcransac
 			}
 
 			// The squared sampson distance between a point_ correspondence and an essential matrix
-			inline double sampsonDistance(const cv::Mat& point_,
+			OLGA_INLINE double sampsonDistance(const cv::Mat& point_,
 				const Eigen::Matrix3d& descriptor_) const
 			{
 				const double squared_distance = squaredSampsonDistance(point_, descriptor_);
@@ -154,24 +154,26 @@ namespace gcransac
 			}
 
 			// The sampson distance between a point_ correspondence and an essential matrix
-			inline double squaredSampsonDistance(const cv::Mat& point_,
+			OLGA_INLINE double squaredSampsonDistance(const cv::Mat& point_,
 				const Eigen::Matrix3d& descriptor_) const
 			{
 				const double* s = reinterpret_cast<double *>(point_.data);
-				const double x1 = *s,
-					y1 = *(s + 1),
-					x2 = *(s + 2),
-					y2 = *(s + 3);
+				const double 
+					&x1 = *s,
+					&y1 = *(s + 1),
+					&x2 = *(s + 2),
+					&y2 = *(s + 3);
 
-				const double e11 = descriptor_(0, 0),
-					e12 = descriptor_(0, 1),
-					e13 = descriptor_(0, 2),
-					e21 = descriptor_(1, 0),
-					e22 = descriptor_(1, 1),
-					e23 = descriptor_(1, 2),
-					e31 = descriptor_(2, 0),
-					e32 = descriptor_(2, 1),
-					e33 = descriptor_(2, 2);
+				const double 
+					&e11 = descriptor_(0, 0),
+					&e12 = descriptor_(0, 1),
+					&e13 = descriptor_(0, 2),
+					&e21 = descriptor_(1, 0),
+					&e22 = descriptor_(1, 1),
+					&e23 = descriptor_(1, 2),
+					&e31 = descriptor_(2, 0),
+					&e32 = descriptor_(2, 1),
+					&e33 = descriptor_(2, 2);
 
 				double rxc = e11 * x2 + e21 * y2 + e31;
 				double ryc = e12 * x2 + e22 * y2 + e32;
@@ -185,24 +187,26 @@ namespace gcransac
 			}
 
 			// The symmetric epipolar distance between a point_ correspondence and an essential matrix
-			inline double squaredSymmetricEpipolarDistance(const cv::Mat& point_,
+			OLGA_INLINE double squaredSymmetricEpipolarDistance(const cv::Mat& point_,
 				const Eigen::MatrixXd& descriptor_) const
 			{
 				const double* s = reinterpret_cast<double *>(point_.data);
-				const double x1 = *s,
-					y1 = *(s + 1),
-					x2 = *(s + 2),
-					y2 = *(s + 3);
+				const double 
+					&x1 = *s,
+					&y1 = *(s + 1),
+					&x2 = *(s + 2),
+					&y2 = *(s + 3);
 
-				const double e11 = descriptor_(0, 0),
-					e12 = descriptor_(0, 1),
-					e13 = descriptor_(0, 2),
-					e21 = descriptor_(1, 0),
-					e22 = descriptor_(1, 1),
-					e23 = descriptor_(1, 2),
-					e31 = descriptor_(2, 0),
-					e32 = descriptor_(2, 1),
-					e33 = descriptor_(2, 2);
+				const double 
+					&e11 = descriptor_(0, 0),
+					&e12 = descriptor_(0, 1),
+					&e13 = descriptor_(0, 2),
+					&e21 = descriptor_(1, 0),
+					&e22 = descriptor_(1, 1),
+					&e23 = descriptor_(1, 2),
+					&e31 = descriptor_(2, 0),
+					&e32 = descriptor_(2, 1),
+					&e33 = descriptor_(2, 2);
 
 				const double rxc = e11 * x2 + e21 * y2 + e31;
 				const double ryc = e12 * x2 + e22 * y2 + e32;
@@ -217,28 +221,28 @@ namespace gcransac
 			}
 
 			// The squared residual function used for deciding which points are inliers
-			inline double squaredResidual(const cv::Mat& point_,
+			OLGA_INLINE double squaredResidual(const cv::Mat& point_,
 				const Model& model_) const
 			{
 				return squaredResidual(point_, model_.descriptor);
 			}
 
 			// The squared residual function used for deciding which points are inliers
-			inline double squaredResidual(const cv::Mat& point_,
+			OLGA_INLINE double squaredResidual(const cv::Mat& point_,
 				const Eigen::MatrixXd& descriptor_) const
 			{
 				return squaredSampsonDistance(point_, descriptor_);
 			}
 
 			// The residual function used for deciding which points are inliers
-			inline double residual(const cv::Mat& point_,
+			OLGA_INLINE double residual(const cv::Mat& point_,
 				const Model& model_) const
 			{
 				return residual(point_, model_.descriptor);
 			}
 
 			// The residual function used for deciding which points are inliers
-			inline double residual(const cv::Mat& point_,
+			OLGA_INLINE double residual(const cv::Mat& point_,
 				const Eigen::MatrixXd& descriptor_) const
 			{
 				return sampsonDistance(point_, descriptor_);
@@ -278,7 +282,7 @@ namespace gcransac
 			}
 			
 			// Estimating the model from a non-minimal sample
-			inline bool estimateModelNonminimal(
+			OLGA_INLINE bool estimateModelNonminimal(
 				const cv::Mat& data_,
 				const size_t *sample_,
 				const size_t &sample_number_,
@@ -376,7 +380,7 @@ namespace gcransac
 				return true;
 			}
 
-			inline bool normalizePoints(
+			OLGA_INLINE bool normalizePoints(
 				const cv::Mat& data_, // The data_ points
 				const size_t *sample_, // The points to which the model will be fit
 				const size_t &sample_number_,// The number of points
@@ -473,7 +477,7 @@ namespace gcransac
 			}
 
 			/************** Oriented epipolar constraints ******************/
-			inline void getEpipole(
+			OLGA_INLINE void getEpipole(
 				Eigen::Vector3d &epipole_, // The epipole 
 				const Eigen::Matrix3d &essential_matrix_) const
 			{
@@ -487,7 +491,7 @@ namespace gcransac
 				epipole_ = essential_matrix_.row(1).cross(essential_matrix_.row(2));
 			}
 
-			inline double getOrientationSignum(
+			OLGA_INLINE double getOrientationSignum(
 				const Eigen::Matrix3d &essential_matrix_,
 				const Eigen::Vector3d &epipole_,
 				const cv::Mat &point_) const
@@ -497,7 +501,7 @@ namespace gcransac
 				return signum1 * signum2;
 			}
 
-			inline int isOrientationValid(
+			OLGA_INLINE int isOrientationValid(
 				const Eigen::Matrix3d &essential_matrix_, // The fundamental matrix
 				const cv::Mat &data_, // The data points
 				const size_t *sample_, // The sample used for the estimation

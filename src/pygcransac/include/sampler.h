@@ -67,7 +67,7 @@ namespace gcransac
 
 			// Samples the input variable data and fills the std::vector subset with the
 			// samples.
-			inline virtual bool sample(const std::vector<_IndexType> &pool_,
+			OLGA_INLINE virtual bool sample(const std::vector<_IndexType> &pool_,
 				_IndexType * const subset_,
 				size_t sample_size_) = 0;
 

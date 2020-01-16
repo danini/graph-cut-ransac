@@ -95,7 +95,7 @@ namespace gcransac
 
 		Graph<double, double, double> *graph; // The graph for graph-cut
 
-		inline bool sample(const std::vector<size_t> &pool_,
+		OLGA_INLINE bool sample(const std::vector<size_t> &pool_,
 			size_t sample_number_,
 			size_t *sample_,
 			bool local_optimization = false);
@@ -251,6 +251,9 @@ namespace gcransac
 					&models)) // The estimated model parameters
 					break;
 			}
+
+			// Increase the iteration number by the number of unsuccessful model generations as well.
+			statistics.iteration_number += unsuccessful_model_generations - 1;
 
 			// Select the so-far-the-best from the estimated models
 			for (auto &model : models)
@@ -554,7 +557,7 @@ namespace gcransac
 	}
 
 	template <class _ModelEstimator, class _NeighborhoodGraph, class _ScoringFunction>
-	inline bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph, _ScoringFunction>::sample(
+	OLGA_INLINE bool GCRANSAC<_ModelEstimator, _NeighborhoodGraph, _ScoringFunction>::sample(
 		const std::vector<size_t> &pool_, // The pool if indices determining which point can be selected
 		size_t sample_number_,
 		size_t *sample_,

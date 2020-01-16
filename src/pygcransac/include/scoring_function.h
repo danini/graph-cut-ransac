@@ -58,12 +58,12 @@ namespace gcransac
 
 		}
 
-		inline bool operator<(const Score& score_)
+		OLGA_INLINE bool operator<(const Score& score_)
 		{
 			return value < score_.value;
 		}
 
-		inline bool operator>(const Score& score_)
+		OLGA_INLINE bool operator>(const Score& score_)
 		{
 			return *this > score_;
 		}
@@ -83,7 +83,7 @@ namespace gcransac
 
 		}
 
-		virtual inline Score getScore(const cv::Mat &points_, // The input data points
+		virtual OLGA_INLINE Score getScore(const cv::Mat &points_, // The input data points
 			Model &model_, // The current model parameters
 			const _ModelEstimator &estimator_, // The model estimator
 			const double threshold_, // The inlier-outlier threshold
@@ -131,7 +131,7 @@ namespace gcransac
 		}
 
 		// Return the score of a model w.r.t. the data points and the threshold
-		inline Score getScore(const cv::Mat &points_, // The input data points
+		OLGA_INLINE Score getScore(const cv::Mat &points_, // The input data points
 			Model &model_, // The current model parameters
 			const _ModelEstimator &estimator_, // The model estimator
 			const double threshold_, // The inlier-outlier threshold

@@ -34,6 +34,7 @@
 #pragma once
 
 #include <vector>
+#include "GCoptimization.h"
 
 namespace gcransac
 {
@@ -54,13 +55,13 @@ namespace gcransac
 			virtual ~Estimator() {}
 
 			// Get the minimum number of samples needed to generate a model.
-			inline virtual size_t inlierLimit() const = 0;
+			OLGA_INLINE virtual size_t inlierLimit() const = 0;
 
 			// Given a set of data points, estimate the model. Users should implement this
 			// function appropriately for the task being solved. Returns true for
 			// successful model estimation (and outputs model), false for failed
 			// estimation. Typically, this is a minimal set, but it is not required to be.
-			inline virtual bool estimateModel(const Datum& data,
+			OLGA_INLINE virtual bool estimateModel(const Datum& data,
 				const size_t *sample,
 				std::vector<Model>* model) const = 0;
 
@@ -69,7 +70,7 @@ namespace gcransac
 			// By default, this simply implements the minimal case.
 			// In case of weighted least-squares, the weights can be fed into the
 			// function.
-			inline virtual bool estimateModelNonminimal(const Datum& data,
+			OLGA_INLINE virtual bool estimateModelNonminimal(const Datum& data,
 				const size_t *sample,
 				const size_t &sample_number,
 				std::vector<Model>* model,
@@ -77,12 +78,12 @@ namespace gcransac
 
 			// Given a model and a data point, calculate the error. Users should implement
 			// this function appropriately for the task being solved.
-			inline virtual double residual(const Datum& data, const Model& model) const = 0;
-			inline virtual double squaredResidual(const Datum& data, const Model& model) const = 0;
+			OLGA_INLINE virtual double residual(const Datum& data, const Model& model) const = 0;
+			OLGA_INLINE virtual double squaredResidual(const Datum& data, const Model& model) const = 0;
 			
 			// A function to decide if the selected sample is degenerate or not
 			// before calculating the model parameters
-			inline virtual bool isValidSample(
+			OLGA_INLINE virtual bool isValidSample(
 				const cv::Mat& data, // All data points
 				const size_t *sample) const // The indices of the selected points
 			{
@@ -91,11 +92,11 @@ namespace gcransac
 
 			// Enable a quick check to see if the model is valid. This can be a geometric
 			// check or some other verification of the model structure.
-			inline virtual bool isValidModel(const Model& model) const { return true; }
+			OLGA_INLINE virtual bool isValidModel(const Model& model) const { return true; }
 
 			// Enable a quick check to see if the model is valid. This can be a geometric
 			// check or some other verification of the model structure.
-			inline virtual bool isValidModel(Model& model,
+			OLGA_INLINE virtual bool isValidModel(Model& model,
 				const Datum& data,
 				const std::vector<size_t> &inliers,
 				const size_t *minimal_sample_,

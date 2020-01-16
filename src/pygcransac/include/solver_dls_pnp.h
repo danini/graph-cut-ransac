@@ -70,7 +70,7 @@ namespace gcransac
 
 				// Estimate the model parameters from the given point sample
 				// using weighted fitting if possible.
-				inline bool estimateModel(
+				OLGA_INLINE bool estimateModel(
 					const cv::Mat& data_, // The set of data points
 					const size_t *sample_, // The sample used for the estimation
 					size_t sample_number_, // The size of the sample
@@ -102,7 +102,7 @@ namespace gcransac
 
 			// Estimate the model parameters from the given point sample
 			// using weighted fitting if possible.
-			inline bool DLSPnP::estimateModel(
+			OLGA_INLINE bool DLSPnP::estimateModel(
 				const cv::Mat& data_, // The set of data points
 				const size_t *sample_, // The sample used for the estimation
 				size_t sample_number_, // The size of the sample

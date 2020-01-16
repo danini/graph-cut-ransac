@@ -67,7 +67,7 @@ namespace gcransac
 					return 7;
 				}
 
-				inline bool estimateModel(
+				OLGA_INLINE bool estimateModel(
 					const cv::Mat& data_, // The set of data points
 					const size_t *sample_, // The sample used for the estimation
 					size_t sample_number_, // The size of the sample
@@ -75,7 +75,7 @@ namespace gcransac
 					const double *weights_ = nullptr) const; // The weight for each point
 			};
 
-			inline bool FundamentalMatrixSevenPointSolver::estimateModel(
+			OLGA_INLINE bool FundamentalMatrixSevenPointSolver::estimateModel(
 				const cv::Mat& data_,
 				const size_t *sample_,
 				size_t sample_number_,

@@ -57,17 +57,17 @@ namespace gcransac
 
 			}
 
-			inline int getRandomNumber() {
+			OLGA_INLINE int getRandomNumber() {
 				return generate(generator);
 			}
 
-			inline void resetGenerator(
+			OLGA_INLINE void resetGenerator(
 				_ValueType min_range_,
 				_ValueType max_range_) {
 				generate = std::uniform_int_distribution<_ValueType>(min_range_, max_range_);
 			}
 
-			inline void generateUniqueRandomSet(_ValueType * sample_,
+			OLGA_INLINE void generateUniqueRandomSet(_ValueType * sample_,
 				size_t sample_size_)
 			{
 				for (size_t i = 0; i < sample_size_; i++)
@@ -82,7 +82,7 @@ namespace gcransac
 				}
 			}
 
-			inline void generateUniqueRandomSet(_ValueType * sample_,
+			OLGA_INLINE void generateUniqueRandomSet(_ValueType * sample_,
 				size_t sample_size_,
 				_ValueType max_) {
 				resetGenerator(0, max_);
@@ -97,7 +97,7 @@ namespace gcransac
 				}
 			}
 
-			inline void generateUniqueRandomSet(_ValueType * sample_,
+			OLGA_INLINE void generateUniqueRandomSet(_ValueType * sample_,
 				size_t sample_size_,
 				_ValueType max_,
 				_ValueType to_skip_) {
