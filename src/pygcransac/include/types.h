@@ -64,7 +64,7 @@ namespace gcransac
 
 		// The default estimator for essential matrix fitting
 		typedef estimator::EssentialMatrixEstimator<estimator::solver::EssentialMatrixFivePointSteweniusSolver, // The solver used for fitting a model to a minimal sample
-			estimator::solver::EssentialMatrixFivePointSteweniusSolver> // The solver used for fitting a model to a non-minimal sample
+			estimator::solver::FundamentalMatrixEightPointSolver> // The solver used for fitting a model to a non-minimal sample
 			DefaultEssentialMatrixEstimator;
 
 		// The default estimator for PnP fitting
