@@ -713,30 +713,38 @@ namespace gcransac
 		std::vector<size_t> &inliers_,
 		double &energy_)
 	{
+		const size_t point_number = points_.rows;
+
 		// Initializing the problem graph for the graph-cut algorithm.
 		Energy<double, double, double> *problem_graph =
-			new Energy<double, double, double>(points_.rows, // The number of vertices
+			new Energy<double, double, double>(point_number, // The number of vertices
 				neighbor_number_, // The number of edges
 				NULL);
 
 		// Add a vertex for each point
-		for (auto i = 0; i < points_.rows; ++i)
+		for (auto i = 0; i < point_number; ++i)
 			problem_graph->add_node();
 
 		// The distance and energy for each point
 		double tmp_squared_distance,
 			tmp_energy;
+		const double squared_truncated_threshold = threshold_ * threshold_ * 9 / 4;
+		const double one_minus_lambda = 1.0 - lambda_;
 
 		// Estimate the vertex capacities
-		std::vector<double> squared_residuals(points_.rows);
-		for (size_t i = 0; i < points_.rows; ++i)
+		for (size_t i = 0; i < point_number; ++i)
 		{
 			tmp_squared_distance = estimator_.squaredResidual(points_.row(i),
 				model_.descriptor);
-			tmp_energy = 1.0 - tmp_squared_distance / squared_truncated_threshold;
-			problem_graph->add_term1(i, tmp_energy, 0);
-			squared_residuals[i] = tmp_squared_distance;
+			tmp_energy = 1 - tmp_squared_distance / squared_truncated_threshold;
+
+			if (tmp_squared_distance <= squared_truncated_threshold)
+				problem_graph->add_term1(i, one_minus_lambda * tmp_energy, 0);
+			else
+				problem_graph->add_term1(i, 0, one_minus_lambda * (1 - tmp_energy));
 		}
+
+		std::vector<std::vector<int>> used_edges(point_number, std::vector<int>(point_number, 0));
 
 		if (lambda_ > 0)
 		{
@@ -745,11 +753,22 @@ namespace gcransac
 			double e00, e01 = 1.0, e10 = 1.0, e11;
 
 			// Iterate through all points and set their edges
-			for (auto point_idx = 0; point_idx < points_.rows; ++point_idx)
+			for (auto point_idx = 0; point_idx < point_number; ++point_idx)
 			{
-				squared_distance_1 = squared_residuals[point_idx];
-				energy1 = MAX(0,
-					1.0 - squared_distance_1 / squared_truncated_threshold); // Truncated quadratic cost
+				squared_distance_1 = estimator_.squaredResidual(points_.row(point_idx),
+					model_.descriptor);
+				energy1 = squared_distance_1 / squared_truncated_threshold; // Truncated quadratic cost
+				if (energy1 > 1)
+					energy1 = 1;
+
+				int current_k = 0;
+				for (size_t actual_neighbor_idx : neighborhood_graph->getNeighbors(point_idx))
+				{
+					if (actual_neighbor_idx == point_idx || actual_neighbor_idx < 0)
+						break;
+
+					++current_k;
+				}
 
 				// Iterate through  all neighbors
 				for (size_t actual_neighbor_idx : neighborhood_graph->getNeighbors(point_idx))
@@ -757,13 +776,26 @@ namespace gcransac
 					if (actual_neighbor_idx == point_idx)
 						continue;
 
-					squared_distance_2 = squared_residuals[actual_neighbor_idx];
-					energy2 = MAX(0,
-						1.0 - squared_distance_2 / squared_truncated_threshold); // Truncated quadratic cost
+					if (actual_neighbor_idx == point_idx || actual_neighbor_idx < 0)
+						continue;
+
+					if (used_edges[actual_neighbor_idx][point_idx] == 1 ||
+						used_edges[point_idx][actual_neighbor_idx] == 1)
+						continue;
+
+					used_edges[actual_neighbor_idx][point_idx] = 1;
+					used_edges[point_idx][actual_neighbor_idx] = 1;
+
+					squared_distance_2 = estimator_.squaredResidual(points_.row(actual_neighbor_idx),
+						model_.descriptor);
+
+					energy2 = squared_distance_2 / squared_truncated_threshold; // Truncated quadratic cost
+					if (energy2 > 1)
+						energy2 = 1;
 					energy_sum = energy1 + energy2;
 
 					e00 = 0.5 * energy_sum;
-					e11 = 1.0 - 0.5 * energy_sum;
+					e11 = 0;
 
 					constexpr double e01_plus_e10 = 2.0; // e01 + e10 = 2
 					if (e00 + e11 > e01_plus_e10)
@@ -773,7 +805,7 @@ namespace gcransac
 						actual_neighbor_idx, // The current neighbor's index
 						e00 * lambda_,
 						lambda_, // = e01 * lambda
-						lambda_, // = e10 * lambda 
+						lambda_, // = e10 * lambda
 						e11 * lambda_);
 				}
 			}

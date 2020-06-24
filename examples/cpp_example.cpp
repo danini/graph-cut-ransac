@@ -139,7 +139,7 @@ int main(int argc, const char* argv[])
 	const double inlier_outlier_threshold_fundamental_matrix = 0.0003; // The used adaptive (i.e., it is the percentage of the maximum image diagonal) inlier-outlier threshold in GC-RANSAC for fundamental matrix estimation.
 	const double inlier_outlier_threshold_homography = 2.00; // The used inlier-outlier threshold in GC-RANSAC for homography estimation.
 	const double inlier_outlier_threshold_pnp = 5.50; // The used inlier-outlier threshold in GC-RANSAC for homography estimation.
-	const double spatial_coherence_weight = 0.14; // The weigd_t of the spatial coherence term in the graph-cut energy minimization.
+	const double spatial_coherence_weight = 0.975; // The weigd_t of the spatial coherence term in the graph-cut energy minimization.
 	const size_t cell_number_in_neighborhood_graph = 8; // The number of cells along each axis in the neighborhood graph.
 
 	printf("------------------------------------------------------------\n6D pose fitting by the PnP algorithm\n------------------------------------------------------------\n");
@@ -167,7 +167,7 @@ int main(int argc, const char* argv[])
 			inlier_points_path, // The path where the inlier points should be saved
 			confidence, // The RANSAC confidence value
 			inlier_outlier_threshold_pnp, // The used inlier-outlier threshold in GC-RANSAC.
-			0.05, // The weight of the spatial coherence term in the graph-cut energy minimization.
+			spatial_coherence_weight, // The weight of the spatial coherence term in the graph-cut energy minimization.
 			20.0, // The radius of the neighborhood ball for determining the neighborhoods.
 			fps); // The required FPS limit. If it is set to -1, the algorithm will not be interrupted before finishing.
 		printf("\n------------------------------------------------------------\n");
