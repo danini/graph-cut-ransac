@@ -104,6 +104,15 @@ namespace gcransac
 
 			const std::string getName() const { return "PROSAC Sampler"; }
 
+			void reset()
+			{
+				kth_sample_number = 1;
+				largest_sample_size = sample_size; // largest set sampled in PROSAC
+				subset_size = sample_size; // The size of the current sampling pool		
+				random_generator->resetGenerator(0,
+					subset_size - 1);
+			}
+
 			bool initialize(const cv::Mat * const container_)
 			{
 				// Set T_n according to the PROSAC paper's recommendation.
@@ -212,4 +221,4 @@ namespace gcransac
 			}
 		};
 	}
-} 
+}

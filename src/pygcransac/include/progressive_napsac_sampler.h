@@ -109,6 +109,8 @@ namespace gcransac
 			// necessary. Must be called before sample is called.
 			bool initialize(const cv::Mat *container_);
 
+			void reset();
+
 			const std::string getName() const { return "Progressive NAPSAC Sampler"; }
 
 			// Samples the input variable data and fills the std::vector subset with the
@@ -117,6 +119,18 @@ namespace gcransac
 				size_t * const subset_,
 				size_t sample_size_);
 		};
+
+		void ProgressiveNapsacSampler::reset()
+		{
+			random_generator->resetGenerator(0,
+				static_cast<size_t>(point_number));
+			kth_sample_number = 0;
+			hits_per_point = std::vector<size_t>(point_number, 0);
+			current_layer_per_point = std::vector<size_t>(point_number, 0);
+			subset_size_per_point = std::vector<size_t>(point_number, 7);
+			one_point_prosac_sampler.reset();
+			prosac_sampler.reset();
+		}
 
 		bool ProgressiveNapsacSampler::initialize(const cv::Mat *container_)
 		{

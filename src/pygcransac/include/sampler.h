@@ -35,7 +35,7 @@
 
 #include <vector>
 
-namespace gcransac 
+namespace gcransac
 {
 	namespace sampler
 	{
@@ -60,6 +60,8 @@ namespace gcransac
 			virtual ~Sampler() {}
 
 			virtual const std::string getName() const = 0;
+
+			virtual void reset() = 0;
 
 			// Initializes any non-trivial variables and sets up sampler if
 			// necessary. Must be called before sample is called.

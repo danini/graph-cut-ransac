@@ -66,7 +66,13 @@ namespace gcransac
 				random_generator->resetGenerator(0,
 					static_cast<size_t>(container_->rows));
 				return true;
-			} 
+			}
+
+			void reset()
+			{
+				random_generator->resetGenerator(0,
+					static_cast<size_t>(container->rows));
+			}
 
 			// Samples the input variable data and fills the std::vector subset with the
 			// samples.
