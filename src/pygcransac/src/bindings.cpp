@@ -133,6 +133,8 @@ py::tuple find6DPoseEPOS(
 
 	if (DIMK1 != DIMK2 || DIMK1 != 3)
 		throw std::invalid_argument("The size of the camera matrix is invalid.");
+	
+	double score = 0.0;
 
 	int num_inl = find6DPoseEPOS_(
 		x1y1,
@@ -140,6 +142,7 @@ py::tuple find6DPoseEPOS(
 		K,
 		inliers,
 		pose,
+		score,
 		spatial_coherence_weight,
 		threshold,
 		conf,
@@ -163,7 +166,7 @@ py::tuple find6DPoseEPOS(
 	double *ptr2 = (double *)buf2.ptr;
 	for (size_t i = 0; i < 12; i++)
 		ptr2[i] = pose[i];
-	return py::make_tuple(pose_, inliers_);
+	return py::make_tuple(pose_, inliers_, score);
 }
 
 py::tuple findFundamentalMatrix(py::array_t<double>  x1y1_,

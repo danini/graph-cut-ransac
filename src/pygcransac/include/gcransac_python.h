@@ -17,6 +17,7 @@ int find6DPoseEPOS_(
 	std::vector<double>& cameraParams,
 	std::vector<bool>& inliers,
 	std::vector<double> &pose,
+	double &score,
 	double spatial_coherence_weight,
 	double threshold,
 	double conf,

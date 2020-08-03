@@ -454,6 +454,7 @@ namespace gcransac
 
 		end = std::chrono::system_clock::now(); // The current time
 		elapsed_seconds = end - start; // Time elapsed since the algorithm started
+		statistics.score = so_far_the_best_score.value;
 		statistics.processing_time = elapsed_seconds.count();
 	}
 

@@ -118,6 +118,7 @@ int find6DPoseEPOS_(
 	std::vector<double>& cameraParams,
 	std::vector<bool>& inliers,
 	std::vector<double> &pose,
+	double &score,
 	double spatial_coherence_weight,
 	double threshold,
 	double conf,
@@ -211,7 +212,8 @@ int find6DPoseEPOS_(
 		model);
 
 	const utils::RANSACStatistics &statistics = gcransac.getRansacStatistics();
-
+	
+	score = statistics.score;
 	inliers.resize(num_tents);
 
 	const int num_inliers = statistics.inliers.size();
