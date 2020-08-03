@@ -19,6 +19,7 @@
 #include "solver_fundamental_matrix_eight_point.h"
 #include "solver_homography_four_point.h"
 #include "solver_essential_matrix_five_point_stewenius.h"
+#include "solver_epnp_lm.h"
 
 #include <ctime>
 #include <sys/types.h>
@@ -48,9 +49,13 @@ int find6DPose_(std::vector<double>& imagePoints,
 
 	const size_t cell_number_in_neighborhood_graph_ = 8;
 	neighborhood::FlannNeighborhoodGraph neighborhood1(&points, 20);
-	
+
+	typedef estimator::PerspectiveNPointEstimator<estimator::solver::P3PSolver, // The solver used for fitting a model to a minimal sample
+		estimator::solver::EPnPLM> // The solver used for fitting a model to a non-minimal sample
+		PnPEstimator;
+
 	// Apply Graph-cut RANSAC
-	utils::DefaultPnPEstimator estimator;
+	PnPEstimator estimator;
 	Pose6D model;
 
 	// Initialize the samplers	
@@ -65,7 +70,7 @@ int find6DPose_(std::vector<double>& imagePoints,
 		return 0;
 	}
 
-	GCRANSAC<utils::DefaultPnPEstimator, neighborhood::FlannNeighborhoodGraph> gcransac;
+	GCRANSAC<PnPEstimator, neighborhood::FlannNeighborhoodGraph> gcransac;
 	gcransac.setFPS(-1); // Set the desired FPS (-1 means no limit)
 	gcransac.settings.threshold = threshold; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
@@ -74,7 +79,7 @@ int find6DPose_(std::vector<double>& imagePoints,
 	gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
 	gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
 	gcransac.settings.neighborhood_sphere_radius = 8; // The radius of the neighborhood ball
-	gcransac.settings.core_number = std::thread::hardware_concurrency(); // The number of parallel processes
+	gcransac.settings.core_number = 1; // The number of parallel processes
 
 	// Start GC-RANSAC
 	gcransac.run(points,
@@ -85,7 +90,127 @@ int find6DPose_(std::vector<double>& imagePoints,
 		model);
 
 	const utils::RANSACStatistics &statistics = gcransac.getRansacStatistics();
-	printf("Inlier number = %d\n", static_cast<int>(statistics.inliers.size()));
+
+	inliers.resize(num_tents);
+
+	const int num_inliers = statistics.inliers.size();
+	for (auto pt_idx = 0; pt_idx < num_tents; ++pt_idx) {
+		inliers[pt_idx] = 0;
+	}
+
+	for (auto pt_idx = 0; pt_idx < num_inliers; ++pt_idx) {
+		inliers[statistics.inliers[pt_idx]] = 1;
+	}
+
+	pose.resize(12);
+
+	for (int i = 0; i < 3; i++) {
+		for (int j = 0; j < 4; j++) {
+			pose[i * 4 + j] = (double)model.descriptor(i, j);
+		}
+	}
+	return num_inliers;
+}
+
+int find6DPoseEPOS_(
+	std::vector<double>& imagePoints,
+	std::vector<double>& worldPoints,
+	std::vector<double>& cameraParams,
+	std::vector<bool>& inliers,
+	std::vector<double> &pose,
+	double spatial_coherence_weight,
+	double threshold,
+	double conf,
+	int min_iters,
+	int max_iters,
+	double sphere_radius,
+	double scaling_from_millimeters,
+	double minimum_coverage,
+	double min_triangle_area)
+{
+	Eigen::Matrix3d K;
+	K << cameraParams[0], cameraParams[1], cameraParams[2],
+		cameraParams[3], cameraParams[4], cameraParams[5],
+		cameraParams[6], cameraParams[7], cameraParams[8];
+
+	size_t num_tents = imagePoints.size() / 2;
+	cv::Mat points(num_tents, 7, CV_64F);
+	size_t iterations = 0;
+	Eigen::Vector3d vec;
+	vec(2) = 1.0;
+	
+	cv::Mat points_for_neighborhood(points.rows, 5, CV_64F); 
+	std::map<std::pair<int, int>, int> pixels;
+
+	for (size_t i = 0; i < num_tents; ++i) {
+		points.at<double>(i, 0) = imagePoints[2 * i];
+		points.at<double>(i, 1) = imagePoints[2 * i + 1];
+		points.at<double>(i, 2) = worldPoints[3 * i];
+		points.at<double>(i, 3) = worldPoints[3 * i + 1];
+		points.at<double>(i, 4) = worldPoints[3 * i + 2];
+
+		vec(0) = points.at<double>(i, 0);
+		vec(1) = points.at<double>(i, 1);
+
+		points.at<double>(i, 5) = K.row(0) * vec;
+		points.at<double>(i, 6) = K.row(1) * vec;
+
+
+		points_for_neighborhood.at<double>(i, 0) = points.at<double>(i, 5);
+		points_for_neighborhood.at<double>(i, 1) = points.at<double>(i, 6);
+		points_for_neighborhood.at<double>(i, 2) = points.at<double>(i, 2) * scaling_from_millimeters;
+		points_for_neighborhood.at<double>(i, 3) = points.at<double>(i, 3) * scaling_from_millimeters;
+		points_for_neighborhood.at<double>(i, 4) = points.at<double>(i, 4) * scaling_from_millimeters;
+
+		const int x = points.at<double>(i, 5),
+			y = points.at<double>(i, 6);
+		pixels[std::make_pair(x, y)] = 1;
+	}
+
+	neighborhood::FlannNeighborhoodGraph neighborhood1(&points_for_neighborhood, sphere_radius);
+
+	typedef estimator::PerspectiveNPointEstimator<estimator::solver::P3PSolver, // The solver used for fitting a model to a minimal sample
+		estimator::solver::EPnPLM> // The solver used for fitting a model to a non-minimal sample
+		PnPEstimator;
+
+	// Apply Graph-cut RANSAC
+	PnPEstimator estimator(min_triangle_area);
+	Pose6D model;
+
+	// Initialize the samplers	
+	sampler::UniformSampler main_sampler(&points);  // The main sampler is used inside the local optimization
+	sampler::UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
+
+	// Checking if the samplers are initialized successfully.
+	if (!main_sampler.isInitialized() ||
+		!local_optimization_sampler.isInitialized())
+	{
+		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
+		return 0;
+	}
+
+	GCRANSAC<PnPEstimator, neighborhood::FlannNeighborhoodGraph, EPOSScoringFunction<PnPEstimator>> gcransac;
+	gcransac.setFPS(-1); // Set the desired FPS (-1 means no limit)
+	gcransac.settings.threshold = threshold; // The inlier-outlier threshold
+	gcransac.settings.minimum_pixel_coverage = minimum_coverage;
+	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
+	gcransac.settings.confidence = conf; // The required confidence in the results
+	gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
+	gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
+	gcransac.settings.min_iteration_number = min_iters; // The minimum number of iterations
+	gcransac.settings.neighborhood_sphere_radius = 8; // The radius of the neighborhood ball
+	gcransac.settings.core_number = 1; // The number of parallel processes
+	gcransac.settings.used_pixels = pixels.size();
+
+	// Start GC-RANSAC
+	gcransac.run(points,
+		estimator,
+		&main_sampler,
+		&local_optimization_sampler,
+		&neighborhood1,
+		model);
+
+	const utils::RANSACStatistics &statistics = gcransac.getRansacStatistics();
 
 	inliers.resize(num_tents);
 

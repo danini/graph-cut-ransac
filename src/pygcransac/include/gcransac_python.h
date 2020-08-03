@@ -11,6 +11,22 @@ int find6DPose_(
 	double conf,
 	int max_iters);
 
+int find6DPoseEPOS_(
+	std::vector<double>& imagePoints,
+	std::vector<double>& worldPoints,
+	std::vector<double>& cameraParams,
+	std::vector<bool>& inliers,
+	std::vector<double> &pose,
+	double spatial_coherence_weight,
+	double threshold,
+	double conf,
+	int min_iters,
+	int max_iters,
+	double sphere_radius,
+	double scaling_from_millimeters,
+	double minimum_coverage,
+	double min_triangle_area);
+
 int findFundamentalMatrix_(std::vector<double>& srcPts,
                            std::vector<double>& dstPts,
                            std::vector<bool>& inliers,
