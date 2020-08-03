@@ -36,6 +36,7 @@
 #include <math.h>
 #include <random>
 #include <vector>
+#include <unordered_set>
 
 #include <unsupported/Eigen/Polynomials>
 #include <Eigen/Eigen>
@@ -171,6 +172,98 @@ namespace gcransac
 
 			// Return the final score
 			return score;
+		}
+	};
+
+	template<class _ModelEstimator>
+	class EPOSScoringFunction : public ScoringFunction<_ModelEstimator>
+	{
+	protected:
+		double squared_truncated_threshold; // Squared truncated threshold
+		size_t point_number; // Number of points
+		// Verify only every k-th point when doing the score calculation. This maybe is beneficial if
+		// there is a time sensitive application and verifying the model on a subset of points
+		// is enough.
+		size_t verify_every_kth_point;
+
+	public:
+		EPOSScoringFunction() : verify_every_kth_point(1)
+		{
+
+		}
+
+		~EPOSScoringFunction()
+		{
+
+		}
+
+		void initialize(const double squared_truncated_threshold_,
+			const size_t point_number_)
+		{
+			squared_truncated_threshold = squared_truncated_threshold_;
+			point_number = point_number_;
+		}
+
+		struct pixel_pair_hash
+		{
+			template <class T1, class T2>
+			std::size_t operator () (std::pair<T1, T2> const &pair) const
+			{
+				std::size_t h1 = 10000 * std::hash<T2>()(pair.first);
+				std::size_t h2 = std::hash<T2>()(pair.second);
+
+				return h1 + h2;
+			}
+		};
+
+		// Return the score of a model w.r.t. the data points and the threshold
+		OLGA_INLINE Score getScore(const cv::Mat &points_, // The input data points
+			Model &model_, // The current model parameters
+			const _ModelEstimator &estimator_, // The model estimator
+			const double threshold_, // The inlier-outlier threshold
+			std::vector<size_t> &inliers_, // The selected inliers
+			const Score &best_score_ = Score(), // The score of the current so-far-the-best model
+			const bool store_inliers_ = true) const
+		{
+			Score score; // The current score
+			if (store_inliers_) // If the inlier should be stored, clear the variables
+				inliers_.clear();
+			double squared_residual; // The point-to-model residual
+			std::unordered_set<std::pair<int, int>, pixel_pair_hash> pixels;
+
+			// Iterate through all points, calculate the squared_residuals and store the points as inliers if needed.
+			for (size_t point_idx = 0; point_idx < point_number; point_idx += verify_every_kth_point)
+			{
+				// Calculate the point-to-model residual
+				squared_residual = estimator_.squaredResidual(points_.row(point_idx), model_.descriptor);
+
+				// If the residual is smaller than the threshold, store it as an inlier and
+				// increase the score.
+				if (squared_residual < squared_truncated_threshold)
+				{
+					if (store_inliers_) // Store the point as an inlier if needed.
+						inliers_.emplace_back(point_idx);
+
+					std::pair<int, int> pixel = std::make_pair(
+						static_cast<int>(points_.at<double>(point_idx, 5)),
+						static_cast<int>(points_.at<double>(point_idx, 6)));
+
+					if (pixels.find(pixel) == pixels.end())
+						pixels.emplace(pixel);
+					// Increase the inlier number
+					++(score.inlier_number);
+				}
+
+				// Interrupt if there is no chance of being better than the best model
+				if (point_number - point_idx + score.inlier_number < best_score_.inlier_number)
+					return Score();
+			}
+
+			score.value = pixels.size();
+
+			// Return the final score
+			return score;
+
 		}
 	};
 }

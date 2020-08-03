@@ -56,12 +56,14 @@ namespace gcransac
 				max_unsuccessful_model_generations, // Maximum number of unsuccessful model generations
 				max_least_squares_iterations, // Maximum number of iterated least-squares iterations
 				max_graph_cut_number, // Maximum number of graph-cuts applied in each iteration
+				used_pixels,
 				core_number; // Number of parallel threads
 
 			double confidence, // Required confidence in the result
 				neighborhood_sphere_radius, // The radius of the ball used for creating the neighborhood graph
 				threshold, // The inlier-outlier threshold
-				spatial_coherence_weight; // The weight of the spatial coherence term
+				spatial_coherence_weight, // The weight of the spatial coherence term
+				minimum_pixel_coverage;
 
 			Settings() :
 				do_final_iterated_least_squares(true),
@@ -78,6 +80,7 @@ namespace gcransac
 				max_iteration_number(std::numeric_limits<size_t>::max()),
 				max_unsuccessful_model_generations(100),
 				core_number(1),
+				minimum_pixel_coverage(100.0),
 				spatial_coherence_weight(0.14),
 				threshold(2.0),
 				confidence(0.95)
