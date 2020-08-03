@@ -133,7 +133,19 @@ namespace gcransac
 			std::vector<size_t> &inliers_, // The resulting inlier set
 			Model &model_, // The estimated model
 			const bool use_weighting_ = true); // Use iteratively re-weighted least-squares
+
+		double getPixelCoverage(
+			const size_t &inlier_pixels_,
+			const size_t &all_pixels_);
 	};
+
+	template <class _ModelEstimator, class _NeighborhoodGraph, class _ScoringFunction>
+	double GCRANSAC<_ModelEstimator, _NeighborhoodGraph, _ScoringFunction>::getPixelCoverage(
+		const size_t &inlier_pixels_,
+		const size_t &all_pixels_)
+	{
+		return static_cast<double>(inlier_pixels_) / static_cast<double>(all_pixels_);
+	}
 
 	// Computes the desired iteration number for RANSAC w.r.t. to the current inlier number
 	template <class _ModelEstimator, class _NeighborhoodGraph, class _ScoringFunction>
@@ -143,6 +155,9 @@ namespace gcransac
 		size_t sample_size_,
 		double log_probability_)
 	{
+		if (settings.confidence == 1.0)
+			return std::numeric_limits<size_t>::max();
+
 		const double q = pow(static_cast<double>(inlier_number_) / point_number_, sample_size_);
 		const double log2 = log(1 - q);
 
@@ -190,6 +205,7 @@ namespace gcransac
 		// Maximum number of iterations
 		auto max_iteration =
 			getIterationNumber(1, points_.rows, sample_number, log_probability);
+		double pixel_coverage = 0.0;
 
 		std::unique_ptr<size_t[]> current_sample(new size_t[sample_number]); // Minimal sample for model fitting
 		bool do_local_optimization = false; // Flag to show if local optimization should be applied
@@ -216,9 +232,18 @@ namespace gcransac
 		/*
 			The main RANSAC iteration
 		*/
-		while (settings.min_iteration_number > statistics.iteration_number ||
-			statistics.iteration_number < MIN(max_iteration, settings.max_iteration_number))
+		while (true)
 		{
+			if (settings.min_iteration_number < statistics.iteration_number)
+			{
+				if (statistics.iteration_number > max_iteration)
+					break;
+				if (statistics.iteration_number > settings.max_iteration_number)
+					break;
+				if (settings.minimum_pixel_coverage < pixel_coverage)
+					break;
+			}
+
 			// Do not apply local optimization if not needed
 			do_local_optimization = false;
 
@@ -301,6 +326,9 @@ namespace gcransac
 						point_number, // The number of points
 						sample_number, // The sample size
 						log_probability); // The logarithm of 1 - confidence
+
+					pixel_coverage = getPixelCoverage(so_far_the_best_score.value,
+						settings.used_pixels);
 				}
 			}
 
