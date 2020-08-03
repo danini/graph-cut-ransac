@@ -67,17 +67,17 @@ namespace gcransac
 			// The lower bound of the inlier ratio which is required to pass the validity test.
 			// The validity test measures what proportion of the inlier (by Sampson distance) is inlier
 			// when using symmetric epipolar distance. 
-			const double minimum_inlier_ratio_in_validity_check;
+			const double minimum_triangle_area;
 
 		public:
-			PerspectiveNPointEstimator(const double minimum_inlier_ratio_in_validity_check_ = 0.5) :
+			PerspectiveNPointEstimator(const double minimum_triangle_area_ = 50) :
 				// Minimal solver engine used for estimating a model from a minimal sample
 				minimal_solver(std::make_shared<const _MinimalSolverEngine>()),
 				// Non-minimal solver engine used for estimating a model from a bigger than minimal sample
 				non_minimal_solver(std::make_shared<const _NonMinimalSolverEngine>()),
 				// The lower bound of the inlier ratio which is required to pass the validity test.
 				// It is clamped to be in interval [0, 1].
-				minimum_inlier_ratio_in_validity_check(std::clamp(minimum_inlier_ratio_in_validity_check_, 0.0, 1.0))
+				minimum_triangle_area(minimum_triangle_area_)
 			{}
 
 			~PerspectiveNPointEstimator() {}
@@ -193,6 +193,35 @@ namespace gcransac
 				bool &model_updated_) const
 			{
 				return true;
+			}
+
+			OLGA_INLINE bool isValidSample(
+				const cv::Mat& data, // All data points
+				const size_t *sample_) const
+			{
+				// Triangle area
+				const size_t &columns = data.cols;
+				const double *data_ptr = reinterpret_cast<double *>(data.data);
+				const size_t &idx1 = sample_[0] * columns,
+					idx2 = sample_[1] * columns,
+					idx3 = sample_[2] * columns;
+
+				const double &u1 = data_ptr[idx1 + 5],
+					&v1 = data_ptr[idx1 + 6],
+					&u2 = data_ptr[idx2 + 5],
+					&v2 = data_ptr[idx2 + 6],
+					&u3 = data_ptr[idx3 + 5],
+					&v3 = data_ptr[idx3 + 6];
+
+				const double du21 = u2 - u1,
+					dv21 = v2 - v1,
+					du31 = u3 - u1,
+					dv31 = v3 - v1;
+
+				const double area =
+					0.5 * abs(du21 * dv31 - du31 * dv21);
+
+				return area < minimum_triangle_area;
 			}
 
 			OLGA_INLINE bool estimateModelNonminimal(
