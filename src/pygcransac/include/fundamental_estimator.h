@@ -667,10 +667,10 @@ namespace gcransac
 				{
 					const double *d_idx = points_ptr + cols * sample_[i];
 
-					const double x1 = *(d_idx);
-					const double y1 = *(d_idx + 1);
-					const double x2 = *(d_idx + 2);
-					const double y2 = *(d_idx + 3);
+					const double &x1 = *(d_idx);
+					const double &y1 = *(d_idx + 1);
+					const double &x2 = *(d_idx + 2);
+					const double &y2 = *(d_idx + 3);
 
 					const double dx1 = mass_point_src[0] - x1;
 					const double dy1 = mass_point_src[1] - y1;
@@ -693,15 +693,18 @@ namespace gcransac
 				{
 					const double *d_idx = points_ptr + cols * sample_[i];
 
-					const double x1 = *(d_idx);
-					const double y1 = *(d_idx + 1);
-					const double x2 = *(d_idx + 2);
-					const double y2 = *(d_idx + 3);
+					const double &x1 = *(d_idx);
+					const double &y1 = *(d_idx + 1);
+					const double &x2 = *(d_idx + 2);
+					const double &y2 = *(d_idx + 3);
 
 					*normalized_points_ptr++ = (x1 - mass_point_src[0]) * ratio_src;
 					*normalized_points_ptr++ = (y1 - mass_point_src[1]) * ratio_src;
 					*normalized_points_ptr++ = (x2 - mass_point_dst[0]) * ratio_dst;
 					*normalized_points_ptr++ = (y2 - mass_point_dst[1]) * ratio_dst;
+
+					for (size_t i = 4; i < normalized_points_.cols; ++i)
+						*normalized_points_ptr++ = *(d_idx + i);
 				}
 
 				// Creating the normalizing transformations
