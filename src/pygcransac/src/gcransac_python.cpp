@@ -226,7 +226,7 @@ int find6DPoseEPOS_(
 
 	// If numerical optimization is needed, apply the Levenberg-Marquardt 
 	// implementation of OpenCV.
-	if (apply_numerical_optimization && inlier_number >= 3)
+	if (apply_numerical_optimization && inlier_number >= 6)
 	{
 		// The estimated rotation matrix
 		Eigen::Matrix3d rotation =
