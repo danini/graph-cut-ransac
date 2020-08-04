@@ -37,11 +37,12 @@ int find6DPose_(std::vector<double>& imagePoints,
 	int max_iters)
 {
 	size_t num_tents = imagePoints.size() / 2;
-	cv::Mat points(num_tents, 5, CV_64F);
+	cv::Mat points(num_tents, 7, CV_64F);
 	size_t iterations = 0;
+
 	for (size_t i = 0; i < num_tents; ++i) {
-		points.at<double>(i, 0) = imagePoints[2 * i];
-		points.at<double>(i, 1) = imagePoints[2 * i + 1];
+		points.at<double>(i, 5) = imagePoints[2 * i];
+		points.at<double>(i, 6) = imagePoints[2 * i + 1];
 		points.at<double>(i, 2) = worldPoints[3 * i];
 		points.at<double>(i, 3) = worldPoints[3 * i + 1];
 		points.at<double>(i, 4) = worldPoints[3 * i + 2];
@@ -126,36 +127,40 @@ int find6DPoseEPOS_(
 	int max_iters,
 	double sphere_radius,
 	double scaling_from_millimeters,
-	double minimum_coverage,
-	double min_triangle_area)
+	double min_coverage,
+	double min_triangle_area,
+	bool apply_numerical_optimization,
+	int num_models)
 {
+	// Calculate the inverse of the intrinsic camera parameters
 	Eigen::Matrix3d K;
 	K << cameraParams[0], cameraParams[1], cameraParams[2],
 		cameraParams[3], cameraParams[4], cameraParams[5],
 		cameraParams[6], cameraParams[7], cameraParams[8];
+	const Eigen::Matrix3d Kinv =
+		K.inverse();
 
-	size_t num_tents = imagePoints.size() / 2;
-	cv::Mat points(num_tents, 7, CV_64F);
-	size_t iterations = 0;
-	Eigen::Vector3d vec;
+	size_t num_tents = imagePoints.size() / 2; // Number of points
+	cv::Mat points(num_tents, 7, CV_64F); // The data matrix. Each row is of format "nu nv x y z u v", where (u,v) is the image point and (nu, nv) is the normalized image point
+	Eigen::Vector3d vec; // Temporary variable for normalizing the points
 	vec(2) = 1.0;
 	
-	cv::Mat points_for_neighborhood(points.rows, 5, CV_64F); 
-	std::map<std::pair<int, int>, int> pixels;
+	cv::Mat points_for_neighborhood(points.rows, 5, CV_64F); // The matrix containing the data from which the neighborhoods are calculated
+	std::map<std::pair<int, int>, int> pixels; // A helper variable to count how many pixels are occupied
 
+	// Normalizing the data and counting the occupied pixels
 	for (size_t i = 0; i < num_tents; ++i) {
-		points.at<double>(i, 0) = imagePoints[2 * i];
-		points.at<double>(i, 1) = imagePoints[2 * i + 1];
+		points.at<double>(i, 5) = imagePoints[2 * i];
+		points.at<double>(i, 6) = imagePoints[2 * i + 1];
 		points.at<double>(i, 2) = worldPoints[3 * i];
 		points.at<double>(i, 3) = worldPoints[3 * i + 1];
 		points.at<double>(i, 4) = worldPoints[3 * i + 2];
 
-		vec(0) = points.at<double>(i, 0);
-		vec(1) = points.at<double>(i, 1);
+		vec(0) = points.at<double>(i, 5);
+		vec(1) = points.at<double>(i, 6);
 
-		points.at<double>(i, 5) = K.row(0) * vec;
-		points.at<double>(i, 6) = K.row(1) * vec;
-
+		points.at<double>(i, 0) = Kinv.row(0) * vec;
+		points.at<double>(i, 1) = Kinv.row(1) * vec;
 
 		points_for_neighborhood.at<double>(i, 0) = points.at<double>(i, 5);
 		points_for_neighborhood.at<double>(i, 1) = points.at<double>(i, 6);
@@ -168,6 +173,11 @@ int find6DPoseEPOS_(
 		pixels[std::make_pair(x, y)] = 1;
 	}
 
+	// Normalize the threshold
+	const double f = 0.5 * (K(0, 0) + K(1, 1));
+	const double normalized_threshold = threshold / f;
+
+	// Estimate the neighborhood structure
 	neighborhood::FlannNeighborhoodGraph neighborhood1(&points_for_neighborhood, sphere_radius);
 
 	typedef estimator::PerspectiveNPointEstimator<estimator::solver::P3PSolver, // The solver used for fitting a model to a minimal sample
@@ -192,8 +202,8 @@ int find6DPoseEPOS_(
 
 	GCRANSAC<PnPEstimator, neighborhood::FlannNeighborhoodGraph, EPOSScoringFunction<PnPEstimator>> gcransac;
 	gcransac.setFPS(-1); // Set the desired FPS (-1 means no limit)
-	gcransac.settings.threshold = threshold; // The inlier-outlier threshold
-	gcransac.settings.minimum_pixel_coverage = minimum_coverage;
+	gcransac.settings.threshold = normalized_threshold; // The inlier-outlier threshold
+	gcransac.settings.minimum_pixel_coverage = min_coverage;
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
 	gcransac.settings.confidence = conf; // The required confidence in the results
 	gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
@@ -212,6 +222,62 @@ int find6DPoseEPOS_(
 		model);
 
 	const utils::RANSACStatistics &statistics = gcransac.getRansacStatistics();
+	const size_t inlier_number = statistics.inliers.size();
+
+	// If numerical optimization is needed, apply the Levenberg-Marquardt 
+	// implementation of OpenCV.
+	if (apply_numerical_optimization && inlier_number >= 3)
+	{
+		// The estimated rotation matrix
+		Eigen::Matrix3d rotation =
+			model.descriptor.leftCols<3>();
+		// The estimated translation
+		Eigen::Vector3d translation =
+			model.descriptor.rightCols<1>();
+
+		// Copy the data into two matrices containing the image and object points. 
+		// This would not be necessary, but selecting the submatrices by cv::Rect
+		// leads to an error in cv::solvePnP().
+		cv::Mat inlier_image_points(inlier_number, 2, CV_64F),
+			inlier_object_points(inlier_number, 3, CV_64F);
+
+		for (size_t i = 0; i < inlier_number; ++i)
+		{
+			const size_t &idx = statistics.inliers[i];
+			inlier_image_points.at<double>(i, 0) = points.at<double>(idx, 0);
+			inlier_image_points.at<double>(i, 1) = points.at<double>(idx, 1);
+			inlier_object_points.at<double>(i, 0) = points.at<double>(idx, 2);
+			inlier_object_points.at<double>(i, 1) = points.at<double>(idx, 3);
+			inlier_object_points.at<double>(i, 2) = points.at<double>(idx, 4);
+		}
+
+		// Converting the estimated pose parameters OpenCV format
+		cv::Mat cv_rotation(3, 3, CV_64F, rotation.data()), // The estimated rotation matrix converted to OpenCV format
+			cv_translation(3, 1, CV_64F, translation.data()); // The estimated translation converted to OpenCV format
+		
+		// Convert the rotation matrix by the rodrigues formula
+		cv::Mat cv_rodrigues(3, 1, CV_64F);
+		cv::Rodrigues(cv_rotation.t(), cv_rodrigues);
+
+		// Applying numerical optimization to the estimated pose parameters
+		cv::solvePnP(inlier_object_points, // The object points
+			inlier_image_points, // The image points
+			cv::Mat::eye(3, 3, CV_64F), // The camera's intrinsic parameters 
+			cv::Mat(), // An empty vector since the radial distortion is not known
+			cv_rodrigues, // The initial rotation
+			cv_translation, // The initial translation
+			true, // Use the initial values
+			cv::SOLVEPNP_ITERATIVE); // Apply numerical refinement
+		
+		// Convert the rotation vector back to a rotation matrix
+		cv::Rodrigues(cv_rodrigues, cv_rotation);
+
+		// Transpose the rotation matrix back
+		cv_rotation = cv_rotation.t();
+
+		// Calculate the error of the refined pose
+		model.descriptor << rotation, translation;
+	}
 	
 	score = statistics.score;
 	inliers.resize(num_tents);

@@ -26,7 +26,9 @@ int find6DPoseEPOS_(
 	double sphere_radius,
 	double scaling_from_millimeters,
 	double minimum_coverage,
-	double min_triangle_area);
+	double min_triangle_area,
+	bool apply_numerical_optimization,
+	int num_models);
 
 int findFundamentalMatrix_(std::vector<double>& srcPts,
                            std::vector<double>& dstPts,

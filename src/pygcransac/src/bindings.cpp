@@ -89,8 +89,10 @@ py::tuple find6DPoseEPOS(
 	double scaling_from_millimeters,
 	int min_iters,
 	int max_iters,
-	double minimum_coverage,
-	double min_triangle_area) {
+	double min_coverage,
+	double min_triangle_area,
+	bool apply_numerical_optimization,
+	int num_models) {
 	py::buffer_info buf1 = x1y1_.request();
 	size_t NUM_TENTS = buf1.shape[0];
 	size_t DIM = buf1.shape[1];
@@ -150,8 +152,10 @@ py::tuple find6DPoseEPOS(
 		max_iters,
 		sphere_radius,
 		scaling_from_millimeters,
-		minimum_coverage,
-		min_triangle_area);
+		min_coverage,
+		min_triangle_area,
+		apply_numerical_optimization,
+		num_models);
 
 	py::array_t<bool> inliers_ = py::array_t<bool>(NUM_TENTS);
 	py::buffer_info buf3 = inliers_.request();
@@ -421,7 +425,7 @@ PYBIND11_PLUGIN(pygcransac) {
 	m.def("find6DPose", &find6DPose, R"doc(some doc)doc",
 		py::arg("x1y1"),
 		py::arg("x2y2z2"),
-		py::arg("threshold") = 0.003748363019587539,
+		py::arg("threshold") = 4.0,
 		py::arg("conf") = 0.99,
 		py::arg("spatial_coherence_weight") = 0.0,
 		py::arg("max_iters") = 10000);
@@ -430,15 +434,17 @@ PYBIND11_PLUGIN(pygcransac) {
 		py::arg("x1y1"),
 		py::arg("x2y2z2"),
 		py::arg("K"),
-		py::arg("threshold") = 0.003748363019587539,
+		py::arg("threshold") = 4.0,
 		py::arg("conf") = 0.99,
 		py::arg("spatial_coherence_weight") = 0.0,
 		py::arg("sphere_radius") = 20.0,
 		py::arg("scaling_from_millimeters") = 0.1,
 		py::arg("min_iters") = 10000,
 		py::arg("max_iters") = 10000,
-		py::arg("minimum_coverage") = 0.5,
-		py::arg("min_triangle_area") = 100);
+		py::arg("min_coverage") = 0.5,
+		py::arg("min_triangle_area") = 100,
+		py::arg("apply_numerical_optimization") = true,
+		py::arg("num_models") = 1);
 	        
     m.def("findEssentialMatrix", &findEssentialMatrix, R"doc(some doc)doc",
           py::arg("x1y1"),
