@@ -67,7 +67,7 @@ namespace gcransac
 				// The minimum number of points required for the estimation
 				static constexpr size_t sampleSize()
 				{
-					return 3;
+					return 6;
 				}
 
 				// Estimate the model parameters from the given point sample
@@ -138,7 +138,7 @@ namespace gcransac
 					cv_rodrigues, // The initial rotation
 					cv_translation, // The initial translation
 					false, // Use the initial values
-					sample_number_ < 6 ? cv::SOLVEPNP_EPNP : cv::SOLVEPNP_ITERATIVE); // Apply numerical refinement
+					cv::SOLVEPNP_ITERATIVE); // Apply numerical refinement
 				
 				// Convert the rotation vector back to a rotation matrix
 				cv::Rodrigues(cv_rodrigues, cv_rotation);
