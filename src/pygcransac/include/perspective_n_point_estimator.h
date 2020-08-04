@@ -221,7 +221,7 @@ namespace gcransac
 				const double area =
 					0.5 * abs(du21 * dv31 - du31 * dv21);
 
-				return area < minimum_triangle_area;
+				return area > minimum_triangle_area;
 			}
 
 			OLGA_INLINE bool estimateModelNonminimal(
