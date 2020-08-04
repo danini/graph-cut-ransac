@@ -100,8 +100,8 @@ py::tuple find6DPoseEPOS(
 	if (DIM != 2) {
 		throw std::invalid_argument("x1y1 should be an array with dims [n,2], n>=7");
 	}
-	if (NUM_TENTS < 7) {
-		throw std::invalid_argument("x1y1 should be an array with dims [n,2], n>=7");
+	if (NUM_TENTS < 6) {
+		throw std::invalid_argument("x1y1 should be an array with dims [n,2], n>=6");
 	}
 
 	py::buffer_info buf1a = x2y2z2_.request();
