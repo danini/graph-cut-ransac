@@ -163,7 +163,7 @@ py::tuple find6DPoseEPOS(
 	for (size_t i = 0; i < NUM_TENTS; i++)
 		ptr3[i] = inliers[i];
 	if (num_inl == 0) {
-		return py::make_tuple(pybind11::cast<pybind11::none>(Py_None), inliers_);
+		return py::make_tuple(pybind11::cast<pybind11::none>(Py_None), inliers_, 0);
 	}
 	py::array_t<double> pose_ = py::array_t<double>({ 3,4 });
 	py::buffer_info buf2 = pose_.request();
