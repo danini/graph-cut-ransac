@@ -173,7 +173,7 @@ namespace gcransac
 				}
 
 				// Interrupt if there is no chance of being better than the best model
-				if (score.inlier_number - point_idx < best_model_score_limit)
+				if (static_cast<int>(score.inlier_number) - point_idx < best_model_score_limit)
 					return Score();
 			}
 
