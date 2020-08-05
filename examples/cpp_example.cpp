@@ -816,7 +816,7 @@ void test6DPoseFitting(
 
 	// Normalize the point coordinate by the intrinsic matrix
 	cv::Rect roi(0, 0, 2, points.rows); // A rectangle covering the 2D image points in the matrix
-	cv::Mat normalized_points = points.clone()(roi); // The 2D image points normalized by the intrinsic camera matrix
+	cv::Mat normalized_points = points.clone(); // The 2D image points normalized by the intrinsic camera matrix
 	// Normalizing the image points by the camera matrix
 	utils::normalizeImagePoints(
 		points(roi), // The loaded image points
@@ -824,8 +824,10 @@ void test6DPoseFitting(
 		normalized_points); // The normalized points
 
 	// Normalize the threshold by the average of the focal lengths
+	const double avg_focal_length = 
+		(intrinsics(0, 0) + intrinsics(1, 1)) / 2.0;
 	const double normalized_threshold =
-		inlier_outlier_threshold_ / (intrinsics(0, 0) + intrinsics(1, 1)) / 2.0;
+		inlier_outlier_threshold_ / avg_focal_length;
 
 	// Initialize the neighborhood used in Graph-cut RANSAC and, perhaps,
 	// in the sampler if NAPSAC or Progressive-NAPSAC sampling is applied.
