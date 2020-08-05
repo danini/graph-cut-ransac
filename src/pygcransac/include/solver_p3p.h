@@ -55,11 +55,17 @@ namespace gcransac
 				{
 				}
 
+
 				// Determines if there is a chance of returning multiple models
 				// the function 'estimateModel' is applied.
 				static constexpr bool returnMultipleModels()
 				{
-					return true;
+					return maximumSolutions() > 1;
+				}
+
+				static constexpr size_t maximumSolutions()
+				{
+					return 4;
 				}
 
 				// The minimum number of points required for the estimation

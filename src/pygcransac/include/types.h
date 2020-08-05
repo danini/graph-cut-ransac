@@ -44,6 +44,7 @@
 #include "solver_fundamental_matrix_seven_point.h"
 #include "solver_fundamental_matrix_eight_point.h"
 #include "solver_p3p.h"
+#include "solver_epnp_lm.h"
 #include "solver_dls_pnp.h"
 #include "solver_homography_four_point.h"
 #include "solver_essential_matrix_five_point_stewenius.h"
@@ -69,7 +70,7 @@ namespace gcransac
 
 		// The default estimator for PnP fitting
 		typedef estimator::PerspectiveNPointEstimator<estimator::solver::P3PSolver, // The solver used for fitting a model to a minimal sample
-			estimator::solver::DLSPnP> // The solver used for fitting a model to a non-minimal sample
+			estimator::solver::EPnPLM> // The solver used for fitting a model to a non-minimal sample
 			DefaultPnPEstimator;
 	}
 }
