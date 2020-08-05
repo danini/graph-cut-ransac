@@ -109,6 +109,11 @@ namespace gcransac
 				return _MinimalSolverEngine::sampleSize();
 			}
 
+			// The size of a minimal sample_ required for the estimation
+			static constexpr size_t maximumMinimalSolutions() {
+				return _MinimalSolverEngine::maximumSolutions();
+			}
+
 			// A flag deciding if the points can be weighted when the non-minimal fitting is applied 
 			static constexpr bool isWeightingApplicable() {
 				return true;
@@ -294,9 +299,10 @@ namespace gcransac
 
 				// Number of points used for selecting the best model out of the estimated ones.
 				// In case the solver return a single model, 0 points are not used for the estimation.
-				const size_t points_not_used = non_minimal_solver->returnMultipleModels() ?
-					MAX(1, std::round(sample_number_ * point_ratio_for_selecting_from_multiple_models)) :
-					0;
+				size_t points_not_used = 0; 
+				if constexpr (_NonMinimalSolverEngine::returnMultipleModels())
+					points_not_used = 
+						MAX(1, std::round(sample_number_ * point_ratio_for_selecting_from_multiple_models));
 
 				// Number of points used for the estimation
 				const size_t points_used = sample_number_ - points_not_used;

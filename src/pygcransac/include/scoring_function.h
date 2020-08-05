@@ -143,12 +143,15 @@ namespace gcransac
 			if (store_inliers_) // If the inlier should be stored, clear the variables
 				inliers_.clear();
 			double squared_residual; // The point-to-model residual
+			const double best_model_score_limit = squared_truncated_threshold * best_score_.inlier_number - point_number;
 
 			// Iterate through all points, calculate the squared_residuals and store the points as inliers if needed.
-			for (size_t point_idx = 0; point_idx < point_number; point_idx += verify_every_kth_point)
+			for (int point_idx = 0; point_idx < point_number; point_idx += verify_every_kth_point)
 			{
 				// Calculate the point-to-model residual
-				squared_residual = estimator_.squaredResidual(points_.row(point_idx), model_.descriptor);
+				squared_residual = 
+					estimator_.squaredResidual(points_.row(point_idx), 
+						model_.descriptor);
 
 				// If the residual is smaller than the threshold, store it as an inlier and
 				// increase the score.
@@ -161,13 +164,28 @@ namespace gcransac
 					++(score.inlier_number);
 					// Increase the score. The original truncated quadratic loss is as follows: 
 					// 1 - residual^2 / threshold^2. For RANSAC, -residual^2 is enough.
-					score.value += 1.0 - squared_residual / squared_truncated_threshold; // Truncated quadratic cost
+					// It has been re-arranged as
+					// score = 1 - residual^2 / threshold^2				->
+					// score threshold^2 = threshold^2 - residual^2		->
+					// score threshold^2 - threshold^2 = - residual^2.
+					// This is faster to calculate and it is normalized back afterwards.
+					score.value -= squared_residual; // Truncated quadratic cost
 				}
 
 				// Interrupt if there is no chance of being better than the best model
-				if (point_number - point_idx + score.inlier_number < best_score_.inlier_number)
+				if (score.inlier_number - point_idx < best_model_score_limit)
 					return Score();
 			}
+
+			if (score.inlier_number == 0)
+				return Score();
+
+			// Normalizing the score to get back the original MSAC one.
+			// This is not necessarily needed, but I keep it like this
+			// maybe something will later be built on the exact MSAC score.
+			score.value = 
+				(score.value + score.inlier_number * squared_truncated_threshold) / 
+				squared_truncated_threshold;
 
 			// Return the final score
 			return score;

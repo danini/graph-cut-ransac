@@ -86,6 +86,11 @@ namespace gcransac
 				return true;
 			}
 
+			// The size of a minimal sample_ required for the estimation
+			static constexpr size_t maximumMinimalSolutions() {
+				return _MinimalSolverEngine::maximumSolutions();
+			}
+
 			// The size of a sample when doing inner RANSAC on a non-minimal sample
 			OLGA_INLINE size_t inlierLimit() const {
 				return 7 * sampleSize();

@@ -92,6 +92,11 @@ namespace gcransac
 				return _MinimalSolverEngine::sampleSize();
 			}
 
+			// The size of a minimal sample_ required for the estimation
+			static constexpr size_t maximumMinimalSolutions() {
+				return _MinimalSolverEngine::maximumSolutions();
+			}
+
 			// A flag deciding if the points can be weighted when the non-minimal fitting is applied 
 			static constexpr bool isWeightingApplicable() {
 				return false;
