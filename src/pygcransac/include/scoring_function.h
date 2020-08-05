@@ -143,7 +143,6 @@ namespace gcransac
 			if (store_inliers_) // If the inlier should be stored, clear the variables
 				inliers_.clear();
 			double squared_residual; // The point-to-model residual
-			const double best_model_score_limit = squared_truncated_threshold * best_score_.inlier_number - point_number;
 
 			// Iterate through all points, calculate the squared_residuals and store the points as inliers if needed.
 			for (int point_idx = 0; point_idx < point_number; point_idx += verify_every_kth_point)
@@ -170,10 +169,11 @@ namespace gcransac
 					// score threshold^2 - threshold^2 = - residual^2.
 					// This is faster to calculate and it is normalized back afterwards.
 					score.value -= squared_residual; // Truncated quadratic cost
+					//score.value += 1.0 - squared_residual / squared_truncated_threshold; // Truncated quadratic cost
 				}
 
 				// Interrupt if there is no chance of being better than the best model
-				if (static_cast<int>(score.inlier_number) - point_idx < best_model_score_limit)
+				if (point_number - point_idx + score.inlier_number < best_score_.inlier_number)
 					return Score();
 			}
 
