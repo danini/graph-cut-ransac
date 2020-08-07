@@ -273,10 +273,13 @@ int find6DPoseEPOS_(
 		cv::Rodrigues(cv_rodrigues, cv_rotation);
 
 		// Transpose the rotation matrix back
-		cv_rotation = cv_rotation.t();
+		//cv_rotation = cv_rotation.t();
 
 		// Calculate the error of the refined pose
-		model.descriptor << rotation, translation;
+		model.descriptor <<
+			cv_rotation.at<double>(0, 0), cv_rotation.at<double>(0, 1), cv_rotation.at<double>(0, 2), cv_translation.at<double>(0),
+			cv_rotation.at<double>(1, 0), cv_rotation.at<double>(1, 1), cv_rotation.at<double>(1, 2), cv_translation.at<double>(1),
+			cv_rotation.at<double>(2, 0), cv_rotation.at<double>(2, 1), cv_rotation.at<double>(2, 2), cv_translation.at<double>(2);
 	}
 	
 	score = statistics.score;
