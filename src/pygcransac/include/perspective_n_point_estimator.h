@@ -67,17 +67,17 @@ namespace gcransac
 			// The lower bound of the inlier ratio which is required to pass the validity test.
 			// The validity test measures what proportion of the inlier (by Sampson distance) is inlier
 			// when using symmetric epipolar distance. 
-			const double minimum_inlier_ratio_in_validity_check;
+			const double minimum_triangle_area;
 
 		public:
-			PerspectiveNPointEstimator(const double minimum_inlier_ratio_in_validity_check_ = 0.5) :
+			PerspectiveNPointEstimator(const double minimum_triangle_area_ = 0.0) :
 				// Minimal solver engine used for estimating a model from a minimal sample
 				minimal_solver(std::make_shared<const _MinimalSolverEngine>()),
 				// Non-minimal solver engine used for estimating a model from a bigger than minimal sample
 				non_minimal_solver(std::make_shared<const _NonMinimalSolverEngine>()),
 				// The lower bound of the inlier ratio which is required to pass the validity test.
 				// It is clamped to be in interval [0, 1].
-				minimum_inlier_ratio_in_validity_check(std::clamp(minimum_inlier_ratio_in_validity_check_, 0.0, 1.0))
+				minimum_triangle_area(minimum_triangle_area_)
 			{}
 
 			~PerspectiveNPointEstimator() {}
@@ -109,16 +109,25 @@ namespace gcransac
 
 			OLGA_INLINE bool estimateModel(const cv::Mat& data,
 				const size_t *sample,
-				std::vector<Model>* models) const
+				std::vector<Model>* models_) const
 			{
 				// Estimate the model parameters by the minimal solver
+				std::vector<Model> temp_models;
 				minimal_solver->estimateModel(data,
 					sample,
 					sampleSize(),
-					*models);
+					temp_models);
+
+				for (const Model &model : temp_models)
+				{
+					if (model.descriptor(2, 3) < 0.0 ||
+						model.descriptor.block<3, 3>(0, 0).determinant() < -0.95)
+						continue;
+					models_->emplace_back(model);
+				}
 
 				// The estimation was successfull if at least one model is kept
-				return models->size() > 0;
+				return models_->size() > 0;
 			}
 			
 			OLGA_INLINE double squaredReprojectionError(const cv::Mat& point_,
@@ -157,6 +166,35 @@ namespace gcransac
 					dv = pv - v;
 				
 				return du * du + dv * dv;
+			}
+
+			OLGA_INLINE bool isValidSample(
+				const cv::Mat& data, // All data points
+				const size_t *sample_) const
+			{
+				// Triangle area
+				const size_t &columns = data.cols;
+				const double *data_ptr = reinterpret_cast<double *>(data.data);
+				const size_t &idx1 = sample_[0] * columns,
+					idx2 = sample_[1] * columns,
+					idx3 = sample_[2] * columns;
+
+				const double &u1 = data_ptr[idx1 + 5],
+					&v1 = data_ptr[idx1 + 6],
+					&u2 = data_ptr[idx2 + 5],
+					&v2 = data_ptr[idx2 + 6],
+					&u3 = data_ptr[idx3 + 5],
+					&v3 = data_ptr[idx3 + 6];
+
+				const double du21 = u2 - u1,
+					dv21 = v2 - v1,
+					du31 = u3 - u1,
+					dv31 = v3 - v1;
+
+				const double area =
+					0.5 * abs(du21 * dv31 - du31 * dv21);
+
+				return area > minimum_triangle_area;
 			}
 			
 			OLGA_INLINE double squaredResidual(const cv::Mat& point_,
@@ -211,11 +249,22 @@ namespace gcransac
 					return false;
 
 				// The eight point fundamental matrix fitting algorithm
+				std::vector<Model> temp_models;
 				non_minimal_solver->estimateModel(data_,
 					sample_,
 					sample_number_,
-					*models_,
+					temp_models,
 					weights_);
+
+				for (const Model &model : temp_models)
+				{
+					if (model.descriptor(2, 3) < 0.0 ||
+						model.descriptor.block<3, 3>(0, 0).determinant() < -0.95)
+						continue;
+					models_->emplace_back(model);
+				}
+
+				return models_->size() > 0;
 
 				return true;
 			}
