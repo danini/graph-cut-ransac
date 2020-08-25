@@ -99,8 +99,47 @@ namespace gcransac
 				delete[] points_random_pool;
 			}
 
-			SPRTPreemptiveVerfication(const cv::Mat &points_)
+			// This function is called only once to calculate the exact model estimation time of 
+			// the current model on the current machine. It is required for SPRT to really
+			// speed up the verification procedure. 
+			void initialize(const cv::Mat &points_,
+				const _ModelEstimator &estimator_)
 			{
+				size_t sample[_ModelEstimator::sampleSize()];
+				for (size_t sampleIdx = 0; sampleIdx < _ModelEstimator::sampleSize(); ++sampleIdx)
+					sample[sampleIdx] = sampleIdx;
+
+				std::vector<Model> models;
+
+				std::chrono::time_point<std::chrono::system_clock> end,
+					start = std::chrono::system_clock::now();
+				estimator_.estimateModel(
+					points_,
+					sample,
+					&models);
+				end = std::chrono::system_clock::now();
+
+				std::chrono::duration<double> elapsedSeconds = end - start;
+				t_M = elapsedSeconds.count() * 1000.0;
+				m_S = _ModelEstimator::maximumMinimalSolutions();
+
+				printf("Setting up SPRT test.\n");
+				printf("\tThe estimation of one models takes %f ms.\n", t_M);
+				printf("\tAt most %.0f models are returned.\n", m_S);
+			}
+
+			SPRTPreemptiveVerfication(const cv::Mat &points_,
+				const _ModelEstimator &estimator_)
+			{
+				if (points_.rows < _ModelEstimator::sampleSize())
+				{
+					fprintf(stderr, "There are not enough points to initialize the SPRT test (%d < %d).\n",
+						points_.rows, _ModelEstimator::sampleSize());
+					return;
+				}
+
+				initialize(points_, estimator_);
+
 				additional_model_probability = 1.0;
 				const size_t point_number = points_.rows;
 
@@ -124,22 +163,8 @@ namespace gcransac
 				sprt_histories = std::vector<SPRTHistory>();
 				sprt_histories.emplace_back(SPRTHistory());
 
-				switch (_ModelEstimator::sampleSize())
-				{
-				case 2:
-				case 4:
-					// t_M = 200, m_S = 1, delta0 = 0.01, epsilon0 = 0.1;
-					sprt_histories.back().delta = 0.01;
-					sprt_histories.back().epsilon = 0.1;
-
-					// time t_M needed to instantiate a model hypotheses given a sample
-					t_M = 200;
-					// Let m_S be the number of models that are verified per sample
-					m_S = 1;
-					break;
-				default:
-					break;
-				}
+				sprt_histories.back().delta = 0.01;
+				sprt_histories.back().epsilon = 0.1;
 
 				current_sprt_idx = 0;
 				last_sprt_update = 0;
