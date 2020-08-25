@@ -156,8 +156,8 @@ namespace gcransac
 			cv::Mat roi_img_result_right =
 				out_image_(cv::Rect(image_src_.cols, 0, image_dst_.cols, image_dst_.rows)); // Img2 will be on the right part, we shift the roi of img1.cols on the right
 
-			cv::Mat roi_image_src = image_src_(cv::Rect(0, 0, image_src_.cols, image_src_.rows));
-			cv::Mat roi_image_dst = image_dst_(cv::Rect(0, 0, image_dst_.cols, image_dst_.rows));
+			cv::Mat roi_image_src = image_src_;
+			cv::Mat roi_image_dst = image_dst_;
 
 			roi_image_src.copyTo(roi_img_result_left); //Img1 will be on the left of imgResult
 			roi_image_dst.copyTo(roi_img_result_right); //Img2 will be on the right of imgResult
