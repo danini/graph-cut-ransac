@@ -120,8 +120,8 @@ namespace gcransac
 				end = std::chrono::system_clock::now();
 
 				std::chrono::duration<double> elapsedSeconds = end - start;
-				t_M = elapsedSeconds.count() * 1000.0;
-				m_S = _ModelEstimator::maximumMinimalSolutions();
+				t_M = elapsedSeconds.count() * 1000.0; // The of estimating a model
+				m_S = _ModelEstimator::maximumMinimalSolutions(); // The maximum number of solutions
 
 				printf("Setting up SPRT test.\n");
 				printf("\tThe estimation of one models takes %f ms.\n", t_M);

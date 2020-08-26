@@ -14,6 +14,7 @@
 #include "fundamental_estimator.h"
 #include "homography_estimator.h"
 #include "essential_estimator.h"
+#include "preemption_sprt.h"
 
 #include "solver_fundamental_matrix_seven_point.h"
 #include "solver_fundamental_matrix_eight_point.h"
@@ -606,9 +607,17 @@ void testHomographyFitting(
 	// Apply Graph-cut RANSAC
 	utils::DefaultHomographyEstimator estimator;
 	std::vector<int> inliers;
-	Model model; 
+	Model model;
 
-	GCRANSAC<utils::DefaultHomographyEstimator, neighborhood::GridNeighborhoodGraph> gcransac;
+	// Initializing SPRT test
+	preemption::SPRTPreemptiveVerfication<utils::DefaultHomographyEstimator> preemptive_verification(
+		points,
+		estimator);
+
+	GCRANSAC<utils::DefaultHomographyEstimator, 
+		neighborhood::GridNeighborhoodGraph,
+		MSACScoringFunction<utils::DefaultHomographyEstimator>,
+		preemption::SPRTPreemptiveVerfication<utils::DefaultHomographyEstimator>> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
 	gcransac.settings.threshold = inlier_outlier_threshold_; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
@@ -647,7 +656,8 @@ void testHomographyFitting(
 		&main_sampler,
 		&local_optimization_sampler,
 		&neighborhood,
-		model);
+		model,
+		preemptive_verification);
 
 	// Get the statistics of the results
 	const utils::RANSACStatistics &statistics = gcransac.getRansacStatistics();
@@ -751,6 +761,11 @@ void testFundamentalMatrixFitting(
 	std::vector<int> inliers;
 	FundamentalMatrix model;
 
+	// Initializing SPRT test
+	preemption::SPRTPreemptiveVerfication<utils::DefaultFundamentalMatrixEstimator> preemptive_verification(
+		points,
+		estimator);
+
 	// Initialize the samplers
 	// The main sampler is used inside the local optimization
 	sampler::ProgressiveNapsacSampler main_sampler(&points,
@@ -771,8 +786,10 @@ void testFundamentalMatrixFitting(
 		return;
 	}
 	
-	GCRANSAC<utils::DefaultFundamentalMatrixEstimator, neighborhood::GridNeighborhoodGraph> gcransac;
-	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
+	GCRANSAC<utils::DefaultFundamentalMatrixEstimator, 
+		neighborhood::GridNeighborhoodGraph,
+		MSACScoringFunction<utils::DefaultFundamentalMatrixEstimator>,
+		preemption::SPRTPreemptiveVerfication<utils::DefaultFundamentalMatrixEstimator>> gcransac;
 	gcransac.settings.threshold = inlier_outlier_threshold_ * max_image_diagonal; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
 	gcransac.settings.confidence = confidence_; // The required confidence in the results
@@ -780,7 +797,6 @@ void testFundamentalMatrixFitting(
 	gcransac.settings.max_iteration_number = 5000; // The maximum number of iterations
 	gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
 	gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
-	gcransac.settings.core_number = std::thread::hardware_concurrency(); // The number of parallel processes
 
 	// Printinf the actually used threshold
 	printf("Used threshold is %.2f pixels (%.2f%% of the image diagonal)\n", 
@@ -792,7 +808,8 @@ void testFundamentalMatrixFitting(
 		&main_sampler,
 		&local_optimization_sampler,
 		&neighborhood,
-		model);
+		model,
+		preemptive_verification);
 
 	// Get the statistics of the results
 	const utils::RANSACStatistics &statistics = gcransac.getRansacStatistics();
@@ -921,7 +938,15 @@ void test6DPoseFitting(
 		return;
 	} 
 
-	GCRANSAC<utils::DefaultPnPEstimator, neighborhood::FlannNeighborhoodGraph> gcransac;
+	// Initializing SPRT test
+	preemption::SPRTPreemptiveVerfication<utils::DefaultPnPEstimator> preemptive_verification(
+		points,
+		estimator);
+
+	GCRANSAC<utils::DefaultPnPEstimator, 
+		neighborhood::FlannNeighborhoodGraph,
+		MSACScoringFunction<utils::DefaultPnPEstimator>,
+		preemption::SPRTPreemptiveVerfication<utils::DefaultPnPEstimator>> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
 	gcransac.settings.threshold = normalized_threshold; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
@@ -937,7 +962,8 @@ void test6DPoseFitting(
 		&main_sampler, // The sample used for selecting minimal samples in the main iteration
 		&local_optimization_sampler, // The sampler used for selecting a minimal sample when doing the local optimization
 		&neighborhood, // The neighborhood-graph
-		model); // The obtained model parameters
+		model, // The obtained model parameters
+		preemptive_verification);
 
 	// Get the statistics of the results
 	const utils::RANSACStatistics &statistics = gcransac.getRansacStatistics();
@@ -1125,6 +1151,11 @@ void testEssentialMatrixFitting(
 	std::vector<int> inliers;
 	EssentialMatrix model;
 
+	// Initializing SPRT test
+	preemption::SPRTPreemptiveVerfication<utils::DefaultEssentialMatrixEstimator> preemptive_verification(
+		points,
+		estimator);
+
 	// Initialize the samplers
 	// The main sampler is used inside the local optimization
 	sampler::ProgressiveNapsacSampler main_sampler(&points,
@@ -1145,7 +1176,10 @@ void testEssentialMatrixFitting(
 		return;
 	}
 	
-	GCRANSAC<utils::DefaultEssentialMatrixEstimator, neighborhood::GridNeighborhoodGraph> gcransac;
+	GCRANSAC<utils::DefaultEssentialMatrixEstimator, 
+		neighborhood::GridNeighborhoodGraph,
+		MSACScoringFunction<utils::DefaultEssentialMatrixEstimator>,
+		preemption::SPRTPreemptiveVerfication<utils::DefaultEssentialMatrixEstimator>> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
 	gcransac.settings.threshold = normalized_threshold; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
@@ -1162,7 +1196,8 @@ void testEssentialMatrixFitting(
 		&main_sampler,
 		&local_optimization_sampler,
 		&neighborhood,
-		model);
+		model,
+		preemptive_verification);
 
 	// Get the statistics of the results
 	const utils::RANSACStatistics &statistics = gcransac.getRansacStatistics();

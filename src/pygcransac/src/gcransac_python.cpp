@@ -14,6 +14,7 @@
 #include "fundamental_estimator.h"
 #include "homography_estimator.h"
 #include "essential_estimator.h"
+#include "preemption_sprt.h"
 
 #include "solver_fundamental_matrix_seven_point.h"
 #include "solver_fundamental_matrix_eight_point.h"
@@ -33,7 +34,8 @@ int find6DPose_(std::vector<double>& imagePoints,
 	double spatial_coherence_weight,
 	double threshold,
 	double conf,
-	int max_iters)
+	int max_iters,
+	bool use_sprt)
 {
 	size_t num_tents = imagePoints.size() / 2;
 	cv::Mat points(num_tents, 5, CV_64F);
@@ -65,27 +67,64 @@ int find6DPose_(std::vector<double>& imagePoints,
 		return 0;
 	}
 
-	GCRANSAC<utils::DefaultPnPEstimator, neighborhood::FlannNeighborhoodGraph> gcransac;
-	gcransac.setFPS(-1); // Set the desired FPS (-1 means no limit)
-	gcransac.settings.threshold = threshold; // The inlier-outlier threshold
-	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
-	gcransac.settings.confidence = conf; // The required confidence in the results
-	gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
-	gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
-	gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
-	gcransac.settings.neighborhood_sphere_radius = 8; // The radius of the neighborhood ball
-	gcransac.settings.core_number = std::thread::hardware_concurrency(); // The number of parallel processes
+	utils::RANSACStatistics statistics;
 
-	// Start GC-RANSAC
-	gcransac.run(points,
-		estimator,
-		&main_sampler,
-		&local_optimization_sampler,
-		&neighborhood1,
-		model);
+	if (use_sprt)
+	{
+		// Initializing SPRT test
+		preemption::SPRTPreemptiveVerfication<utils::DefaultPnPEstimator> preemptive_verification(
+			points,
+			estimator);
 
-	const utils::RANSACStatistics &statistics = gcransac.getRansacStatistics();
-	printf("Inlier number = %d\n", static_cast<int>(statistics.inliers.size()));
+		GCRANSAC<utils::DefaultPnPEstimator,
+			neighborhood::FlannNeighborhoodGraph,
+			MSACScoringFunction<utils::DefaultPnPEstimator>,
+			preemption::SPRTPreemptiveVerfication<utils::DefaultPnPEstimator>> gcransac;
+		gcransac.setFPS(-1); // Set the desired FPS (-1 means no limit)
+		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
+		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
+		gcransac.settings.confidence = conf; // The required confidence in the results
+		gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
+		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
+		gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
+		gcransac.settings.neighborhood_sphere_radius = 8; // The radius of the neighborhood ball
+		gcransac.settings.core_number = std::thread::hardware_concurrency(); // The number of parallel processes
+
+		// Start GC-RANSAC
+		gcransac.run(points,
+			estimator,
+			&main_sampler,
+			&local_optimization_sampler,
+			&neighborhood1,
+			model,
+			preemptive_verification);
+
+		statistics = gcransac.getRansacStatistics();
+	}
+	else
+	{
+		GCRANSAC<utils::DefaultPnPEstimator,
+			neighborhood::FlannNeighborhoodGraph> gcransac;
+		gcransac.setFPS(-1); // Set the desired FPS (-1 means no limit)
+		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
+		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
+		gcransac.settings.confidence = conf; // The required confidence in the results
+		gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
+		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
+		gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
+		gcransac.settings.neighborhood_sphere_radius = 8; // The radius of the neighborhood ball
+		gcransac.settings.core_number = std::thread::hardware_concurrency(); // The number of parallel processes
+
+		// Start GC-RANSAC
+		gcransac.run(points,
+			estimator,
+			&main_sampler,
+			&local_optimization_sampler,
+			&neighborhood1,
+			model);
+
+		statistics = gcransac.getRansacStatistics();
+	}
 
 	inliers.resize(num_tents);
 
@@ -116,7 +155,8 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
 	double spatial_coherence_weight,
 	double threshold,
 	double conf,
-	int max_iters)
+	int max_iters,
+	bool use_sprt)
 {
 	int num_tents = srcPts.size() / 2;
 	cv::Mat points(num_tents, 4, CV_64F);
@@ -171,26 +211,63 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
 		return 0;
 	}
 
-	GCRANSAC<utils::DefaultFundamentalMatrixEstimator, neighborhood::GridNeighborhoodGraph> gcransac;
-	gcransac.setFPS(-1); // Set the desired FPS (-1 means no limit)
-	gcransac.settings.threshold = 0.0005 * threshold * max_image_diagonal; // The inlier-outlier threshold
-	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
-	gcransac.settings.confidence = conf; // The required confidence in the results
-	gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
-	gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
-	gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
-	gcransac.settings.neighborhood_sphere_radius = 8; // The radius of the neighborhood ball
-	gcransac.settings.core_number = std::thread::hardware_concurrency(); // The number of parallel processes
 
-	// Start GC-RANSAC
-	gcransac.run(points,
-		estimator,
-		&main_sampler,
-		&local_optimization_sampler,
-		&neighborhood1,
-		model);
+	utils::RANSACStatistics statistics;
 
-	const utils::RANSACStatistics &statistics = gcransac.getRansacStatistics();
+	if (use_sprt)
+	{
+		// Initializing SPRT test
+		preemption::SPRTPreemptiveVerfication<utils::DefaultFundamentalMatrixEstimator> preemptive_verification(
+			points,
+			estimator);
+
+		GCRANSAC<utils::DefaultFundamentalMatrixEstimator,
+			neighborhood::GridNeighborhoodGraph,
+			MSACScoringFunction<utils::DefaultFundamentalMatrixEstimator>,
+			preemption::SPRTPreemptiveVerfication<utils::DefaultFundamentalMatrixEstimator>> gcransac;
+		gcransac.setFPS(-1); // Set the desired FPS (-1 means no limit)
+		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
+		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
+		gcransac.settings.confidence = conf; // The required confidence in the results
+		gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
+		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
+		gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
+		gcransac.settings.neighborhood_sphere_radius = 8; // The radius of the neighborhood ball
+		gcransac.settings.core_number = std::thread::hardware_concurrency(); // The number of parallel processes
+
+		// Start GC-RANSAC
+		gcransac.run(points,
+			estimator,
+			&main_sampler,
+			&local_optimization_sampler,
+			&neighborhood1,
+			model,
+			preemptive_verification);
+
+		statistics = gcransac.getRansacStatistics();
+	}
+	else
+	{
+		GCRANSAC<utils::DefaultFundamentalMatrixEstimator, neighborhood::GridNeighborhoodGraph> gcransac;
+		gcransac.settings.threshold = 0.0005 * threshold * max_image_diagonal; // The inlier-outlier threshold
+		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
+		gcransac.settings.confidence = conf; // The required confidence in the results
+		gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
+		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
+		gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
+		gcransac.settings.neighborhood_sphere_radius = 8; // The radius of the neighborhood ball
+
+		// Start GC-RANSAC
+		gcransac.run(points,
+			estimator,
+			&main_sampler,
+			&local_optimization_sampler,
+			&neighborhood1,
+			model);
+
+		statistics = gcransac.getRansacStatistics();
+	}
+
 	printf("Inlier number = %d\n", static_cast<int>(statistics.inliers.size()));
 
 	inliers.resize(num_tents);
@@ -224,7 +301,8 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 	double spatial_coherence_weight,
 	double threshold,
 	double conf,
-	int max_iters)
+	int max_iters,
+	bool use_sprt)
 {
 	int num_tents = srcPts.size() / 2;
 	cv::Mat points(num_tents, 4, CV_64F);
@@ -300,29 +378,60 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
 		return 0;
 	}
+	
+	utils::RANSACStatistics statistics;
 
-	GCRANSAC<utils::DefaultEssentialMatrixEstimator, neighborhood::GridNeighborhoodGraph> gcransac;
-	gcransac.setFPS(-1); // Set the desired FPS (-1 means no limit)
-	gcransac.settings.threshold = threshold; // The inlier-outlier threshold
-	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
-	gcransac.settings.confidence = conf; // The required confidence in the results
-	gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
-	gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
-	gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
-	gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
-	gcransac.settings.core_number = std::thread::hardware_concurrency(); // The number of parallel processes
+	if (use_sprt)
+	{
+		// Initializing SPRT test
+		preemption::SPRTPreemptiveVerfication<utils::DefaultEssentialMatrixEstimator> preemptive_verification(
+			points,
+			estimator);
 
-	// Start GC-RANSAC
-	gcransac.run(normalized_points,
-		estimator,
-		&main_sampler,
-		&local_optimization_sampler,
-		&neighborhood1,
-		model);
+		GCRANSAC<utils::DefaultEssentialMatrixEstimator,
+			neighborhood::GridNeighborhoodGraph,
+			MSACScoringFunction<utils::DefaultEssentialMatrixEstimator>,
+			preemption::SPRTPreemptiveVerfication<utils::DefaultEssentialMatrixEstimator>> gcransac;
+		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
+		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
+		gcransac.settings.confidence = conf; // The required confidence in the results
+		gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
+		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
+		gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
+		gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
 
-	// Get the statistics of the results
-	const utils::RANSACStatistics &statistics = gcransac.getRansacStatistics();
+		// Start GC-RANSAC
+		gcransac.run(points,
+			estimator,
+			&main_sampler,
+			&local_optimization_sampler,
+			&neighborhood1,
+			model,
+			preemptive_verification);
 
+		statistics = gcransac.getRansacStatistics();
+	}
+	else
+	{
+		GCRANSAC<utils::DefaultEssentialMatrixEstimator, neighborhood::GridNeighborhoodGraph> gcransac;
+		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
+		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
+		gcransac.settings.confidence = conf; // The required confidence in the results
+		gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
+		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
+		gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
+		gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
+
+		// Start GC-RANSAC
+		gcransac.run(normalized_points,
+			estimator,
+			&main_sampler,
+			&local_optimization_sampler,
+			&neighborhood1,
+			model);
+
+		statistics = gcransac.getRansacStatistics();
+	}
 
 	inliers.resize(num_tents);
 
@@ -355,8 +464,8 @@ int findHomography_(std::vector<double>& srcPts,
 	double spatial_coherence_weight,
 	double threshold,
 	double conf,
-	int max_iters)
-
+	int max_iters,
+	bool use_sprt)
 {
 	const size_t cell_number_in_neighborhood_graph_ = 8;
 
@@ -396,18 +505,6 @@ int findHomography_(std::vector<double>& srcPts,
 	utils::DefaultHomographyEstimator estimator;
 	Homography model;
 
-	GCRANSAC<utils::DefaultHomographyEstimator, neighborhood::GridNeighborhoodGraph> gcransac;
-
-	gcransac.setFPS(-1); // Set the desired FPS (-1 means no limit)
-	gcransac.settings.threshold = threshold; // The inlier-outlier threshold
-	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
-	gcransac.settings.confidence = conf; // The required confidence in the results
-	gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
-	gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
-	gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
-	gcransac.settings.neighborhood_sphere_radius = 8; // The radius of the neighborhood ball
-	gcransac.settings.core_number = std::thread::hardware_concurrency(); // The number of parallel processes
-
 	sampler::ProgressiveNapsacSampler main_sampler(&points,
 		{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
 							// (source_image_width / 16) * (source_image_height / 16)  * (destination_image_width / 16)  (destination_image_height / 16), etc.
@@ -428,16 +525,59 @@ int findHomography_(std::vector<double>& srcPts,
 		return 0;
 	}
 
-	// Start GC-RANSAC
-	gcransac.run(points,
-		estimator,
-		&main_sampler,
-		&local_optimization_sampler,
-		&neighborhood1,
-		model);
+	utils::RANSACStatistics statistics;
 
-	const utils::RANSACStatistics &statistics = gcransac.getRansacStatistics();
-	printf("Inlier number = %d\n", static_cast<int>(statistics.inliers.size()));
+	if (use_sprt)
+	{
+		// Initializing SPRT test
+		preemption::SPRTPreemptiveVerfication<utils::DefaultHomographyEstimator> preemptive_verification(
+			points,
+			estimator);
+
+		GCRANSAC<utils::DefaultHomographyEstimator,
+			neighborhood::GridNeighborhoodGraph,
+			MSACScoringFunction<utils::DefaultHomographyEstimator>,
+			preemption::SPRTPreemptiveVerfication<utils::DefaultHomographyEstimator>> gcransac;
+		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
+		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
+		gcransac.settings.confidence = conf; // The required confidence in the results
+		gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
+		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
+		gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
+		gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
+
+		// Start GC-RANSAC
+		gcransac.run(points,
+			estimator,
+			&main_sampler,
+			&local_optimization_sampler,
+			&neighborhood1,
+			model,
+			preemptive_verification);
+
+		statistics = gcransac.getRansacStatistics();
+	}
+	else
+	{
+		GCRANSAC<utils::DefaultHomographyEstimator, neighborhood::GridNeighborhoodGraph> gcransac;
+		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
+		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
+		gcransac.settings.confidence = conf; // The required confidence in the results
+		gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
+		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
+		gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
+		gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
+
+		// Start GC-RANSAC
+		gcransac.run(points,
+			estimator,
+			&main_sampler,
+			&local_optimization_sampler,
+			&neighborhood1,
+			model);
+
+		statistics = gcransac.getRansacStatistics();
+	}
 
 	H.resize(9);
 

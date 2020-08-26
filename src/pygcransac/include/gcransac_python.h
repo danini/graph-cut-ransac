@@ -9,7 +9,8 @@ int find6DPose_(
 	double spatial_coherence_weight,
 	double threshold,
 	double conf,
-	int max_iters);
+	int max_iters,
+	bool use_sprt);
 
 int findFundamentalMatrix_(std::vector<double>& srcPts,
                            std::vector<double>& dstPts,
@@ -19,7 +20,8 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
 						   double spatial_coherence_weight,
                            double threshold,
                            double conf,
-                           int max_iters);
+                           int max_iters,
+						   bool use_sprt);
 
 int findEssentialMatrix_(std::vector<double>& srcPts_norm,
                            std::vector<double>& dstPts_norm,
@@ -31,7 +33,8 @@ int findEssentialMatrix_(std::vector<double>& srcPts_norm,
 						   double spatial_coherence_weight,
                            double threshold,
                            double conf,
-                           int max_iters);
+                           int max_iters,
+						   bool use_sprt);
 
 
 int findHomography_(std::vector<double>& srcPts,
@@ -42,4 +45,5 @@ int findHomography_(std::vector<double>& srcPts,
 				    double spatial_coherence_weight,
                     double threshold,
                     double conf,
-                    int max_iters);
+                    int max_iters,
+					bool use_sprt);

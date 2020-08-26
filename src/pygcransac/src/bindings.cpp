@@ -14,7 +14,9 @@ py::tuple find6DPose(
 	double threshold,
 	double conf,
 	double spatial_coherence_weight,
-	int max_iters) {
+	int max_iters,
+	bool use_sprt) 
+{
 	py::buffer_info buf1 = x1y1_.request();
 	size_t NUM_TENTS = buf1.shape[0];
 	size_t DIM = buf1.shape[1];
@@ -54,7 +56,8 @@ py::tuple find6DPose(
 		spatial_coherence_weight,
 		threshold,
 		conf,
-		max_iters);
+		max_iters,
+		use_sprt);
 
 	py::array_t<bool> inliers_ = py::array_t<bool>(NUM_TENTS);
 	py::buffer_info buf3 = inliers_.request();
@@ -78,7 +81,9 @@ py::tuple findFundamentalMatrix(py::array_t<double>  x1y1_,
 	double threshold,
 	double conf,
 	double spatial_coherence_weight,
-	int max_iters) {
+	int max_iters,
+	bool use_sprt)
+{
 	py::buffer_info buf1 = x1y1_.request();
 	size_t NUM_TENTS = buf1.shape[0];
 	size_t DIM = buf1.shape[1];
@@ -118,7 +123,8 @@ py::tuple findFundamentalMatrix(py::array_t<double>  x1y1_,
 		spatial_coherence_weight,
 		threshold,
 		conf,
-		max_iters);
+		max_iters,
+		use_sprt);
 
 	py::array_t<bool> inliers_ = py::array_t<bool>(NUM_TENTS);
 	py::buffer_info buf3 = inliers_.request();
@@ -145,7 +151,9 @@ py::tuple findEssentialMatrix(py::array_t<double>  x1y1_,
 								double threshold,
                                 double conf,
 								double spatial_coherence_weight,
-                                int max_iters) {
+                                int max_iters,
+								bool use_sprt) 
+{
     py::buffer_info buf1 = x1y1_.request();
     size_t NUM_TENTS = buf1.shape[0];
     size_t DIM = buf1.shape[1];
@@ -185,9 +193,7 @@ py::tuple findEssentialMatrix(py::array_t<double>  x1y1_,
     double *ptr1_k = (double *) K1_buf.ptr;
     std::vector<double> K1;
     K1.assign(ptr1_k, ptr1_k + K1_buf.size);
-    
-    
-    
+        
     py::buffer_info K2_buf = K2_.request();
     three_a = K2_buf.shape[0];
     three_b = K2_buf.shape[1];
@@ -210,7 +216,8 @@ py::tuple findEssentialMatrix(py::array_t<double>  x1y1_,
 						   spatial_coherence_weight,
                            threshold,
 						   conf,
-						   max_iters);
+						   max_iters,
+						   use_sprt);
     
     py::array_t<bool> inliers_ = py::array_t<bool>(NUM_TENTS);
     py::buffer_info buf3 = inliers_.request();
@@ -234,7 +241,9 @@ py::tuple findHomography(py::array_t<double>  x1y1_,
                          double threshold,
                          double conf,
 						 double spatial_coherence_weight,
-                         int max_iters) {
+                         int max_iters,
+						 bool use_sprt) 
+{
     py::buffer_info buf1 = x1y1_.request();
     size_t NUM_TENTS = buf1.shape[0];
     size_t DIM = buf1.shape[1];
@@ -274,7 +283,8 @@ py::tuple findHomography(py::array_t<double>  x1y1_,
 					spatial_coherence_weight,
                     threshold,
                     conf,
-                    max_iters);
+                    max_iters,
+					use_sprt);
     
     py::array_t<bool> inliers_ = py::array_t<bool>(NUM_TENTS);
     py::buffer_info buf3 = inliers_.request();
@@ -304,6 +314,8 @@ PYBIND11_PLUGIN(pygcransac) {
            
            findFundamentalMatrix,
            findHomography,
+		   find6DPose,
+		   findEssentialMatrix,
 
     )doc");
 
@@ -317,7 +329,8 @@ PYBIND11_PLUGIN(pygcransac) {
 		py::arg("threshold") = 1.0,
 		py::arg("conf") = 0.99,
 		py::arg("spatial_coherence_weight") = 0.975,
-		py::arg("max_iters") = 10000);
+		py::arg("max_iters") = 10000,
+		py::arg("use_sprt") = true);
 
 	m.def("find6DPose", &find6DPose, R"doc(some doc)doc",
 		py::arg("x1y1"),
@@ -325,7 +338,8 @@ PYBIND11_PLUGIN(pygcransac) {
 		py::arg("threshold") = 0.001,
 		py::arg("conf") = 0.99,
 		py::arg("spatial_coherence_weight") = 0.975,
-		py::arg("max_iters") = 10000);
+		py::arg("max_iters") = 10000,
+		py::arg("use_sprt") = true);
         
     m.def("findEssentialMatrix", &findEssentialMatrix, R"doc(some doc)doc",
           py::arg("x1y1"),
@@ -339,7 +353,8 @@ PYBIND11_PLUGIN(pygcransac) {
           py::arg("threshold") = 1.0,
           py::arg("conf") = 0.99,
 		py::arg("spatial_coherence_weight") = 0.975,
-          py::arg("max_iters") = 10000);
+          py::arg("max_iters") = 10000,
+		py::arg("use_sprt") = true);
     
   m.def("findHomography", &findHomography, R"doc(some doc)doc",
         py::arg("x1y1"),
@@ -351,14 +366,8 @@ PYBIND11_PLUGIN(pygcransac) {
         py::arg("threshold") = 1.0,
 		py::arg("conf") = 0.99,
         py::arg("spatial_coherence_weight") = 0.975,
-        py::arg("max_iters") = 10000); 
-
-//    m.def("findEssentialMatrix", &findEssentialMatrix, R"doc(some doc)doc",
-  //      py::arg("x1y1"),
-   //     py::arg("x2y2"),
-     //   py::arg("threshold") = 1.0,
-     //   py::arg("conf") = 0.99,
-     //   py::arg("max_iters") = 10000); 
-
+        py::arg("max_iters") = 10000,
+	  py::arg("use_sprt") = true);
+  
   return m.ptr();
 }
