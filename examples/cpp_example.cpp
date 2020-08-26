@@ -308,6 +308,27 @@ bool initializeScenePnP(
 	const std::string root_directory_) // The root directory where the "results" and "data" folder are
 {
 	// The directory to which the results will be saved
+	std::string results_dir = root_directory_ + "results";
+
+	// Create the task directory if it doesn't exist
+	if (stat(results_dir.c_str(), &info) != 0) // Check if exists
+	{
+#ifdef _WIN32 // Create a directory on Windows
+		if (_mkdir(results_dir.c_str()) != 0) // Create it, if not
+		{
+			fprintf(stderr, "Error while creating folder 'results'\n");
+			return false;
+		}
+#else // Create a directory on Linux
+		if (mkdir(results_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
+		{
+			fprintf(stderr, "Error while creating a new folder in 'results'\n");
+			return false;
+		}
+#endif
+	}
+
+	// The directory to which the results will be saved
 	std::string dir = root_directory_ + "results/" + scene_name_;
 
 	// Create the task directory if it doesn't exist
@@ -353,6 +374,27 @@ bool initializeScene(
 	std::string &output_matched_image_path_, // The path where the matched image should be saved,
 	const std::string root_directory_ ) // The root directory where the "results" and "data" folder are
 {
+	// The directory to which the results will be saved
+	std::string results_dir = root_directory_ + "results";
+
+	// Create the task directory if it doesn't exist
+	if (stat(results_dir.c_str(), &info) != 0) // Check if exists
+	{
+#ifdef _WIN32 // Create a directory on Windows
+		if (_mkdir(results_dir.c_str()) != 0) // Create it, if not
+		{
+			fprintf(stderr, "Error while creating folder 'results'\n");
+			return false;
+		}
+#else // Create a directory on Linux
+		if (mkdir(results_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
+		{
+			fprintf(stderr, "Error while creating a new folder in 'results'\n");
+			return false;
+		}
+#endif
+	}
+
 	// The directory to which the results will be saved
 	std::string dir = root_directory_ + "results/" + scene_name_;
 
@@ -419,6 +461,27 @@ bool initializeScene(const std::string &scene_name_,
 	std::string &output_matched_image_path_,
 	const std::string root_directory_) // The root directory where the "results" and "data" folder are
 {
+	// The directory to which the results will be saved
+	std::string results_dir = root_directory_ + "results";
+
+	// Create the task directory if it doesn't exist
+	if (stat(results_dir.c_str(), &info) != 0) // Check if exists
+	{
+#ifdef _WIN32 // Create a directory on Windows
+		if (_mkdir(results_dir.c_str()) != 0) // Create it, if not
+		{
+			fprintf(stderr, "Error while creating folder 'results'\n");
+			return false;
+		}
+#else // Create a directory on Linux
+		if (mkdir(results_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
+		{
+			fprintf(stderr, "Error while creating a new folder in 'results'\n");
+			return false;
+		}
+#endif
+	}
+
 	// The directory to which the results will be saved
 	std::string dir = root_directory_ + "results/" + scene_name_;
 
