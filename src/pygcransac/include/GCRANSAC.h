@@ -544,6 +544,10 @@ namespace gcransac
 					inliers_.size(), // The number of inliers
 					&models, // The estimated model parameters
 					weights.get()); // The weights used in the weighted least-squares fitting
+
+				// Setting the weights back to 0.
+				for (const size_t &inlier_idx : inliers_)
+					weights[inlier_idx] = 0;
 			}
 			else
 			{
