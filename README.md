@@ -56,9 +56,13 @@ F, mask = pygcransac.findFundamentalMatrix(src_pts, dst_pts, h1, w1, h2, w2, 3.0
 
 # Jupyter Notebook example
 
-The example for homography, fundamental and essential matrix fitting is available at: [notebook](examples/example.ipynb).
+The example for homography fitting is available at: [notebook](examples/example_homography.ipynb).
+
+The example for fundamental matrix fitting is available at: [notebook](examples/example_fundamental_matrix.ipynb).
+
+The example for essential matrix fitting is available at: [notebook](examples/example_essential_matrix.ipynb).
  
-The example for 6D pose fitting is available at: [notebook](examples/example_pnp.ipynb).
+The example for 6D pose fitting is available at: [notebook](examples/example_absolute_pose.ipynb).
 
 # Requirements
 
