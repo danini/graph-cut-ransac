@@ -78,19 +78,20 @@ When using the algorithm, please cite
 
 ```
 
-If you use it together with DEGENSAC or PROSAC sampling, please cite 
+If you use it together with Progressive NAPSAC sampling or DEGENSAC, please cite 
 
 ```
+@inproceedings{PNAPSAC2020,
+	author = {Barath, Daniel and Noskova, Jana and Ivashechkin, Maksym and Matas, Jiri},
+	title = {{MAGSAC}++, a Fast, Reliable and Accurate Robust Estimator},
+	booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+	month = {June},
+	year = {2020}
+}
+
 @inproceedings{Degensac2005,
 	author = {Chum, Ondrej and Werner, Tomas and Matas, Jiri},
 	title = {Two-View Geometry Estimation Unaffected by a Dominant Plane},
-	booktitle = {Conference on Computer Vision and Pattern Recognition},
-	year = {2005},
-}
-
-@inproceedings{PROSAC2005,
-	author = {Chum, Ondrej and Matas, Jiri},
-	title = {Matching with {PROSAC}-progressive sample consensus},
 	booktitle = {Conference on Computer Vision and Pattern Recognition},
 	year = {2005},
 }
