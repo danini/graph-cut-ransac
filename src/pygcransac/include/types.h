@@ -40,6 +40,7 @@
 #include "homography_estimator.h"
 #include "essential_estimator.h"
 #include "perspective_n_point_estimator.h"
+#include "rigid_transformation_estimator.h"
 
 #include "solver_fundamental_matrix_seven_point.h"
 #include "solver_fundamental_matrix_eight_point.h"
@@ -48,6 +49,7 @@
 #include "solver_dls_pnp.h"
 #include "solver_homography_four_point.h"
 #include "solver_essential_matrix_five_point_stewenius.h"
+#include "solver_rigid_transformation_svd.h"
 
 namespace gcransac
 {
@@ -72,5 +74,10 @@ namespace gcransac
 		typedef estimator::PerspectiveNPointEstimator<estimator::solver::P3PSolver, // The solver used for fitting a model to a minimal sample
 			estimator::solver::EPnPLM> // The solver used for fitting a model to a non-minimal sample
 			DefaultPnPEstimator;
+
+		// The default estimator for PnP fitting
+		typedef estimator::RigidTransformationEstimator<estimator::solver::RigidTransformationSVDBasedSolver, // The solver used for fitting a model to a minimal sample
+			estimator::solver::RigidTransformationSVDBasedSolver> // The solver used for fitting a model to a non-minimal sample
+			DefaultRigidTransformationEstimator;
 	}
 }

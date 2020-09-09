@@ -57,6 +57,18 @@ namespace gcransac
 		}
 	};
 
+	class RigidTransformation : public Model
+	{
+	public:
+		RigidTransformation() :
+			Model(Eigen::MatrixXd(4, 4))
+		{}
+		RigidTransformation(const RigidTransformation& other)
+		{
+			descriptor = other.descriptor;
+		}
+	};
+
 	class FundamentalMatrix : public Model
 	{
 	public:
