@@ -50,7 +50,7 @@ int find6DPose_(std::vector<double>& imagePoints,
 
 	const size_t cell_number_in_neighborhood_graph_ = 8;
 	neighborhood::FlannNeighborhoodGraph neighborhood1(&points, 20);
-	
+
 	// Apply Graph-cut RANSAC
 	utils::DefaultPnPEstimator estimator;
 	Pose6D model;
@@ -140,6 +140,124 @@ int find6DPose_(std::vector<double>& imagePoints,
 	pose.resize(12);
 
 	for (int i = 0; i < 3; i++) {
+		for (int j = 0; j < 4; j++) {
+			pose[i * 4 + j] = (double)model.descriptor(i, j);
+		}
+	}
+	return num_inliers;
+}
+
+int findRigidTransform_(std::vector<double>& points1,
+	std::vector<double>& points2,
+	std::vector<bool>& inliers,
+	std::vector<double> &pose,
+	double spatial_coherence_weight,
+	double threshold,
+	double conf,
+	int max_iters,
+	bool use_sprt)
+{
+	size_t num_tents = points1.size() / 3;
+	cv::Mat points(num_tents, 6, CV_64F);
+	size_t iterations = 0;
+	for (size_t i = 0; i < num_tents; ++i) {
+		points.at<double>(i, 0) = points1[3 * i];
+		points.at<double>(i, 1) = points1[3 * i + 1];
+		points.at<double>(i, 2) = points1[3 * i + 2];
+		points.at<double>(i, 3) = points2[3 * i];
+		points.at<double>(i, 4) = points2[3 * i + 1];
+		points.at<double>(i, 5) = points2[3 * i + 2];
+	}
+
+	const size_t cell_number_in_neighborhood_graph_ = 8;
+	neighborhood::FlannNeighborhoodGraph neighborhood1(&points, 20);
+
+	// Apply Graph-cut RANSAC
+	utils::DefaultRigidTransformationEstimator estimator;
+	RigidTransformation model;
+
+	// Initialize the samplers	
+	sampler::UniformSampler main_sampler(&points);  // The main sampler is used inside the local optimization
+	sampler::UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
+
+	// Checking if the samplers are initialized successfully.
+	if (!main_sampler.isInitialized() ||
+		!local_optimization_sampler.isInitialized())
+	{
+		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
+		return 0;
+	}
+
+	utils::RANSACStatistics statistics;
+
+	if (use_sprt)
+	{
+		// Initializing SPRT test
+		preemption::SPRTPreemptiveVerfication<utils::DefaultRigidTransformationEstimator> preemptive_verification(
+			points,
+			estimator);
+
+		GCRANSAC<utils::DefaultRigidTransformationEstimator,
+			neighborhood::FlannNeighborhoodGraph,
+			MSACScoringFunction<utils::DefaultRigidTransformationEstimator>,
+			preemption::SPRTPreemptiveVerfication<utils::DefaultRigidTransformationEstimator>> gcransac;
+		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
+		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
+		gcransac.settings.confidence = conf; // The required confidence in the results
+		gcransac.settings.max_local_optimization_number = 20; // The maximum number of local optimizations
+		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
+		gcransac.settings.min_iteration_number = 20; // The minimum number of iterations
+		gcransac.settings.neighborhood_sphere_radius = 8; // The radius of the neighborhood ball
+
+		// Start GC-RANSAC
+		gcransac.run(points,
+			estimator,
+			&main_sampler,
+			&local_optimization_sampler,
+			&neighborhood1,
+			model,
+			preemptive_verification);
+
+		statistics = gcransac.getRansacStatistics();
+	}
+	else
+	{
+		GCRANSAC<utils::DefaultRigidTransformationEstimator,
+			neighborhood::FlannNeighborhoodGraph> gcransac;
+		gcransac.setFPS(-1); // Set the desired FPS (-1 means no limit)
+		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
+		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
+		gcransac.settings.confidence = conf; // The required confidence in the results
+		gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
+		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
+		gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
+		gcransac.settings.neighborhood_sphere_radius = 8; // The radius of the neighborhood ball
+
+		// Start GC-RANSAC
+		gcransac.run(points,
+			estimator,
+			&main_sampler,
+			&local_optimization_sampler,
+			&neighborhood1,
+			model);
+
+		statistics = gcransac.getRansacStatistics();
+	}
+
+	inliers.resize(num_tents);
+
+	const int num_inliers = statistics.inliers.size();
+	for (auto pt_idx = 0; pt_idx < num_tents; ++pt_idx) {
+		inliers[pt_idx] = 0;
+	}
+
+	for (auto pt_idx = 0; pt_idx < num_inliers; ++pt_idx) {
+		inliers[statistics.inliers[pt_idx]] = 1;
+	}
+
+	pose.resize(16);
+
+	for (int i = 0; i < 4; i++) {
 		for (int j = 0; j < 4; j++) {
 			pose[i * 4 + j] = (double)model.descriptor(i, j);
 		}

@@ -1,6 +1,16 @@
 #include <vector>
 #include <string>
 
+int findRigidTransform_(std::vector<double>& points1,
+	std::vector<double>& points2,
+	std::vector<bool>& inliers,
+	std::vector<double> &pose,
+	double spatial_coherence_weight,
+	double threshold,
+	double conf,
+	int max_iters,
+	bool use_sprt);
+
 int find6DPose_(
 	std::vector<double>& imagePoints,
 	std::vector<double>& worldPoints,
