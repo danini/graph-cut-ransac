@@ -14,10 +14,12 @@
 #include "fundamental_estimator.h"
 #include "homography_estimator.h"
 #include "essential_estimator.h"
+#include "rigid_transformation_estimator.h"
 #include "preemption_sprt.h"
 
 #include "solver_fundamental_matrix_seven_point.h"
 #include "solver_fundamental_matrix_eight_point.h"
+#include "solver_rigid_transformation_svd.h"
 #include "solver_homography_four_point.h"
 #include "solver_essential_matrix_five_point_stewenius.h"
 #include "solver_p3p.h"
@@ -37,7 +39,8 @@ enum Problem {
 	PerspectiveNPointFitting,
 	FundamentalMatrixFitting,
 	EssentialMatrixFitting,
-	HomographyFitting
+	HomographyFitting,
+	RigidTransformationFitting
 };
 
 // An example function showing how to fit essential matrix by Graph-Cut RANSAC
@@ -94,6 +97,16 @@ void test6DPoseFitting(
 	const int fps_, // The required FPS limit. If it is set to -1, the algorithm will not be interrupted before finishing.
 	const bool numerical_optimization_ = true); // A flag to decide if numerical optimization should be applied as a post-processing step
 
+// An example function showing how to fit calculate a rigid transformation from a set of 3D-3D correspondences by Graph-Cut RANSAC
+void testRigidTransformFitting(
+	const std::string &ground_truth_pose_path_, // The path where the ground truth pose can be found
+	const std::string &points_path_, // The path of the points 
+	const std::string &inliers_point_path_, // The path where the inlier correspondences are saved
+	const double confidence_, // The RANSAC confidence value
+	const double inlier_outlier_threshold_, // The used inlier-outlier threshold in GC-RANSAC.
+	const double spatial_coherence_weight_, // The weight of the spatial coherence term in the graph-cut energy minimization.
+	const double sphere_radius_); // The radius of the sphere used for determining the neighborhood-graph
+
 std::vector<std::string> getAvailableTestScenes(Problem problem_);
 
 // Setting the paths for the data used in homography and fundamental matrix fitting
@@ -127,6 +140,14 @@ bool initializeScenePnP(
 	std::string &inlier_points_path_, // The path where the inlier correspondences should be saved
 	const std::string root_directory_ = ""); // The root directory where the "results" and "data" folder are
 
+// Setting the paths for the data used in rigid transformation fitting
+bool initializeSceneRigidPose(
+	const std::string &scene_name_, // The name of the scene
+	std::string &ground_truth_pose_path_, // The path of the ground truth pose used for evaluating the results
+	std::string &points_path_, // The path where the 2D-3D correspondences can be found
+	std::string &inlier_points_path_, // The path where the inlier correspondences should be saved
+	const std::string root_directory_ = ""); // The root directory where the "results" and "data" folder are
+
 using namespace gcransac;
 
 int main(int argc, const char* argv[])
@@ -142,6 +163,34 @@ int main(int argc, const char* argv[])
 	const double inlier_outlier_threshold_pnp = 5.50; // The used inlier-outlier threshold in GC-RANSAC for homography estimation.
 	const double spatial_coherence_weight = 0.975; // The weigd_t of the spatial coherence term in the graph-cut energy minimization.
 	const size_t cell_number_in_neighborhood_graph = 8; // The number of cells along each axis in the neighborhood graph.
+	
+	printf("------------------------------------------------------------\nRigid transformation fitting to 3D-3D correspondences\n------------------------------------------------------------\n");
+	for (const std::string &scene : getAvailableTestScenes(Problem::RigidTransformationFitting))
+	{
+		printf("Processed scene = '%s'\n", scene.c_str());
+		std::string points_path, // Path of the image and world points
+			ground_truth_pose_path, // Path where the ground truth pose is found
+			inlier_points_path; // Path where the inlier points are saved
+
+		// Initializing the paths
+		initializeSceneRigidPose(scene,
+			ground_truth_pose_path,
+			points_path,
+			inlier_points_path,
+			data_directory);
+
+		// Estimating the fundamental matrix by the Graph-Cut RANSAC algorithm
+		testRigidTransformFitting(
+			ground_truth_pose_path, // Path where the ground truth pose is found
+			points_path, // The path where the image and world points can be found
+			inlier_points_path, // The path where the inlier points should be saved
+			confidence, // The RANSAC confidence value
+			10, // The used inlier-outlier threshold in GC-RANSAC.
+			spatial_coherence_weight, // The weight of the spatial coherence term in the graph-cut energy minimization.
+			20.0); // The radius of the neighborhood ball for determining the neighborhoods.
+	}
+
+	while (1);
 
 	printf("------------------------------------------------------------\n6D pose fitting by the PnP algorithm\n------------------------------------------------------------\n");
 	for (const std::string &scene : getAvailableTestScenes(Problem::PerspectiveNPointFitting))
@@ -295,9 +344,73 @@ std::vector<std::string> getAvailableTestScenes(Problem problem_)
 		return { "head", "johnssona", "Kyoto" };
 	case Problem::HomographyFitting:
 		return { "graf", "Eiffel", "adam" };
+	case Problem::RigidTransformationFitting:
+		return { "kitchen" };
 	default:
 		return { "fountain" };
 	}
+}
+
+bool initializeSceneRigidPose(
+	const std::string &scene_name_,
+	std::string &ground_truth_pose_path_,
+	std::string &points_path_,
+	std::string &inlier_image_points_path_,
+	const std::string root_directory_)
+{
+	// The directory to which the results will be saved
+	std::string results_dir = root_directory_ + "results";
+
+	// Create the task directory if it doesn't exist
+	if (stat(results_dir.c_str(), &info) != 0) // Check if exists
+	{
+#ifdef _WIN32 // Create a directory on Windows
+		if (_mkdir(results_dir.c_str()) != 0) // Create it, if not
+		{
+			fprintf(stderr, "Error while creating folder 'results'\n");
+			return false;
+		}
+#else // Create a directory on Linux
+		if (mkdir(results_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
+		{
+			fprintf(stderr, "Error while creating a new folder in 'results'\n");
+			return false;
+		}
+#endif
+	}
+
+	// The directory to which the results will be saved
+	std::string dir = root_directory_ + "results/" + scene_name_;
+
+	// Create the task directory if it doesn't exist
+	if (stat(dir.c_str(), &info) != 0) // Check if exists
+	{
+#ifdef _WIN32 // Create a directory on Windows
+		if (_mkdir(dir.c_str()) != 0) // Create it, if not
+		{
+			fprintf(stderr, "Error while creating a new folder in 'results'\n");
+			return false;
+		}
+#else // Create a directory on Linux
+		if (mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
+		{
+			fprintf(stderr, "Error while creating a new folder in 'results'\n");
+			return false;
+		}
+#endif
+	}
+
+	// The path where the ground truth pose can be found
+	ground_truth_pose_path_ =
+		root_directory_ + "data/" + scene_name_ + "/" + scene_name_ + "_gt.txt";
+	// The path where the 3D point cloud can be found
+	points_path_ =
+		root_directory_ + "data/" + scene_name_ + "/" + scene_name_ + "_points.txt";
+	// The path where the inliers of the estimated fundamental matrices will be saved
+	inlier_image_points_path_ =
+		root_directory_ + "results/" + scene_name_ + "/result_" + scene_name_ + ".txt";
+
+	return true;
 }
 
 bool initializeScenePnP(
@@ -543,6 +656,141 @@ bool initializeScene(const std::string &scene_name_,
 		root_directory_ + "results/" + scene_name_ + "/matches_" + scene_name_ + ".png";
 
 	return true;
+}
+
+// An example function showing how to fit calculate a rigid transformation from a set of 3D-3D correspondences by Graph-Cut RANSAC
+void testRigidTransformFitting(
+	const std::string &ground_truth_pose_path_, // The path where the ground truth pose can be found
+	const std::string &points_path_, // The path of the points 
+	const std::string &inliers_point_path_, // The path where the inlier correspondences are saved
+	const double confidence_, // The RANSAC confidence value
+	const double inlier_outlier_threshold_, // The used inlier-outlier threshold in GC-RANSAC.
+	const double spatial_coherence_weight_, // The weight of the spatial coherence term in the graph-cut energy minimization.
+	const double sphere_radius_) // The radius of the sphere used for determining the neighborhood-graph
+{
+	// The image and world points stored as rows in the matrix. Each row is of format 'u v x y z'.
+	cv::Mat points;
+
+	// Loading the 3D-3D correspondences 
+	gcransac::utils::loadPointsFromFile<6, 1, false>(points, // The points in the image
+		points_path_.c_str()); // The path where the image points are stored
+		
+	// Load the ground truth pose
+	Eigen::Matrix<double, 8, 4> reference_pose;
+	if (!utils::loadMatrix<double, 8, 4>(ground_truth_pose_path_,
+		reference_pose))
+	{
+		printf("An error occured when loading the reference camera pose from '%s'\n",
+			ground_truth_pose_path_.c_str());
+		return;
+	}
+	
+	const Eigen::Matrix4d &initial_T =
+		reference_pose.block<4, 4>(0, 0);
+	const Eigen::Matrix4d &ground_truth_T =
+		reference_pose.block<4, 4>(4, 0);
+
+	// Transform the point by the initial transformation
+	for (size_t point_idx = 0; point_idx < points.rows; ++point_idx)
+	{
+		const double
+			x = points.at<double>(point_idx, 0),
+			y = points.at<double>(point_idx, 1),
+			z = points.at<double>(point_idx, 2);
+
+		points.at<double>(point_idx, 0) = initial_T(0, 0) * x + initial_T(1, 0) * y + initial_T(2, 0) * z + initial_T(3, 0);
+		points.at<double>(point_idx, 1) = initial_T(0, 1) * x + initial_T(1, 1) * y + initial_T(2, 1) * z + initial_T(3, 1);
+		points.at<double>(point_idx, 2) = initial_T(0, 2) * x + initial_T(1, 2) * y + initial_T(2, 2) * z + initial_T(3, 2);
+	}
+	
+	// Initialize the neighborhood used in Graph-cut RANSAC and, perhaps,
+	// in the sampler if NAPSAC or Progressive-NAPSAC sampling is applied.
+	std::chrono::time_point<std::chrono::system_clock> start, end; // Variables for time measurement
+	start = std::chrono::system_clock::now(); // The starting time of the neighborhood calculation
+	// TODO: generalize the grid class to handle not only point correspondences
+	neighborhood::FlannNeighborhoodGraph neighborhood(&points, // The data points
+		sphere_radius_); // The radius of the neighborhood sphere used for determining the neighborhood structure
+	end = std::chrono::system_clock::now(); // The end time of the neighborhood calculation
+	std::chrono::duration<double> elapsed_seconds = end - start; // The elapsed time in seconds
+	printf("Neighborhood calculation time = %f secs\n", elapsed_seconds.count());
+
+	// Apply Graph-cut RANSAC
+	utils::DefaultRigidTransformationEstimator estimator; // The estimator used for the pose fitting
+	RigidTransformation model; // The estimated model parameters
+
+	// Initialize the samplers
+	// The main sampler is used inside the local optimization
+	sampler::UniformSampler main_sampler(&points); // The data points
+	sampler::UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
+
+	// Checking if the samplers are initialized successfully.
+	if (!main_sampler.isInitialized() ||
+		!local_optimization_sampler.isInitialized())
+	{
+		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
+		return;
+	}
+
+	// Initializing SPRT test
+	preemption::SPRTPreemptiveVerfication<utils::DefaultRigidTransformationEstimator> preemptive_verification(
+		points,
+		estimator);
+
+	GCRANSAC<utils::DefaultRigidTransformationEstimator,
+		neighborhood::FlannNeighborhoodGraph,
+		MSACScoringFunction<utils::DefaultRigidTransformationEstimator>,
+		preemption::SPRTPreemptiveVerfication<utils::DefaultRigidTransformationEstimator>> gcransac;
+	gcransac.settings.threshold = inlier_outlier_threshold_; // The inlier-outlier threshold
+	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
+	gcransac.settings.confidence = confidence_; // The required confidence in the results
+	gcransac.settings.max_iteration_number = 5000; // The maximum number of iterations
+	gcransac.settings.min_iteration_number = 20; // The minimum number of iterations
+	gcransac.settings.neighborhood_sphere_radius = sphere_radius_; // The radius of the neighborhood ball
+
+	// Start GC-RANSAC
+	gcransac.run(points, // The normalized points
+		estimator,  // The estimator
+		&main_sampler, // The sample used for selecting minimal samples in the main iteration
+		&local_optimization_sampler, // The sampler used for selecting a minimal sample when doing the local optimization
+		&neighborhood, // The neighborhood-graph
+		model, // The obtained model parameters
+		preemptive_verification);
+
+	// Get the statistics of the results
+	const utils::RANSACStatistics &statistics = gcransac.getRansacStatistics();
+
+	printf("Elapsed time = %f secs\n", statistics.processing_time);
+	printf("Inlier number before = %d\n", static_cast<int>(statistics.inliers.size()));
+	printf("Applied number of local optimizations = %d\n", static_cast<int>(statistics.local_optimization_number));
+	printf("Applied number of graph-cuts = %d\n", static_cast<int>(statistics.graph_cut_number));
+	printf("Number of iterations = %d\n\n", static_cast<int>(statistics.iteration_number));
+
+	// Save the inliers to file
+	utils::savePointsToFile(points, // The loaded data points
+		inliers_point_path_.c_str(), // The path where the results should be saved
+		&statistics.inliers); // The set of inlier found
+	
+	model.descriptor = 
+		initial_T * model.descriptor;
+
+	// The estimated rotation matrix
+	Eigen::Matrix3d rotation =
+		model.descriptor.block<3, 3>(0, 0);
+	// The estimated translation
+	Eigen::Vector3d translation =
+		model.descriptor.block<1, 3>(3, 0);
+
+	// The number of inliers found
+	const size_t inlier_number = statistics.inliers.size();
+
+	// Calculate the estimation error
+	constexpr double radian_to_degree_multiplier = 180.0 / M_PI;	
+	const double angular_error = radian_to_degree_multiplier * (Eigen::Quaterniond(
+		rotation).angularDistance(Eigen::Quaterniond(ground_truth_T.block<3, 3>(0, 0))));
+	const double translation_error = (ground_truth_T.block<1, 3>(3, 0) - translation.transpose()).norm();
+
+	printf("The error in the rotation matrix = %f degrees\n", angular_error);
+	printf("The error in the translation = %f\n", translation_error / 10.0);
 }
 
 void testHomographyFitting(
