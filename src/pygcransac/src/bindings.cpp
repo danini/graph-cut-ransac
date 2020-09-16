@@ -15,7 +15,8 @@ py::tuple findRigidTransform(
 	double conf,
 	double spatial_coherence_weight,
 	int max_iters,
-	bool use_sprt)
+	bool use_sprt,
+	double min_inlier_ratio_for_sprt)
 {
 	py::buffer_info buf1 = x1y1z1_.request();
 	size_t NUM_TENTS = buf1.shape[0];
@@ -58,7 +59,8 @@ py::tuple findRigidTransform(
 		threshold,
 		conf,
 		max_iters,
-		use_sprt);
+		use_sprt,
+		min_inlier_ratio_for_sprt);
 
 	py::array_t<bool> inliers_ = py::array_t<bool>(NUM_TENTS);
 	py::buffer_info buf3 = inliers_.request();
@@ -84,7 +86,8 @@ py::tuple find6DPose(
 	double conf,
 	double spatial_coherence_weight,
 	int max_iters,
-	bool use_sprt)
+	bool use_sprt,
+	double min_inlier_ratio_for_sprt)
 {
 	py::buffer_info buf1 = x1y1_.request();
 	size_t NUM_TENTS = buf1.shape[0];
@@ -126,7 +129,8 @@ py::tuple find6DPose(
 		threshold,
 		conf,
 		max_iters,
-		use_sprt);
+		use_sprt,
+		min_inlier_ratio_for_sprt);
 
 	py::array_t<bool> inliers_ = py::array_t<bool>(NUM_TENTS);
 	py::buffer_info buf3 = inliers_.request();
@@ -151,7 +155,8 @@ py::tuple findFundamentalMatrix(py::array_t<double>  x1y1_,
 	double conf,
 	double spatial_coherence_weight,
 	int max_iters,
-	bool use_sprt)
+	bool use_sprt,
+	double min_inlier_ratio_for_sprt)
 {
 	py::buffer_info buf1 = x1y1_.request();
 	size_t NUM_TENTS = buf1.shape[0];
@@ -193,7 +198,8 @@ py::tuple findFundamentalMatrix(py::array_t<double>  x1y1_,
 		threshold,
 		conf,
 		max_iters,
-		use_sprt);
+		use_sprt,
+		min_inlier_ratio_for_sprt);
 
 	py::array_t<bool> inliers_ = py::array_t<bool>(NUM_TENTS);
 	py::buffer_info buf3 = inliers_.request();
@@ -221,7 +227,8 @@ py::tuple findEssentialMatrix(py::array_t<double>  x1y1_,
                                 double conf,
 								double spatial_coherence_weight,
                                 int max_iters,
-								bool use_sprt) 
+								bool use_sprt,
+								double min_inlier_ratio_for_sprt)
 {
     py::buffer_info buf1 = x1y1_.request();
     size_t NUM_TENTS = buf1.shape[0];
@@ -286,7 +293,8 @@ py::tuple findEssentialMatrix(py::array_t<double>  x1y1_,
                            threshold,
 						   conf,
 						   max_iters,
-						   use_sprt);
+						   use_sprt,
+							min_inlier_ratio_for_sprt);
     
     py::array_t<bool> inliers_ = py::array_t<bool>(NUM_TENTS);
     py::buffer_info buf3 = inliers_.request();
@@ -311,7 +319,8 @@ py::tuple findHomography(py::array_t<double>  x1y1_,
                          double conf,
 						 double spatial_coherence_weight,
                          int max_iters,
-						 bool use_sprt) 
+						 bool use_sprt,
+						 double min_inlier_ratio_for_sprt)
 {
     py::buffer_info buf1 = x1y1_.request();
     size_t NUM_TENTS = buf1.shape[0];
@@ -353,7 +362,8 @@ py::tuple findHomography(py::array_t<double>  x1y1_,
                     threshold,
                     conf,
                     max_iters,
-					use_sprt);
+					use_sprt,
+					min_inlier_ratio_for_sprt);
     
     py::array_t<bool> inliers_ = py::array_t<bool>(NUM_TENTS);
     py::buffer_info buf3 = inliers_.request();
@@ -400,7 +410,8 @@ PYBIND11_PLUGIN(pygcransac) {
 		py::arg("conf") = 0.99,
 		py::arg("spatial_coherence_weight") = 0.975,
 		py::arg("max_iters") = 10000,
-		py::arg("use_sprt") = true);
+		py::arg("use_sprt") = true,
+		py::arg("min_inlier_ratio_for_sprt") = 0.1);
 
 	m.def("findRigidTransform", &findRigidTransform, R"doc(some doc)doc",
 		py::arg("x1y1z1"),
@@ -409,7 +420,8 @@ PYBIND11_PLUGIN(pygcransac) {
 		py::arg("conf") = 0.99,
 		py::arg("spatial_coherence_weight") = 0.975,
 		py::arg("max_iters") = 10000,
-		py::arg("use_sprt") = true);
+		py::arg("use_sprt") = true,
+		py::arg("min_inlier_ratio_for_sprt") = 0.1);
 
 	m.def("find6DPose", &find6DPose, R"doc(some doc)doc",
 		py::arg("x1y1"),
@@ -418,7 +430,8 @@ PYBIND11_PLUGIN(pygcransac) {
 		py::arg("conf") = 0.99,
 		py::arg("spatial_coherence_weight") = 0.975,
 		py::arg("max_iters") = 10000,
-		py::arg("use_sprt") = true);
+		py::arg("use_sprt") = true,
+		py::arg("min_inlier_ratio_for_sprt") = 0.1);
         
     m.def("findEssentialMatrix", &findEssentialMatrix, R"doc(some doc)doc",
           py::arg("x1y1"),
@@ -433,7 +446,8 @@ PYBIND11_PLUGIN(pygcransac) {
           py::arg("conf") = 0.99,
 		py::arg("spatial_coherence_weight") = 0.975,
           py::arg("max_iters") = 10000,
-		py::arg("use_sprt") = true);
+		py::arg("use_sprt") = true,
+		py::arg("min_inlier_ratio_for_sprt") = 0.1);
     
   m.def("findHomography", &findHomography, R"doc(some doc)doc",
         py::arg("x1y1"),
@@ -446,7 +460,8 @@ PYBIND11_PLUGIN(pygcransac) {
 		py::arg("conf") = 0.99,
         py::arg("spatial_coherence_weight") = 0.975,
         py::arg("max_iters") = 10000,
-	  py::arg("use_sprt") = true);
+	  py::arg("use_sprt") = true,
+	  py::arg("min_inlier_ratio_for_sprt") = 0.1);
   
   return m.ptr();
 }

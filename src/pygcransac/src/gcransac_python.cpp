@@ -35,7 +35,8 @@ int find6DPose_(std::vector<double>& imagePoints,
 	double threshold,
 	double conf,
 	int max_iters,
-	bool use_sprt)
+	bool use_sprt,
+	double min_inlier_ratio_for_sprt)
 {
 	size_t num_tents = imagePoints.size() / 2;
 	cv::Mat points(num_tents, 5, CV_64F);
@@ -74,13 +75,13 @@ int find6DPose_(std::vector<double>& imagePoints,
 		// Initializing SPRT test
 		preemption::SPRTPreemptiveVerfication<utils::DefaultPnPEstimator> preemptive_verification(
 			points,
-			estimator);
+			estimator,
+			min_inlier_ratio_for_sprt);
 
 		GCRANSAC<utils::DefaultPnPEstimator,
 			neighborhood::FlannNeighborhoodGraph,
 			MSACScoringFunction<utils::DefaultPnPEstimator>,
 			preemption::SPRTPreemptiveVerfication<utils::DefaultPnPEstimator>> gcransac;
-		gcransac.setFPS(-1); // Set the desired FPS (-1 means no limit)
 		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
 		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
 		gcransac.settings.confidence = conf; // The required confidence in the results
@@ -88,7 +89,6 @@ int find6DPose_(std::vector<double>& imagePoints,
 		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
 		gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
 		gcransac.settings.neighborhood_sphere_radius = 8; // The radius of the neighborhood ball
-		gcransac.settings.core_number = std::thread::hardware_concurrency(); // The number of parallel processes
 
 		// Start GC-RANSAC
 		gcransac.run(points,
@@ -105,7 +105,6 @@ int find6DPose_(std::vector<double>& imagePoints,
 	{
 		GCRANSAC<utils::DefaultPnPEstimator,
 			neighborhood::FlannNeighborhoodGraph> gcransac;
-		gcransac.setFPS(-1); // Set the desired FPS (-1 means no limit)
 		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
 		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
 		gcransac.settings.confidence = conf; // The required confidence in the results
@@ -113,7 +112,6 @@ int find6DPose_(std::vector<double>& imagePoints,
 		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
 		gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
 		gcransac.settings.neighborhood_sphere_radius = 8; // The radius of the neighborhood ball
-		gcransac.settings.core_number = std::thread::hardware_concurrency(); // The number of parallel processes
 
 		// Start GC-RANSAC
 		gcransac.run(points,
@@ -155,7 +153,8 @@ int findRigidTransform_(std::vector<double>& points1,
 	double threshold,
 	double conf,
 	int max_iters,
-	bool use_sprt)
+	bool use_sprt,
+	double min_inlier_ratio_for_sprt)
 {
 	size_t num_tents = points1.size() / 3;
 	cv::Mat points(num_tents, 6, CV_64F);
@@ -195,7 +194,8 @@ int findRigidTransform_(std::vector<double>& points1,
 		// Initializing SPRT test
 		preemption::SPRTPreemptiveVerfication<utils::DefaultRigidTransformationEstimator> preemptive_verification(
 			points,
-			estimator);
+			estimator,
+			min_inlier_ratio_for_sprt);
 
 		GCRANSAC<utils::DefaultRigidTransformationEstimator,
 			neighborhood::FlannNeighborhoodGraph,
@@ -274,7 +274,8 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
 	double threshold,
 	double conf,
 	int max_iters,
-	bool use_sprt)
+	bool use_sprt,
+	double min_inlier_ratio_for_sprt)
 {
 	int num_tents = srcPts.size() / 2;
 	cv::Mat points(num_tents, 4, CV_64F);
@@ -337,21 +338,20 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
 		// Initializing SPRT test
 		preemption::SPRTPreemptiveVerfication<utils::DefaultFundamentalMatrixEstimator> preemptive_verification(
 			points,
-			estimator);
+			estimator,
+			min_inlier_ratio_for_sprt);
 
 		GCRANSAC<utils::DefaultFundamentalMatrixEstimator,
 			neighborhood::GridNeighborhoodGraph,
 			MSACScoringFunction<utils::DefaultFundamentalMatrixEstimator>,
 			preemption::SPRTPreemptiveVerfication<utils::DefaultFundamentalMatrixEstimator>> gcransac;
-		gcransac.setFPS(-1); // Set the desired FPS (-1 means no limit)
-		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
+		gcransac.settings.threshold = 0.0005 * threshold * max_image_diagonal; // The inlier-outlier threshold
 		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
 		gcransac.settings.confidence = conf; // The required confidence in the results
 		gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
 		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
 		gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
 		gcransac.settings.neighborhood_sphere_radius = 8; // The radius of the neighborhood ball
-		gcransac.settings.core_number = std::thread::hardware_concurrency(); // The number of parallel processes
 
 		// Start GC-RANSAC
 		gcransac.run(points,
@@ -420,7 +420,8 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 	double threshold,
 	double conf,
 	int max_iters,
-	bool use_sprt)
+	bool use_sprt,
+	double min_inlier_ratio_for_sprt)
 {
 	int num_tents = srcPts.size() / 2;
 	cv::Mat points(num_tents, 4, CV_64F);
@@ -504,7 +505,8 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 		// Initializing SPRT test
 		preemption::SPRTPreemptiveVerfication<utils::DefaultEssentialMatrixEstimator> preemptive_verification(
 			points,
-			estimator);
+			estimator,
+			min_inlier_ratio_for_sprt);
 
 		GCRANSAC<utils::DefaultEssentialMatrixEstimator,
 			neighborhood::GridNeighborhoodGraph,
@@ -583,7 +585,8 @@ int findHomography_(std::vector<double>& srcPts,
 	double threshold,
 	double conf,
 	int max_iters,
-	bool use_sprt)
+	bool use_sprt,
+	double min_inlier_ratio_for_sprt)
 {
 	const size_t cell_number_in_neighborhood_graph_ = 8;
 

@@ -93,7 +93,7 @@ namespace gcransac
 			double additional_model_probability;
 
 			static constexpr bool providesScore() { return true; }
-			static constexpr const char *getName() { return "SPTR"; }
+			static constexpr const char *getName() { return "SPRT"; }
 
 			~SPRTPreemptiveVerfication() {
 				delete[] points_random_pool;
@@ -129,7 +129,8 @@ namespace gcransac
 			}
 
 			SPRTPreemptiveVerfication(const cv::Mat &points_,
-				const _ModelEstimator &estimator_)
+				const _ModelEstimator &estimator_,
+				const double &minimum_inlier_ratio_ = 0.1)
 			{
 				if (points_.rows < _ModelEstimator::sampleSize())
 				{
@@ -164,7 +165,7 @@ namespace gcransac
 				sprt_histories.emplace_back(SPRTHistory());
 
 				sprt_histories.back().delta = 0.01;
-				sprt_histories.back().epsilon = 0.1;
+				sprt_histories.back().epsilon = minimum_inlier_ratio_;
 
 				current_sprt_idx = 0;
 				last_sprt_update = 0;
