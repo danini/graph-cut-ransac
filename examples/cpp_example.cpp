@@ -190,8 +190,6 @@ int main(int argc, const char* argv[])
 			20.0); // The radius of the neighborhood ball for determining the neighborhoods.
 	}
 
-	while (1);
-
 	printf("------------------------------------------------------------\n6D pose fitting by the PnP algorithm\n------------------------------------------------------------\n");
 	for (const std::string &scene : getAvailableTestScenes(Problem::PerspectiveNPointFitting))
 	{

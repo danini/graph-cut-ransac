@@ -79,7 +79,7 @@ namespace gcransac
 		public:
 			EssentialMatrixEstimator(Eigen::Matrix3d intrinsics_src_, // The intrinsic parameters of the source camera
 				Eigen::Matrix3d intrinsics_dst_,  // The intrinsic parameters of the destination camera
-				const double minimum_inlier_ratio_in_validity_check_ = 0.5,
+				const double minimum_inlier_ratio_in_validity_check_ = 0.1,
 				const double point_ratio_for_selecting_from_multiple_models_ = 0.05) :
 				// The intrinsic parameters of the source camera
 				intrinsics_src(intrinsics_src_),
@@ -307,61 +307,30 @@ namespace gcransac
 				// Number of points used for the estimation
 				const size_t points_used = sample_number_ - points_not_used;
 
-				cv::Mat normalized_points(points_used, data_.cols, data_.type()); // The normalized point_ coordinates
-				Eigen::Matrix3d normalizing_transform_source, // The normalizing transformations in the source image
-					normalizing_transform_destination; // The normalizing transformations in the destination image
-
-				// Normalize the point_ coordinates to achieve numerical stability when
-				// applying the least-squares model_ fitting.
-				if (!normalizePoints(data_, // The data_ points
-					sample_, // The points to which the model_ will be fit
-					points_used, // The number of points
-					normalized_points, // The normalized point_ coordinates
-					normalizing_transform_source, // The normalizing transformation in the first image
-					normalizing_transform_destination)) // The normalizing transformation in the second image
-					return false;
-
 				// The container where the estimated models are stored
 				std::vector<Model> temp_models;
-				std::vector<size_t> valid_model_indices;
 
 				// The eight point fundamental matrix fitting algorithm
-				if (!non_minimal_solver->estimateModel(normalized_points,
-					nullptr,
+				if (!non_minimal_solver->estimateModel(data_,
+					sample_,
 					points_used,
 					temp_models,
 					weights_))
 					return false;
-
-				/* Orientation constraint check */
-				const size_t model_number = temp_models.size();
-				valid_model_indices.reserve(model_number);
-				for (size_t model_idx = 0; model_idx < model_number; ++model_idx)
-					if (isOrientationValid(temp_models.at(model_idx).descriptor,
-						data_,
-						sample_,
-						points_used))
-						valid_model_indices.emplace_back(model_idx);
-
-				if (valid_model_indices.size() == 0)
-					return false;
-
+				
 				// Denormalizing the estimated essential matrices and selecting the best
 				// if multiple ones have been estimated.
-				const Eigen::Matrix3d T2_transpose = normalizing_transform_destination.transpose();
+				const size_t &model_number = temp_models.size();
 				double best_residual = std::numeric_limits<double>::max();
 				size_t best_model_idx = 0;
-				for (const size_t &model_idx : valid_model_indices)
+				for (size_t model_idx = 0; model_idx < model_number; ++model_idx)
 				{
 					// Get the reference of the current model
 					Model &model = temp_models[model_idx];
 
-					// Transform the estimated fundamental matrix back to the not normalized space
-					model.descriptor = T2_transpose * model.descriptor * normalizing_transform_source;
-
 					// Calculate the sum of squared residuals from the selected point set
 					double current_residual = 0.0;
-					if (valid_model_indices.size() > 1)
+					if (model_number > 1)
 						for (size_t sample_idx = points_used; sample_idx < sample_number_; ++sample_idx)
 							current_residual += squaredResidual(data_.row(sample_[sample_idx]), model.descriptor);
 
@@ -385,106 +354,7 @@ namespace gcransac
 
 				return true;
 			}
-
-			OLGA_INLINE bool normalizePoints(
-				const cv::Mat& data_, // The data_ points
-				const size_t *sample_, // The points to which the model will be fit
-				const size_t &sample_number_,// The number of points
-				cv::Mat &normalized_points_, // The normalized point coordinates
-				Eigen::Matrix3d &normalizing_transform_source_, // The normalizing transformation in the first image
-				Eigen::Matrix3d &normalizing_transform_destination_) const // The normalizing transformation in the second image
-			{
-				const size_t cols = data_.cols; 
-				double *normalized_points_ptr = reinterpret_cast<double *>(normalized_points_.data);
-				const double *points_ptr = reinterpret_cast<double *>(data_.data);
-
-				double mass_point_src[2], // Mass point_ in the first image
-					mass_point_dst[2]; // Mass point_ in the second image
-
-				// Initializing the mass point_ coordinates
-				mass_point_src[0] =
-					mass_point_src[1] =
-					mass_point_dst[0] =
-					mass_point_dst[1] =
-					0.0;
-
-				// Calculating the mass points in both images
-				for (size_t i = 0; i < sample_number_; ++i)
-				{
-					// Get pointer of the current point_
-					const double *d_idx = points_ptr + cols * sample_[i];
-
-					// Add the coordinates to that of the mass points
-					mass_point_src[0] += d_idx[0];
-					mass_point_src[1] += d_idx[1];
-					mass_point_dst[0] += d_idx[2];
-					mass_point_dst[1] += d_idx[3];
-				}
-
-				// Get the average
-				mass_point_src[0] /= sample_number_;
-				mass_point_src[1] /= sample_number_;
-				mass_point_dst[0] /= sample_number_;
-				mass_point_dst[1] /= sample_number_;
-
-				// Get the mean distance from the mass points
-				double average_distance_src = 0.0,
-					average_distance_dst = 0.0;
-				for (size_t i = 0; i < sample_number_; ++i)
-				{
-					const double *d_idx = points_ptr + cols * sample_[i];
-
-					const double &x1 = d_idx[0];
-					const double &y1 = d_idx[1];
-					const double &x2 = d_idx[2];
-					const double &y2 = d_idx[3];
-
-					const double dx1 = mass_point_src[0] - x1;
-					const double dy1 = mass_point_src[1] - y1;
-					const double dx2 = mass_point_dst[0] - x2;
-					const double dy2 = mass_point_dst[1] - y2;
-
-					average_distance_src += sqrt(dx1 * dx1 + dy1 * dy1);
-					average_distance_dst += sqrt(dx2 * dx2 + dy2 * dy2);
-				}
-
-				average_distance_src /= sample_number_;
-				average_distance_dst /= sample_number_;
-
-				// Calculate the sqrt(2) / MeanDistance ratios
-				const double ratio_src = M_SQRT2 / average_distance_src;
-				const double ratio_dst = M_SQRT2 / average_distance_dst;
-
-				// Compute the normalized coordinates
-				for (size_t i = 0; i < sample_number_; ++i)
-				{
-					const double *d_idx = points_ptr + cols * sample_[i];
-
-					const double &x1 = d_idx[0];
-					const double &y1 = d_idx[1];
-					const double &x2 = d_idx[2];
-					const double &y2 = d_idx[3];
-
-					*normalized_points_ptr++ = (x1 - mass_point_src[0]) * ratio_src;
-					*normalized_points_ptr++ = (y1 - mass_point_src[1]) * ratio_src;
-					*normalized_points_ptr++ = (x2 - mass_point_dst[0]) * ratio_dst;
-					*normalized_points_ptr++ = (y2 - mass_point_dst[1]) * ratio_dst;
-
-					for (size_t i = 4; i < normalized_points_.cols; ++i)
-						*normalized_points_ptr++ = *(d_idx + i);
-				}
-
-				// Creating the normalizing transformations
-				normalizing_transform_source_ << ratio_src, 0, -ratio_src * mass_point_src[0],
-					0, ratio_src, -ratio_src * mass_point_src[1],
-					0, 0, 1;
-
-				normalizing_transform_destination_ << ratio_dst, 0, -ratio_dst * mass_point_dst[0],
-					0, ratio_dst, -ratio_dst * mass_point_dst[1],
-					0, 0, 1;
-				return true;
-			}
-
+			
 			/************** Oriented epipolar constraints ******************/
 			OLGA_INLINE void getEpipole(
 				Eigen::Vector3d &epipole_, // The epipole 
