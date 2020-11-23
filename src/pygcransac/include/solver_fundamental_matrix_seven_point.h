@@ -143,22 +143,39 @@ namespace gcransac
 						coefficients(i, 8) = weight;
 					}
 				}
+									
+				Eigen::Matrix<double, 9, 1> f1, f2;
 
-				// A*(f11 f12 ... f33)' = 0 is singular (7 equations for 9 variables), so
-				// the solution is linear subspace of dimensionality 2.
-				// => use the last two singular std::vectors as a basis of the space
-				// (according to SVD properties)
-				Eigen::JacobiSVD<Eigen::MatrixXd> svd(
-					// Theoretically, it would be faster to apply SVD only to matrix coefficients, but
-					// multiplication is faster than SVD in the Eigen library. Therefore, it is faster
-					// to apply SVD to a smaller matrix.
-					coefficients.transpose() * coefficients,
-					Eigen::ComputeFullV);
+				// For the minimal problem, the matrix is small and, thus, fullPivLu decomposition is significantly
+				// faster than both JacobiSVD and BDCSVD methods.
+				// https://eigen.tuxfamily.org/dox/group__DenseDecompositionBenchmark.html
+				if (sample_number_ == sampleSize())
+				{
+					const Eigen::FullPivLU<Eigen::MatrixXd> lu(coefficients.transpose() * coefficients);
+					if (lu.dimensionOfKernel() != 2) 
+						return false;
 
-				Eigen::Matrix<double, 9, 1> f1 =
-					svd.matrixV().block<9, 1>(0, 7);
-				Eigen::Matrix<double, 9, 1> f2 =
-					svd.matrixV().block<9, 1>(0, 8);
+					const Eigen::Matrix<double, 9, 2> null_space = 
+						lu.kernel();
+
+					f1 = null_space.col(0);
+					f2 = null_space.col(1);
+				}
+				else
+				{
+					// A*(f11 f12 ... f33)' = 0 is singular (7 equations for 9 variables), so
+					// the solution is linear subspace of dimensionality 2.
+					// => use the last two singular std::vectors as a basis of the space
+					// (according to SVD properties)
+					Eigen::JacobiSVD<Eigen::MatrixXd> svd(
+						// Theoretically, it would be faster to apply SVD only to matrix coefficients, but
+						// multiplication is faster than SVD in the Eigen library. Therefore, it is faster
+						// to apply SVD to a smaller matrix.
+						coefficients.transpose() * coefficients,
+						Eigen::ComputeFullV);
+					f1 = svd.matrixV().block<9, 1>(0, 7);
+					f2 = svd.matrixV().block<9, 1>(0, 8);
+				}
 
 				// f1, f2 is a basis => lambda*f1 + mu*f2 is an arbitrary f. matrix.
 				// as it is determined up to a scale, normalize lambda & mu (lambda + mu = 1),
@@ -214,7 +231,8 @@ namespace gcransac
 				for (const double &root : real_roots)
 				{
 					// for each root form the fundamental matrix
-					double lambda = root, mu = 1.;
+					double lambda = root, 
+						mu = 1.;
 					double s = f1[8] * root + f2[8];
 
 					// normalize each matrix, so that F(3,3) (~fmatrix[8]) == 1
