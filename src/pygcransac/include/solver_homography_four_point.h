@@ -90,11 +90,11 @@ namespace gcransac
 				const double *weights_) const
 			{
 				constexpr size_t equation_number = 2;
+				const size_t columns = data_.cols;
 				const size_t row_number = equation_number * sample_number_;
 				Eigen::MatrixXd coefficients(row_number, 8);
 				Eigen::MatrixXd inhomogeneous(row_number, 1);
 
-				constexpr size_t columns = 4;
 				const double *data_ptr = reinterpret_cast<double *>(data_.data);
 				size_t row_idx = 0;
 				double weight = 1.0;
@@ -122,7 +122,6 @@ namespace gcransac
 						weight_times_x2 = weight * x2,
 						weight_times_y2 = weight * y2;
 
-
 					coefficients(row_idx, 0) = minus_weight_times_x1;
 					coefficients(row_idx, 1) = minus_weight_times_y1;
 					coefficients(row_idx, 2) = -weight;
@@ -146,8 +145,18 @@ namespace gcransac
 					++row_idx;
 				}
 
-				Eigen::Matrix<double, 8, 1> h =
-					coefficients.colPivHouseholderQr().solve(inhomogeneous);
+				Eigen::Matrix<double, 8, 1> h;
+
+				// If we have a minimal sample, it is usually enough to solve the problem with not necessarily
+				// the most accurate solver. Therefore, we use normal equations for this
+				if (sample_number_ == sampleSize())
+				{
+					const Eigen::Matrix<double, 8, 8> coefficientsTransposed =
+						coefficients.transpose();
+					h = (coefficientsTransposed * coefficients).llt().solve(coefficientsTransposed * inhomogeneous);
+				} 
+				else // Otherwise, we want the results to be very accurate.
+					h = coefficients.colPivHouseholderQr().solve(inhomogeneous);
 
 				Homography model;
 				model.descriptor << h(0), h(1), h(2),
