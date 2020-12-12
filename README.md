@@ -3,6 +3,8 @@
 The Graph-Cut RANSAC algorithm proposed in paper: Daniel Barath and Jiri Matas; Graph-Cut RANSAC, Conference on Computer Vision and Pattern Recognition, 2018. 
 It is available at http://openaccess.thecvf.com/content_cvpr_2018/papers/Barath_Graph-Cut_RANSAC_CVPR_2018_paper.pdf
 
+The method is explained in the [Latest developments in RANSAC presentation](https://www.youtube.com/watch?v=Nfd9dzeSSG8&feature=youtu.be) from CVPR tutorial [RANSAC in 2020](http://cmp.felk.cvut.cz/cvpr2020-ransac-tutorial/).
+
 # Installation C++
 
 To build and install C++ only `GraphCutRANSAC`, clone or download this repository and then build the project by CMAKE. 
