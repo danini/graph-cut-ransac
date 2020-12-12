@@ -5,6 +5,8 @@ It is available at http://openaccess.thecvf.com/content_cvpr_2018/papers/Barath_
 
 The method is explained in the [Latest developments in RANSAC presentation](https://www.youtube.com/watch?v=Nfd9dzeSSG8&feature=youtu.be) from CVPR tutorial [RANSAC in 2020](http://cmp.felk.cvut.cz/cvpr2020-ransac-tutorial/).
 
+Experiments on homography, fundamental matrix, essential matrix, and 6D pose estimation are shown in the corresponding [presentation](https://www.youtube.com/watch?v=igRydL72160&feature=youtu.be) from the tutorial RANSAC in 2020.
+
 # Installation C++
 
 To build and install C++ only `GraphCutRANSAC`, clone or download this repository and then build the project by CMAKE. 
