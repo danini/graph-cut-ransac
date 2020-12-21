@@ -155,19 +155,15 @@ namespace gcransac
 					}
 				}
 
-				// A*(f11 f12 ... f33)' = 0 is singular (7 equations for 9 variables), so
-				// the solution is linear subspace of dimensionality 2.
+				// A*(f11 f12 ... f33)' = 0 is singular (8 equations for 9 variables), so
+				// the solution is linear subspace of dimensionality 1.
 				// => use the last two singular std::vectors as a basis of the space
 				// (according to SVD properties)
-				Eigen::JacobiSVD<Eigen::MatrixXd> svd(
-					// Theoretically, it would be faster to apply SVD only to matrix coefficients, but
-					// multiplication is faster than SVD in the Eigen library. Therefore, it is faster
-					// to apply SVD to a smaller matrix.
-					coefficients.transpose() * coefficients,
-					Eigen::ComputeFullV);
-
-				const Eigen::Matrix<double, 9, 1> &null_space =
-					svd.matrixV().rightCols<1>();
+				const Eigen::FullPivHouseholderQR<Eigen::MatrixXd> qr(
+					coefficients.transpose() * coefficients);
+				const Eigen::MatrixXd& Q = qr.matrixQ();
+				const Eigen::Matrix<double, 9, 1>& null_space =
+					Q.rightCols<1>();
 
 				FundamentalMatrix model;
 				model.descriptor << null_space(0), null_space(1), null_space(2),
