@@ -172,9 +172,10 @@ namespace gcransac
 					nullSpace = lu.kernel();
 				}
 				else {
-					const Eigen::JacobiSVD<Eigen::MatrixXd> svd(
-						coefficients.transpose() * coefficients, Eigen::ComputeFullV);
-					nullSpace = svd.matrixV().rightCols<4>();
+					const Eigen::ColPivHouseholderQR<Eigen::MatrixXd> qr(
+						coefficients.transpose() * coefficients);
+					const Eigen::MatrixXd &Q = qr.matrixQ();
+					nullSpace = Q.rightCols<4>();
 				}
 
 				const Eigen::Matrix<double, 1, 4> nullSpaceMatrix[3][3] = {
