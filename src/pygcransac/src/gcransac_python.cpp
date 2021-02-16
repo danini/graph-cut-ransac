@@ -434,10 +434,10 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 	}
 	const size_t cell_number_in_neighborhood_graph_ = 8;
 	neighborhood::GridNeighborhoodGraph<4> neighborhood1(&points,
-		w1 / static_cast<double>(cell_number_in_neighborhood_graph_),
-		h1 / static_cast<double>(cell_number_in_neighborhood_graph_),
-		w2 / static_cast<double>(cell_number_in_neighborhood_graph_),
-		h2 / static_cast<double>(cell_number_in_neighborhood_graph_),
+		{ w1 / static_cast<double>(cell_number_in_neighborhood_graph_),
+			h1 / static_cast<double>(cell_number_in_neighborhood_graph_),
+			w2 / static_cast<double>(cell_number_in_neighborhood_graph_),
+			h2 / static_cast<double>(cell_number_in_neighborhood_graph_) },
 		cell_number_in_neighborhood_graph_);
 
 	// Checking if the neighborhood graph is initialized successfully.

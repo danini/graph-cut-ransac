@@ -96,7 +96,7 @@ namespace gcransac
 			{
 				for (size_t dimensionIdx = 0; dimensionIdx < _DimensionNumber; ++dimensionIdx)
 				{
-					const auto& idx1 = idx_along_axes[dimensionIdx] 
+					const auto& idx1 = idx_along_axes[dimensionIdx];
 					const auto& idx2 = o.idx_along_axes[dimensionIdx];
 
 					if (idx1 < idx2)
