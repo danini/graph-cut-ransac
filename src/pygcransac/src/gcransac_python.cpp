@@ -268,7 +268,7 @@ int findRigidTransform_(std::vector<double>& points1,
 int findFundamentalMatrix_(std::vector<double>& srcPts,
 	std::vector<double>& dstPts,
 	std::vector<bool>& inliers,
-	std::vector<double>&F,
+	std::vector<double>& F,
 	int h1, int w1, int h2, int w2,
 	double spatial_coherence_weight,
 	double threshold,
@@ -288,10 +288,10 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
 	}
 	const size_t cell_number_in_neighborhood_graph_ = 8;
 	neighborhood::GridNeighborhoodGraph<4> neighborhood1(&points,
-		w1 / static_cast<double>(cell_number_in_neighborhood_graph_),
-		h1 / static_cast<double>(cell_number_in_neighborhood_graph_),
-		w2 / static_cast<double>(cell_number_in_neighborhood_graph_),
-		h2 / static_cast<double>(cell_number_in_neighborhood_graph_),
+		{ w1 / static_cast<double>(cell_number_in_neighborhood_graph_),
+			h1 / static_cast<double>(cell_number_in_neighborhood_graph_),
+			w2 / static_cast<double>(cell_number_in_neighborhood_graph_),
+			h2 / static_cast<double>(cell_number_in_neighborhood_graph_) },
 		cell_number_in_neighborhood_graph_);
 
 	// Checking if the neighborhood graph is initialized successfully.
@@ -601,14 +601,10 @@ int findHomography_(std::vector<double>& srcPts,
 	}
 
 	neighborhood::GridNeighborhoodGraph<4> neighborhood1(&points,
-		w1 / static_cast<double>(cell_number_in_neighborhood_graph_),
-		h1 / static_cast<double>(cell_number_in_neighborhood_graph_),
-		w2 / static_cast<double>(cell_number_in_neighborhood_graph_),
-		h2 / static_cast<double>(cell_number_in_neighborhood_graph_),
-		//		source_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
-		//		source_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_),
-		//		destination_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
-		//		destination_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_),
+		{ w1 / static_cast<double>(cell_number_in_neighborhood_graph_),
+			h1 / static_cast<double>(cell_number_in_neighborhood_graph_),
+			w2 / static_cast<double>(cell_number_in_neighborhood_graph_),
+			h2 / static_cast<double>(cell_number_in_neighborhood_graph_) },
 		cell_number_in_neighborhood_graph_);
 
 	// Checking if the neighborhood graph is initialized successfully.
