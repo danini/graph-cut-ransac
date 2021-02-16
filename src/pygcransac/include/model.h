@@ -69,6 +69,18 @@ namespace gcransac
 		}
 	};
 
+	class Line2D : public Model
+	{
+	public:
+		Line2D() :
+			Model(Eigen::MatrixXd(3, 1))
+		{}
+		Line2D(const Line2D& other)
+		{
+			descriptor = other.descriptor;
+		}
+	};
+
 	class FundamentalMatrix : public Model
 	{
 	public:

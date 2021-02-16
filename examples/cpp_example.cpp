@@ -36,6 +36,7 @@
 struct stat info;
 
 enum Problem {
+	LineFitting,
 	PerspectiveNPointFitting,
 	FundamentalMatrixFitting,
 	EssentialMatrixFitting,
@@ -103,9 +104,18 @@ void test6DPoseFitting(
 
 // An example function showing how to fit calculate a rigid transformation from a set of 3D-3D correspondences by Graph-Cut RANSAC
 void testRigidTransformFitting(
-	const std::string &ground_truth_pose_path_, // The path where the ground truth pose can be found
-	const std::string &points_path_, // The path of the points 
-	const std::string &inliers_point_path_, // The path where the inlier correspondences are saved
+	const std::string& ground_truth_pose_path_, // The path where the ground truth pose can be found
+	const std::string& points_path_, // The path of the points 
+	const std::string& inliers_point_path_, // The path where the inlier correspondences are saved
+	const double confidence_, // The RANSAC confidence value
+	const double inlier_outlier_threshold_, // The used inlier-outlier threshold in GC-RANSAC.
+	const double spatial_coherence_weight_, // The weight of the spatial coherence term in the graph-cut energy minimization.
+	const double sphere_radius_,  // The radius of the sphere used for determining the neighborhood-graph
+	const double minimum_inlier_ratio_for_sprt_ = 0.1); // An assumption about the minimum inlier ratio used for the SPRT test
+
+// An example function showing how to fit calculate a 2D line to a set of 2D points by Graph-Cut RANSAC
+void test2DLineFitting(
+	const std::string& image_path_, // The path where the ground truth pose can be found
 	const double confidence_, // The RANSAC confidence value
 	const double inlier_outlier_threshold_, // The used inlier-outlier threshold in GC-RANSAC.
 	const double spatial_coherence_weight_, // The weight of the spatial coherence term in the graph-cut energy minimization.
@@ -164,11 +174,30 @@ int main(int argc, const char* argv[])
 	const int fps = -1; // The required FPS limit. If it is set to -1, the algorithm will not be interrupted before finishing.
 	const double inlier_outlier_threshold_essential_matrix = 3.00; // The used inlier-outlier threshold in GC-RANSAC for essential matrix estimation.
 	const double inlier_outlier_threshold_fundamental_matrix = 0.0003; // The used adaptive (i.e., it is the percentage of the maximum image diagonal) inlier-outlier threshold in GC-RANSAC for fundamental matrix estimation.
+	const double inlier_outlier_threshold_rigid_pose = 10.0; // The used adaptive (i.e., it is the percentage of the maximum image diagonal) inlier-outlier threshold in GC-RANSAC for fundamental matrix estimation.
+	const double inlier_outlier_threshold_2d_line = 2.0; // The used adaptive (i.e., it is the percentage of the maximum image diagonal) inlier-outlier threshold in GC-RANSAC for fundamental matrix estimation.
 	const double inlier_outlier_threshold_homography = 2.00; // The used inlier-outlier threshold in GC-RANSAC for homography estimation.
 	const double inlier_outlier_threshold_pnp = 5.50; // The used inlier-outlier threshold in GC-RANSAC for homography estimation.
 	const double spatial_coherence_weight = 0.975; // The weigd_t of the spatial coherence term in the graph-cut energy minimization.
 	const size_t cell_number_in_neighborhood_graph = 8; // The number of cells along each axis in the neighborhood graph.
 	
+	printf("------------------------------------------------------------\n2D line fitting\n------------------------------------------------------------\n");
+	for (const std::string& scene : getAvailableTestScenes(Problem::LineFitting))
+	{
+		printf("Processed scene = '%s'\n", scene.c_str());
+		// The path of the image which will be used for the example line fitting
+		std::string image_path = data_directory + "data/" + scene + "/" + scene + "1.png";
+
+		// Estimating a 2D line by the Graph-Cut RANSAC algorithm
+		test2DLineFitting(
+			image_path, // The path where the inlier points should be saved
+			confidence, // The RANSAC confidence value
+			inlier_outlier_threshold_2d_line, // The used inlier-outlier threshold in GC-RANSAC.
+			0.8, // The weight of the spatial coherence term in the graph-cut energy minimization.
+			20.0, // The radius of the neighborhood ball for determining the neighborhoods.
+			0.001); // Minimum inlier ratio of an unknown model.
+	}
+
 	printf("------------------------------------------------------------\nRigid transformation fitting to 3D-3D correspondences\n------------------------------------------------------------\n");
 	for (const std::string &scene : getAvailableTestScenes(Problem::RigidTransformationFitting))
 	{
@@ -184,13 +213,13 @@ int main(int argc, const char* argv[])
 			inlier_points_path,
 			data_directory);
 
-		// Estimating the fundamental matrix by the Graph-Cut RANSAC algorithm
+		// Estimating a rigid transformation by the Graph-Cut RANSAC algorithm
 		testRigidTransformFitting(
 			ground_truth_pose_path, // Path where the ground truth pose is found
 			points_path, // The path where the image and world points can be found
 			inlier_points_path, // The path where the inlier points should be saved
 			confidence, // The RANSAC confidence value
-			10, // The used inlier-outlier threshold in GC-RANSAC.
+			inlier_outlier_threshold_rigid_pose, // The used inlier-outlier threshold in GC-RANSAC.
 			spatial_coherence_weight, // The weight of the spatial coherence term in the graph-cut energy minimization.
 			20.0); // The radius of the neighborhood ball for determining the neighborhoods.
 	}
@@ -343,6 +372,8 @@ std::vector<std::string> getAvailableTestScenes(Problem problem_)
 	{
 	case Problem::PerspectiveNPointFitting:
 		return { "pose6dscene" };
+	case Problem::LineFitting:
+		return { "adam" };
 	case Problem::FundamentalMatrixFitting:
 		return { "head", "johnssona", "Kyoto" };
 	case Problem::HomographyFitting:
@@ -661,6 +692,150 @@ bool initializeScene(const std::string &scene_name_,
 	return true;
 }
 
+// An example function showing how to fit calculate a 2D line to a set of 2D points by Graph-Cut RANSAC
+void test2DLineFitting(
+	const std::string& image_path_, // The path where the ground truth pose can be found
+	const double confidence_, // The RANSAC confidence value
+	const double inlier_outlier_threshold_, // The used inlier-outlier threshold in GC-RANSAC.
+	const double spatial_coherence_weight_, // The weight of the spatial coherence term in the graph-cut energy minimization.
+	const double sphere_radius_,  // The radius of the sphere used for determining the neighborhood-graph
+	const double minimum_inlier_ratio_for_sprt_) // An assumption about the minimum inlier ratio used for the SPRT test
+{
+	// Load the image
+	cv::Mat image = cv::imread(image_path_),
+		image_gray;
+
+	// Checking if the image has been loaded
+	if (image.empty())
+	{
+		fprintf(stderr, "Image '%s' has not been loaded correctly.\n", image_path_.c_str());
+		return;
+	}
+
+	// Applying Canny edge detection
+	constexpr double
+		low_threshold = 50,
+		max_low_threshold = 100,
+		kernel_size = 3,
+		ratio = 3;
+
+	cv::Mat detected_edges;
+	cv::cvtColor(image, image_gray, cv::COLOR_BGR2GRAY);
+	cv::blur(image_gray, detected_edges, cv::Size(3, 3));
+
+	cv::Canny(detected_edges,
+		detected_edges,
+		low_threshold,
+		low_threshold * ratio,
+		kernel_size);
+
+	// Storing the points for line fitting
+	cv::Mat points(0, 2, CV_64F),
+		point(1, 2, CV_64F);
+	for (size_t row = 0; row < detected_edges.rows; row += 1)
+		for (size_t col = 0; col < detected_edges.cols; col += 1)
+			if (detected_edges.at<uchar>(row, col) > std::numeric_limits<int>::epsilon())
+			{
+				point.at<double>(0) = col;
+				point.at<double>(1) = row;
+				points.push_back(point);
+			}
+
+	// Initialize the neighborhood used in Graph-cut RANSAC and, perhaps,
+	// in the sampler if NAPSAC or Progressive-NAPSAC sampling is applied.
+	std::chrono::time_point<std::chrono::system_clock> start, end; // Variables for time measurement
+	start = std::chrono::system_clock::now(); // The starting time of the neighborhood calculation
+	neighborhood::GridNeighborhoodGraph<2> neighborhood(&points, // The data points
+		{ image.cols / 16.0,
+			image.rows / 16.0 },
+		16); // The radius of the neighborhood sphere used for determining the neighborhood structure
+	end = std::chrono::system_clock::now(); // The end time of the neighborhood calculation
+	std::chrono::duration<double> elapsed_seconds = end - start; // The elapsed time in seconds
+	printf("Neighborhood calculation time = %f secs\n", elapsed_seconds.count());
+
+	// Apply Graph-cut RANSAC
+	utils::Default2DLineEstimator estimator; // The estimator used for the pose fitting
+	Line2D model; // The estimated model parameters
+
+	// Initialize the samplers
+	// The main sampler is used inside the local optimization
+	// The main sampler is used inside the local optimization
+	sampler::ProgressiveNapsacSampler<2> main_sampler(&points,
+		{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
+							// (image_width / 16) * (image_height / 16), etc.
+		estimator.sampleSize(), // The size of a minimal sample
+		{ static_cast<double>(image.cols), // The width of the image
+			static_cast<double>(image.rows) });  // The height of the image
+	sampler::UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
+
+	// Checking if the samplers are initialized successfully.
+	if (!main_sampler.isInitialized() ||
+		!local_optimization_sampler.isInitialized())
+	{
+		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
+		return;
+	}
+
+	// Initializing SPRT test
+	preemption::SPRTPreemptiveVerfication<utils::Default2DLineEstimator> preemptive_verification(
+		points, // The set of 2D points
+		estimator, // The line estimator object
+		minimum_inlier_ratio_for_sprt_); // The minimum acceptable inlier ratio. Models with fewer inliers will not be accepted.
+
+	GCRANSAC<utils::Default2DLineEstimator,
+		neighborhood::GridNeighborhoodGraph<2>,
+		MSACScoringFunction<utils::Default2DLineEstimator>,
+		preemption::SPRTPreemptiveVerfication<utils::Default2DLineEstimator>> gcransac;
+	gcransac.settings.threshold = inlier_outlier_threshold_; // The inlier-outlier threshold
+	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
+	gcransac.settings.confidence = confidence_; // The required confidence in the results
+	gcransac.settings.max_iteration_number = 5000; // The maximum number of iterations
+	gcransac.settings.min_iteration_number = 20; // The minimum number of iterations
+
+	// Start GC-RANSAC
+	gcransac.run(points, // The normalized points
+		estimator,  // The estimator
+		&main_sampler, // The sample used for selecting minimal samples in the main iteration
+		&local_optimization_sampler, // The sampler used for selecting a minimal sample when doing the local optimization
+		&neighborhood, // The neighborhood-graph
+		model, // The obtained model parameters
+		preemptive_verification); 
+
+	// Get the statistics of the results
+	const utils::RANSACStatistics& statistics = gcransac.getRansacStatistics();
+
+	printf("Elapsed time = %f secs\n", statistics.processing_time);
+	printf("Inlier number before = %d\n", static_cast<int>(statistics.inliers.size()));
+	printf("Applied number of local optimizations = %d\n", static_cast<int>(statistics.local_optimization_number));
+	printf("Applied number of graph-cuts = %d\n", static_cast<int>(statistics.graph_cut_number));
+	printf("Number of iterations = %d\n\n", static_cast<int>(statistics.iteration_number));
+
+	// Draw the inlier to the image
+	for (const auto& inlierIdx : statistics.inliers)
+		cv::circle(image,
+			cv::Point(points.at<double>(inlierIdx, 0), points.at<double>(inlierIdx, 1)),
+			2,
+			cv::Scalar(0, 255, 0),
+			-1);
+
+	// Draw the line to the image
+	double x1 = 0,
+		x2 = image.cols;
+	double y1 = -(model.descriptor(0) * x1 + model.descriptor(2)) / model.descriptor(1),
+		y2 = -(model.descriptor(0) * x2 + model.descriptor(2)) / model.descriptor(1);
+	cv::line(image, cv::Point(x1, y1), cv::Point(x2, y2), cv::Scalar(0, 0, 255), 2);
+
+	printf("Press a button to continue.\n");
+	cv::imshow("Detected edges", detected_edges);
+	cv::imshow("Found line", image);
+	cv::waitKey(0);
+
+	// Cleaning up
+	cv::destroyWindow("Detected edges");
+	cv::destroyWindow("Found line");
+	image.release();
+}
+
 // An example function showing how to fit calculate a rigid transformation from a set of 3D-3D correspondences by Graph-Cut RANSAC
 void testRigidTransformFitting(
 	const std::string &ground_truth_pose_path_, // The path where the ground truth pose can be found
@@ -841,11 +1016,11 @@ void testHomographyFitting(
 	// in the sampler if NAPSAC or Progressive-NAPSAC sampling is applied.
 	std::chrono::time_point<std::chrono::system_clock> start, end; // Variables for time measurement
 	start = std::chrono::system_clock::now(); // The starting time of the neighborhood calculation
-	neighborhood::GridNeighborhoodGraph neighborhood(&points,
-		source_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
-		source_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_),
-		destination_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
-		destination_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_),
+	neighborhood::GridNeighborhoodGraph<4> neighborhood(&points,
+		{ source_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
+			source_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_),
+			destination_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
+			destination_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_) },
 		cell_number_in_neighborhood_graph_);
 	end = std::chrono::system_clock::now(); // The end time of the neighborhood calculation
 	std::chrono::duration<double> elapsed_seconds = end - start; // The elapsed time in seconds
@@ -870,7 +1045,7 @@ void testHomographyFitting(
 		minimum_inlier_ratio_for_sprt_);
 
 	GCRANSAC<utils::DefaultHomographyEstimator, 
-		neighborhood::GridNeighborhoodGraph,
+		neighborhood::GridNeighborhoodGraph<4>,
 		MSACScoringFunction<utils::DefaultHomographyEstimator>,
 		preemption::SPRTPreemptiveVerfication<utils::DefaultHomographyEstimator>> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
@@ -885,14 +1060,14 @@ void testHomographyFitting(
 
 	// Initialize the samplers
 	// The main sampler is used inside the local optimization
-	sampler::ProgressiveNapsacSampler main_sampler(&points,
+	sampler::ProgressiveNapsacSampler<4> main_sampler(&points,
 		{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
 							// (source_image_width / 16) * (source_image_height / 16)  * (destination_image_width / 16)  (destination_image_height / 16), etc.
 		estimator.sampleSize(), // The size of a minimal sample
-		static_cast<double>(source_image.cols), // The width of the source image
-		static_cast<double>(source_image.rows), // The height of the source image
-		static_cast<double>(destination_image.cols), // The width of the destination image
-		static_cast<double>(destination_image.rows),  // The height of the destination image
+		{ static_cast<double>(source_image.cols), // The width of the source image
+			static_cast<double>(source_image.rows), // The height of the source image
+			static_cast<double>(destination_image.cols), // The width of the destination image
+			static_cast<double>(destination_image.rows) },  // The height of the destination image
 		0.5); // The length (i.e., 0.5 * <point number> iterations) of fully blending to global sampling 
 
 	sampler::UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
@@ -990,11 +1165,11 @@ void testFundamentalMatrixFitting(
 	// in the sampler if NAPSAC or Progressive-NAPSAC sampling is applied.
 	std::chrono::time_point<std::chrono::system_clock> start, end; // Variables for time measurement
 	start = std::chrono::system_clock::now(); // The starting time of the neighborhood calculation
-	neighborhood::GridNeighborhoodGraph neighborhood(&points,
-		source_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
-		source_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_),
-		destination_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
-		destination_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_),
+	neighborhood::GridNeighborhoodGraph<4> neighborhood(&points,
+		{ source_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
+			source_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_),
+			destination_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
+			destination_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_) },
 		cell_number_in_neighborhood_graph_);
 	end = std::chrono::system_clock::now(); // The end time of the neighborhood calculation
 	std::chrono::duration<double> elapsed_seconds = end - start; // The elapsed time in seconds
@@ -1025,14 +1200,14 @@ void testFundamentalMatrixFitting(
 
 	// Initialize the samplers
 	// The main sampler is used inside the local optimization
-	sampler::ProgressiveNapsacSampler main_sampler(&points,
+	sampler::ProgressiveNapsacSampler<4> main_sampler(&points,
 		{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
 							// (source_image_width / 16) * (source_image_height / 16)  * (destination_image_width / 16)  (destination_image_height / 16), etc.
 		estimator.sampleSize(), // The size of a minimal sample
-		static_cast<double>(source_image.cols), // The width of the source image
-		static_cast<double>(source_image.rows), // The height of the source image
-		static_cast<double>(destination_image.cols), // The width of the destination image
-		static_cast<double>(destination_image.rows));  // The height of the destination image
+		{ static_cast<double>(source_image.cols), // The width of the source image
+			static_cast<double>(source_image.rows), // The height of the source image
+			static_cast<double>(destination_image.cols), // The width of the destination image
+			static_cast<double>(destination_image.rows) });  // The height of the destination image
 	sampler::UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
 
 	// Checking if the samplers are initialized successfully.
@@ -1044,7 +1219,7 @@ void testFundamentalMatrixFitting(
 	}
 	
 	GCRANSAC<utils::DefaultFundamentalMatrixEstimator, 
-		neighborhood::GridNeighborhoodGraph,
+		neighborhood::GridNeighborhoodGraph<4>,
 		MSACScoringFunction<utils::DefaultFundamentalMatrixEstimator>,
 		preemption::SPRTPreemptiveVerfication<utils::DefaultFundamentalMatrixEstimator>> gcransac;
 	gcransac.settings.threshold = inlier_outlier_threshold_ * max_image_diagonal; // The inlier-outlier threshold
@@ -1388,11 +1563,11 @@ void testEssentialMatrixFitting(
 	// in the sampler if NAPSAC or Progressive-NAPSAC sampling is applied.
 	std::chrono::time_point<std::chrono::system_clock> start, end; // Variables for time measurement
 	start = std::chrono::system_clock::now(); // The starting time of the neighborhood calculation
-	neighborhood::GridNeighborhoodGraph neighborhood(&points,
-		source_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
-		source_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_),
-		destination_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
-		destination_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_),
+	neighborhood::GridNeighborhoodGraph<4> neighborhood(&points,
+		{ source_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
+			source_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_),
+			destination_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
+			destination_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_) },
 		cell_number_in_neighborhood_graph_);
 	end = std::chrono::system_clock::now(); // The end time of the neighborhood calculation
 	std::chrono::duration<double> elapsed_seconds = end - start; // The elapsed time in seconds
@@ -1419,14 +1594,14 @@ void testEssentialMatrixFitting(
 
 	// Initialize the samplers
 	// The main sampler is used inside the local optimization
-	sampler::ProgressiveNapsacSampler main_sampler(&points,
+	sampler::ProgressiveNapsacSampler<4> main_sampler(&points,
 		{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
 							// (source_image_width / 16) * (source_image_height / 16)  * (destination_image_width / 16)  (destination_image_height / 16), etc.
 		estimator.sampleSize(), // The size of a minimal sample
-		static_cast<double>(source_image.cols), // The width of the source image
-		static_cast<double>(source_image.rows), // The height of the source image
-		static_cast<double>(destination_image.cols), // The width of the destination image
-		static_cast<double>(destination_image.rows));  // The height of the destination image
+		{ static_cast<double>(source_image.cols), // The width of the source image
+			static_cast<double>(source_image.rows), // The height of the source image
+			static_cast<double>(destination_image.cols), // The width of the destination image
+			static_cast<double>(destination_image.rows) });  // The height of the destination image
 	sampler::UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
 
 	// Checking if the samplers are initialized successfully.
@@ -1438,7 +1613,7 @@ void testEssentialMatrixFitting(
 	}
 	
 	GCRANSAC<utils::DefaultEssentialMatrixEstimator, 
-		neighborhood::GridNeighborhoodGraph,
+		neighborhood::GridNeighborhoodGraph<4>,
 		MSACScoringFunction<utils::DefaultEssentialMatrixEstimator>,
 		preemption::SPRTPreemptiveVerfication<utils::DefaultEssentialMatrixEstimator>> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)

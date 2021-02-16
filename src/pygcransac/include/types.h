@@ -41,6 +41,7 @@
 #include "essential_estimator.h"
 #include "perspective_n_point_estimator.h"
 #include "rigid_transformation_estimator.h"
+#include "linear_model_estimator.h"
 
 #include "solver_fundamental_matrix_seven_point.h"
 #include "solver_fundamental_matrix_eight_point.h"
@@ -50,6 +51,7 @@
 #include "solver_homography_four_point.h"
 #include "solver_essential_matrix_five_point_stewenius.h"
 #include "solver_rigid_transformation_svd.h"
+#include "solver_linear_model.h"
 
 namespace gcransac
 {
@@ -79,5 +81,17 @@ namespace gcransac
 		typedef estimator::RigidTransformationEstimator<estimator::solver::RigidTransformationSVDBasedSolver, // The solver used for fitting a model to a minimal sample
 			estimator::solver::RigidTransformationSVDBasedSolver> // The solver used for fitting a model to a non-minimal sample
 			DefaultRigidTransformationEstimator;
+
+		// The default estimator for 2D line fitting
+		typedef estimator::LinearModelEstimator<estimator::solver::LinearModelSolver<2>, // The solver used for fitting a model to a minimal sample
+			estimator::solver::LinearModelSolver<2>,  // The solver used for fitting a model to a non-minimal sample
+			2> // The dimensionality of the problem
+			Default2DLineEstimator;
+
+		// The default estimator for 3D plane fitting
+		typedef estimator::LinearModelEstimator<estimator::solver::LinearModelSolver<3>, // The solver used for fitting a model to a minimal sample
+			estimator::solver::LinearModelSolver<3>,  // The solver used for fitting a model to a non-minimal sample
+			3> // The dimensionality of the problem
+			Default3DPlaneEstimator;
 	}
 }
