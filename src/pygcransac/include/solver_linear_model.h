@@ -105,6 +105,9 @@ namespace gcransac
 				std::vector<Model>& models_,
 				const double* weights_) const
 			{
+				const double* dataPtr = reinterpret_cast<double*>(data_.data);
+				const int kColumns = data_.cols;
+
 				// The pointer to the first point
 				const double* point1Ptr = dataPtr + kColumns * sample_[0];
 				// The pointer to the second point
@@ -132,7 +135,7 @@ namespace gcransac
 				// The offset from the origin
 				double d = -normal(0) * point1Ptr[0] - normal(1) * point1Ptr[1] - normal(2) * point1Ptr[2];
 				// Adding the estimated line to the vector models
-				models_.resize(models_size() + 1);
+				models_.resize(models_.size() + 1);
 				models_.back().descriptor.resize(4, 1);
 				models_.back().descriptor << normal, d;
 				return true;
