@@ -54,7 +54,8 @@ namespace gcransac
 
 		public:
 			explicit Sampler(const _DataContainer * const container_) :
-				container(container_)
+				container(container_),
+				initialized(false)
 			{}
 
 			virtual ~Sampler() {}
