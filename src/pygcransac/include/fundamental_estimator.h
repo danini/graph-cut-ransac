@@ -527,7 +527,7 @@ namespace gcransac
 					Model model;
 
 					GCRANSAC<estimator::FundamentalMatrixEstimator<estimator::solver::FundamentalMatrixPlaneParallaxSolver, // The solver used for fitting a model to a minimal sample
-						estimator::solver::FundamentalMatrixEightPointSolver>, neighborhood::GridNeighborhoodGraph> gcransac;
+						estimator::solver::FundamentalMatrixEightPointSolver>, neighborhood::GridNeighborhoodGraph<4>> gcransac;
 					gcransac.settings.threshold = threshold_; // The inlier-outlier threshold
 					gcransac.settings.spatial_coherence_weight = 0; // The weight of the spatial coherence term
 					gcransac.settings.confidence = 0.99; // The required confidence in the results

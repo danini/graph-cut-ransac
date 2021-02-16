@@ -287,7 +287,7 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
 		points.at<double>(i, 3) = dstPts[2 * i + 1];
 	}
 	const size_t cell_number_in_neighborhood_graph_ = 8;
-	neighborhood::GridNeighborhoodGraph neighborhood1(&points,
+	neighborhood::GridNeighborhoodGraph<4> neighborhood1(&points,
 		w1 / static_cast<double>(cell_number_in_neighborhood_graph_),
 		h1 / static_cast<double>(cell_number_in_neighborhood_graph_),
 		w2 / static_cast<double>(cell_number_in_neighborhood_graph_),
@@ -312,14 +312,14 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
 
 	// Initialize the samplers
 	// The main sampler is used inside the local optimization
-	sampler::ProgressiveNapsacSampler main_sampler(&points,
+	sampler::ProgressiveNapsacSampler<4> main_sampler(&points,
 		{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
 							// (source_image_width / 16) * (source_image_height / 16)  * (destination_image_width / 16)  (destination_image_height / 16), etc.
 		estimator.sampleSize(), // The size of a minimal sample
-		static_cast<double>(w1), // The width of the source image
-		static_cast<double>(h1), // The height of the source image
-		static_cast<double>(w2), // The width of the destination image
-		static_cast<double>(h2));  // The height of the destination image
+		{ static_cast<double>(w1), // The width of the source image
+			static_cast<double>(h1), // The height of the source image
+			static_cast<double>(w2), // The width of the destination image
+			static_cast<double>(h2) });  // The height of the destination image
 	sampler::UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
 
 	// Checking if the samplers are initialized successfully.
@@ -342,7 +342,7 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
 			min_inlier_ratio_for_sprt);
 
 		GCRANSAC<utils::DefaultFundamentalMatrixEstimator,
-			neighborhood::GridNeighborhoodGraph,
+			neighborhood::GridNeighborhoodGraph<4>,
 			MSACScoringFunction<utils::DefaultFundamentalMatrixEstimator>,
 			preemption::SPRTPreemptiveVerfication<utils::DefaultFundamentalMatrixEstimator>> gcransac;
 		gcransac.settings.threshold = 0.0005 * threshold * max_image_diagonal; // The inlier-outlier threshold
@@ -366,7 +366,7 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
 	}
 	else
 	{
-		GCRANSAC<utils::DefaultFundamentalMatrixEstimator, neighborhood::GridNeighborhoodGraph> gcransac;
+		GCRANSAC<utils::DefaultFundamentalMatrixEstimator, neighborhood::GridNeighborhoodGraph<4>> gcransac;
 		gcransac.settings.threshold = 0.0005 * threshold * max_image_diagonal; // The inlier-outlier threshold
 		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
 		gcransac.settings.confidence = conf; // The required confidence in the results
@@ -433,7 +433,7 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 		points.at<double>(i, 3) = dstPts[2 * i + 1];
 	}
 	const size_t cell_number_in_neighborhood_graph_ = 8;
-	neighborhood::GridNeighborhoodGraph neighborhood1(&points,
+	neighborhood::GridNeighborhoodGraph<4> neighborhood1(&points,
 		w1 / static_cast<double>(cell_number_in_neighborhood_graph_),
 		h1 / static_cast<double>(cell_number_in_neighborhood_graph_),
 		w2 / static_cast<double>(cell_number_in_neighborhood_graph_),
@@ -480,14 +480,14 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 
 	// Initialize the samplers
 	// The main sampler is used inside the local optimization
-	sampler::ProgressiveNapsacSampler main_sampler(&points,
+	sampler::ProgressiveNapsacSampler<4> main_sampler(&points,
 		{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
 							// (source_image_width / 16) * (source_image_height / 16)  * (destination_image_width / 16)  (destination_image_height / 16), etc.
 		estimator.sampleSize(), // The size of a minimal sample
-		static_cast<double>(w1), // The width of the source image
-		static_cast<double>(h1), // The height of the source image
-		static_cast<double>(w2), // The width of the destination image
-		static_cast<double>(h2));  // The height of the destination image
+		{ static_cast<double>(w1), // The width of the source image
+			static_cast<double>(h1), // The height of the source image
+			static_cast<double>(w2), // The width of the destination image
+			static_cast<double>(h2) });  // The height of the destination image
 	sampler::UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
 
 	// Checking if the samplers are initialized successfully.
@@ -509,7 +509,7 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 			min_inlier_ratio_for_sprt);
 
 		GCRANSAC<utils::DefaultEssentialMatrixEstimator,
-			neighborhood::GridNeighborhoodGraph,
+			neighborhood::GridNeighborhoodGraph<4>,
 			MSACScoringFunction<utils::DefaultEssentialMatrixEstimator>,
 			preemption::SPRTPreemptiveVerfication<utils::DefaultEssentialMatrixEstimator>> gcransac;
 		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
@@ -533,7 +533,7 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 	}
 	else
 	{
-		GCRANSAC<utils::DefaultEssentialMatrixEstimator, neighborhood::GridNeighborhoodGraph> gcransac;
+		GCRANSAC<utils::DefaultEssentialMatrixEstimator, neighborhood::GridNeighborhoodGraph<4>> gcransac;
 		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
 		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
 		gcransac.settings.confidence = conf; // The required confidence in the results
@@ -600,7 +600,7 @@ int findHomography_(std::vector<double>& srcPts,
 		points.at<double>(i, 3) = dstPts[2 * i + 1];
 	}
 
-	neighborhood::GridNeighborhoodGraph neighborhood1(&points,
+	neighborhood::GridNeighborhoodGraph<4> neighborhood1(&points,
 		w1 / static_cast<double>(cell_number_in_neighborhood_graph_),
 		h1 / static_cast<double>(cell_number_in_neighborhood_graph_),
 		w2 / static_cast<double>(cell_number_in_neighborhood_graph_),
@@ -626,14 +626,14 @@ int findHomography_(std::vector<double>& srcPts,
 	utils::DefaultHomographyEstimator estimator;
 	Homography model;
 
-	sampler::ProgressiveNapsacSampler main_sampler(&points,
+	sampler::ProgressiveNapsacSampler<4> main_sampler(&points,
 		{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
 							// (source_image_width / 16) * (source_image_height / 16)  * (destination_image_width / 16)  (destination_image_height / 16), etc.
 		estimator.sampleSize(), // The size of a minimal sample
-		static_cast<double>(w1), // The width of the source image
-		static_cast<double>(h1), // The height of the source image
-		static_cast<double>(w2), // The width of the destination image
-		static_cast<double>(h2),  // The height of the destination image
+		{ static_cast<double>(w1), // The width of the source image
+			static_cast<double>(h1), // The height of the source image
+			static_cast<double>(w2), // The width of the destination image
+			static_cast<double>(h2) },  // The height of the destination image
 		0.5); // The length (i.e., 0.5 * <point number> iterations) of fully blending to global sampling 
 
 	sampler::UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
@@ -656,7 +656,7 @@ int findHomography_(std::vector<double>& srcPts,
 			estimator);
 
 		GCRANSAC<utils::DefaultHomographyEstimator,
-			neighborhood::GridNeighborhoodGraph,
+			neighborhood::GridNeighborhoodGraph<4>,
 			MSACScoringFunction<utils::DefaultHomographyEstimator>,
 			preemption::SPRTPreemptiveVerfication<utils::DefaultHomographyEstimator>> gcransac;
 		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
@@ -680,7 +680,7 @@ int findHomography_(std::vector<double>& srcPts,
 	}
 	else
 	{
-		GCRANSAC<utils::DefaultHomographyEstimator, neighborhood::GridNeighborhoodGraph> gcransac;
+		GCRANSAC<utils::DefaultHomographyEstimator, neighborhood::GridNeighborhoodGraph<4>> gcransac;
 		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
 		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
 		gcransac.settings.confidence = conf; // The required confidence in the results

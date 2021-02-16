@@ -46,18 +46,16 @@ namespace gcransac
 	{
 		// The paper in which the Progressive NAPSAC sampler is described is
 		// at https://arxiv.org/abs/1906.02295
+		template <size_t _DimensionNumber>
 		class ProgressiveNapsacSampler : public Sampler < cv::Mat, size_t >
 		{
 		protected:
 			std::unique_ptr<utils::UniformRandomGenerator<size_t>> random_generator; // The random number generator
 			const size_t layer_number; // The number of overlapping neighborhood grids
-			const double sampler_length, // The length of fully blending to global sampling 
-				source_image_width, // The width of the source image
-				source_image_height, // The height of the source image
-				destination_image_width, // The width of the destination image
-				destination_image_height; // The height of the destination image
+			const double sampler_length; // The length of fully blending to global sampling 
+			const std::vector<double> sizes; // The sizes along each axis
 
-			std::vector<neighborhood::GridNeighborhoodGraph> grid_layers; // The overlapping neighborhood grids
+			std::vector<neighborhood::GridNeighborhoodGraph<_DimensionNumber>> grid_layers; // The overlapping neighborhood grids
 			std::vector<size_t> layer_data; // The sizes of the grids
 
 			std::vector<size_t> current_layer_per_point, // It stores the index of the layer which is used for each point
@@ -78,10 +76,7 @@ namespace gcransac
 				const cv::Mat *container_, // The pointer pointing to the data points
 				const std::vector<size_t> layer_data_, // The number of cells for each neighborhood grid. This must be in descending order.
 				const size_t sample_size_, // The size of a minimal sample.
-				const double source_image_width_, // The width of the source image
-				const double source_image_height_, // The height of the source image
-				const double destination_image_width_, // The width of the destination image
-				const double destination_image_height_, // The height of the destination image
+				const std::vector<double> &sizes_, // The width of the source image
 				const double sampler_length_ = 20) // The length of fully blending to global sampling 
 				: Sampler(container_),
 				layer_data(layer_data_),
@@ -91,10 +86,7 @@ namespace gcransac
 				current_layer_per_point(container_->rows, 0),
 				hits_per_point(container_->rows, 0),
 				subset_size_per_point(container_->rows, sample_size_),
-				source_image_width(source_image_width_),
-				source_image_height(source_image_height_),
-				destination_image_width(destination_image_width_),
-				destination_image_height(destination_image_height_),
+				sizes(sizes_),
 				kth_sample_number(0),
 				one_point_prosac_sampler(container_, 1, container_->rows),
 				prosac_sampler(container_, sample_size_, container_->rows),
@@ -120,19 +112,21 @@ namespace gcransac
 				size_t sample_size_);
 		};
 
-		void ProgressiveNapsacSampler::reset()
+		template <size_t _DimensionNumber>
+		void ProgressiveNapsacSampler<_DimensionNumber>::reset()
 		{
 			random_generator->resetGenerator(0,
 				static_cast<size_t>(point_number));
 			kth_sample_number = 0;
 			hits_per_point = std::vector<size_t>(point_number, 0);
 			current_layer_per_point = std::vector<size_t>(point_number, 0);
-			subset_size_per_point = std::vector<size_t>(point_number, 7);
+			subset_size_per_point = std::vector<size_t>(point_number, sample_size);
 			one_point_prosac_sampler.reset();
 			prosac_sampler.reset();
 		}
 
-		bool ProgressiveNapsacSampler::initialize(const cv::Mat *container_)
+		template <size_t _DimensionNumber>
+		bool ProgressiveNapsacSampler<_DimensionNumber>::initialize(const cv::Mat *container_)
 		{
 			// Initialize the random generator
 			random_generator = std::make_unique<utils::UniformRandomGenerator<size_t>>();
@@ -161,11 +155,12 @@ namespace gcransac
 
 				const size_t cell_number_in_grid = layer_data[layer_idx];
 
-				grid_layers.emplace_back(neighborhood::GridNeighborhoodGraph(container_,
-					source_image_width / cell_number_in_grid,
-					source_image_height / cell_number_in_grid,
-					destination_image_width / cell_number_in_grid,
-					destination_image_height / cell_number_in_grid,
+				std::vector<double> cell_sizes(_DimensionNumber);
+				for (size_t dimensionIdx = 0; dimensionIdx < _DimensionNumber; ++dimensionIdx)
+					cell_sizes[dimensionIdx] = sizes[dimensionIdx] / cell_number_in_grid;
+ 
+				grid_layers.emplace_back(neighborhood::GridNeighborhoodGraph<_DimensionNumber>(container_,
+					cell_sizes,
 					cell_number_in_grid));
 			}
 
@@ -194,7 +189,8 @@ namespace gcransac
 			return true;
 		}
 
-		OLGA_INLINE bool ProgressiveNapsacSampler::sample(
+		template <size_t _DimensionNumber>
+		OLGA_INLINE bool ProgressiveNapsacSampler<_DimensionNumber>::sample(
 			const std::vector<size_t> &pool_,
 			size_t * const subset_,
 			size_t sample_size_)

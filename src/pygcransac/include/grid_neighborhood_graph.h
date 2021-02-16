@@ -45,81 +45,65 @@ namespace gcransac
 	namespace neighborhood
 	{
 		// The cell structure used in the HashMap
+		template <size_t _DimensionNumber>
 		class GridCell {
 		public:
-			const size_t idx_along_axis_x1, // The cell index along axis X in the source image
-				idx_along_axis_y1, // The cell index along axis Y in the source image
-				idx_along_axis_x2, // The cell index along axis X in the destination image
-				idx_along_axis_y2; // The cell index along axis Y in the destination image
-			const size_t index; // The index of the cell used in the hashing function
+			// The cell index along a particular axis
+			const std::vector<size_t> idx_along_axes;
+			// The index of the cell used in the hashing function
+			size_t index; 
 
 			GridCell(
-				size_t idx_along_axis_x1_, // The cell index along axis X in the source image
-				size_t idx_along_axis_y1_, // The cell index along axis Y in the source image 
-				size_t idx_along_axis_x2_, // The cell index along axis X in the destination image 
-				size_t idx_along_axis_y2_, // The cell index along axis Y in the destination image
-				size_t cell_number_along_axis_x1_, // The number of cells along axis X in the source image
-				size_t cell_number_along_axis_y1_, // The number of cells along axis Y in the source image
-				size_t cell_number_along_axis_x2_, // The number of cells along axis X in the destination image 
-				size_t cell_number_along_axis_y2_) : // The number of cells along axis Y in the destination image
-				idx_along_axis_x1(idx_along_axis_x1_),
-				idx_along_axis_y1(idx_along_axis_y1_),
-				idx_along_axis_x2(idx_along_axis_x2_),
-				idx_along_axis_y2(idx_along_axis_y2_),
-				index(idx_along_axis_x1_ +
-					cell_number_along_axis_x1_ * idx_along_axis_y1_ +
-					cell_number_along_axis_x1_ * cell_number_along_axis_y1_ * idx_along_axis_x2_ +
-					cell_number_along_axis_x1_ * cell_number_along_axis_y1_ * cell_number_along_axis_x2_ * idx_along_axis_y2_)
+				const std::vector<size_t> &idx_along_axes_,
+				const std::vector<size_t> &cell_number_along_axes) :
+				idx_along_axes(idx_along_axes_)
 			{
+				size_t offset = 1;
+				index = 0;
+				for (size_t dimensionIdx = 0; dimensionIdx < _DimensionNumber; ++dimensionIdx)
+				{
+					index += offset * idx_along_axes_[dimensionIdx];
+					offset *= cell_number_along_axes[dimensionIdx];
+				}
 			}
 
 			GridCell(
-				size_t idx_along_axis_x1_, // The cell index along axis X in the source image
-				size_t idx_along_axis_y1_, // The cell index along axis Y in the source image 
-				size_t idx_along_axis_x2_, // The cell index along axis X in the destination image 
-				size_t idx_along_axis_y2_, // The cell index along axis Y in the destination image
-				size_t cell_number_along_all_axes_) : // The number of cells along all axis in both images
-				idx_along_axis_x1(idx_along_axis_x1_),
-				idx_along_axis_y1(idx_along_axis_y1_),
-				idx_along_axis_x2(idx_along_axis_x2_),
-				idx_along_axis_y2(idx_along_axis_y2_),
-				index(idx_along_axis_x1_ +
-					cell_number_along_all_axes_ * idx_along_axis_y1_ +
-					cell_number_along_all_axes_ * cell_number_along_all_axes_ * idx_along_axis_x2_ +
-					cell_number_along_all_axes_ * cell_number_along_all_axes_ * cell_number_along_all_axes_ * idx_along_axis_y2_)
+				const std::vector<size_t> &idx_along_axes_,
+				const size_t &cell_number_along_all_axes_) : // The number of cells along all axis in both images
+				idx_along_axes(idx_along_axes_)
 			{
+				size_t offset = 1;
+				index = 0;
+				for (size_t dimensionIdx = 0; dimensionIdx < _DimensionNumber; ++dimensionIdx)
+				{
+					index += offset * idx_along_axes_[dimensionIdx];
+					offset *= cell_number_along_all_axes_;
+				}
 			}
 
 			// Two cells are equal of their indices along all axes in both
 			// images are equal.
 			bool operator==(const GridCell &o) const {
-				return
-					idx_along_axis_x1 == o.idx_along_axis_x1 &&
-					idx_along_axis_y1 == o.idx_along_axis_y1 &&
-					idx_along_axis_x2 == o.idx_along_axis_x2 &&
-					idx_along_axis_y2 == o.idx_along_axis_y2;
+
+				for (size_t dimensionIdx = 0; dimensionIdx < _DimensionNumber; ++dimensionIdx)
+					if (idx_along_axes[dimensionIdx] != o.idx_along_axes[dimensionIdx])
+						return false;
+				return true;
 			}
 
-			// The cells are ordered in ascending order along axes X1 Y1 X2 Y2
-			bool operator<(const GridCell &o) const {
-				if (idx_along_axis_x1 < o.idx_along_axis_x1)
-					return true;
+			// The cells are ordered in ascending order along axes
+			bool operator<(const GridCell &o) const 
+			{
+				for (size_t dimensionIdx = 0; dimensionIdx < _DimensionNumber; ++dimensionIdx)
+				{
+					const auto& idx1 = idx_along_axes[dimensionIdx] 
+					const auto& idx2 = o.idx_along_axes[dimensionIdx];
 
-				if (idx_along_axis_x1 == o.idx_along_axis_x1 &&
-					idx_along_axis_y1 < o.idx_along_axis_y1)
-					return true;
-
-				if (idx_along_axis_x1 == o.idx_along_axis_x1 &&
-					idx_along_axis_y1 == o.idx_along_axis_y1 &&
-					idx_along_axis_x2 < o.idx_along_axis_x2)
-					return true;
-
-				if (idx_along_axis_x1 == o.idx_along_axis_x1 &&
-					idx_along_axis_y1 == o.idx_along_axis_y1 &&
-					idx_along_axis_x2 == o.idx_along_axis_x2 &&
-					idx_along_axis_y2 < o.idx_along_axis_y2)
-					return true;
-
+					if (idx1 < idx2)
+						return true;
+					else if (idx1 > idx2)
+						return true;
+				}
 				return false;
 			}
 		};
@@ -127,9 +111,10 @@ namespace gcransac
 }
 
 namespace std {
-	template<> struct hash<gcransac::neighborhood::GridCell>
+	template <size_t _DimensionNumber>
+	struct hash<gcransac::neighborhood::GridCell<_DimensionNumber>>
 	{
-		std::size_t operator()(const gcransac::neighborhood::GridCell& coord) const noexcept
+		std::size_t operator()(const gcransac::neighborhood::GridCell<_DimensionNumber>& coord) const noexcept
 		{
 			// The cell's index value is used in the hashing function
 			return coord.index;
@@ -141,42 +126,42 @@ namespace gcransac
 {
 	namespace neighborhood
 	{
+		template <size_t _DimensionNumber>
 		class GridNeighborhoodGraph : public NeighborhoodGraph<cv::Mat>
 		{
 		protected:
-			double cell_width_source_image, // The width of a cell in the source image.
-				cell_height_source_image, // The height of a cell in the source image.
-				cell_width_destination_image, // The width of a cell in the destination image.
-				cell_height_destination_image;  // The height of a cell in the destination image.
+			std::vector<double> cell_sizes; // The size of a cell along a particular dimension
 
 			// Number of cells along the image axes.
 			size_t cell_number_along_all_axes;
 
 			// The grid is stored in the HashMap where the key is defined
 			// via the cell coordinates.
-			std::unordered_map<GridCell, std::vector<size_t>> grid;
+			std::unordered_map<GridCell<_DimensionNumber>, std::vector<size_t>> grid;
 
 			// The pointer to the cell (i.e., key in the grid) for each point.
 			// It is faster to store them than to recreate the cell structure
 			// whenever is needed.
-			std::vector<const GridCell *> cells_of_points;
+			std::vector<const GridCell<_DimensionNumber>*> cells_of_points;
 
 		public:
 			GridNeighborhoodGraph() : NeighborhoodGraph() {}
 
-			GridNeighborhoodGraph(const cv::Mat * const container_, // The pointer of the container consisting of the data points.
-				const double cell_width_source_image_,
-				const double cell_height_source_image_,
-				const double cell_width_destination_image_,
-				const double cell_height_destination_image_,
-				const size_t cell_number_along_all_axes_) :
-				cell_width_source_image(cell_width_source_image_),
-				cell_height_source_image(cell_height_source_image_),
-				cell_width_destination_image(cell_width_destination_image_),
-				cell_height_destination_image(cell_height_destination_image_),
+			GridNeighborhoodGraph(
+				const cv::Mat * const container_, // The pointer of the container consisting of the data points.
+				const std::vector<double> &cell_sizes_,
+				const size_t &cell_number_along_all_axes_) :
 				cell_number_along_all_axes(cell_number_along_all_axes_),
+				cell_sizes(cell_sizes_),
 				NeighborhoodGraph(container_)
 			{
+				if (container_->cols != _DimensionNumber)
+				{
+					fprintf(stderr, "The data dimension (%d) does not match with the expected dimension (%d).\n", 
+						container_->cols, _DimensionNumber);
+					return;
+				}
+
 				initialized = initialize(container);
 			}
 
@@ -184,32 +169,29 @@ namespace gcransac
 			inline const std::vector<size_t> &getNeighbors(size_t point_idx_) const;
 		};
 
-		bool GridNeighborhoodGraph::initialize(const cv::Mat * const container_)
+		template <size_t _DimensionNumber>
+		bool GridNeighborhoodGraph<_DimensionNumber>::initialize(const cv::Mat * const container_)
 		{
 			// The number of points
 			const size_t point_number = container_->rows;
-
+			 
 			// Pointer to the coordinates
 			const double *points_ptr =
 				reinterpret_cast<double *>(container_->data);
 
 			// Iterate through the points and put each into the grid.
+			std::vector<size_t> indices(_DimensionNumber);
 			for (size_t row = 0; row < point_number; ++row)
 			{
-				// The cell index along axis X in the source image.
-				const size_t idx_along_axis_x1 = *(points_ptr++) / cell_width_source_image;
-				// The cell index along axis Y in the source image.
-				const size_t idx_along_axis_y1 = *(points_ptr++) / cell_height_source_image;
-				// The cell index along axis X in the destination image.
-				const size_t idx_along_axis_x2 = *(points_ptr++) / cell_width_destination_image;
-				// The cell index along axis Y in the destination image.
-				const size_t idx_along_axis_y2 = *(points_ptr++) / cell_height_destination_image;
+				for (size_t dimensionIdx = 0; dimensionIdx < _DimensionNumber; ++dimensionIdx)
+				{
+					// The index of the cell along the current axis
+					indices[dimensionIdx] = 
+						*(points_ptr++) / cell_sizes[dimensionIdx];
+				}
 
 				// Constructing the cell structure which is used in the HashMap.
-				const GridCell cell(idx_along_axis_x1, // The cell index along axis X in the source image
-					idx_along_axis_y1, // The cell index along axis Y in the source image 
-					idx_along_axis_x2, // The cell index along axis X in the destination image
-					idx_along_axis_y2, // The cell index along axis Y in the destination image
+				const GridCell<_DimensionNumber> cell(indices, // The cell indices along the axes
 					cell_number_along_all_axes); // The number of cells along all axis in both images
 
 				// Add the current point's index to the grid.
@@ -222,7 +204,7 @@ namespace gcransac
 			for (const auto &element : grid)
 			{
 				// Get the pointer of the cell.
-				const GridCell *cell = &element.first;
+				const GridCell<_DimensionNumber>*cell = &element.first;
 
 				// Increase the edge number in the neighborhood graph.
 				// All possible pairs of points in each cell are neighbors,
@@ -239,10 +221,11 @@ namespace gcransac
 			return neighbor_number > 0;
 		}
 
-		inline const std::vector<size_t> &GridNeighborhoodGraph::getNeighbors(size_t point_idx_) const
+		template <size_t _DimensionNumber>
+		inline const std::vector<size_t> &GridNeighborhoodGraph<_DimensionNumber>::getNeighbors(size_t point_idx_) const
 		{
 			// Get the pointer of the cell in which the point is.
-			const GridCell *cell = cells_of_points[point_idx_];
+			const GridCell<_DimensionNumber> *cell = cells_of_points[point_idx_];
 			// Return the vector containing all the points in the cell.
 			return grid.at(*cell);
 		}
