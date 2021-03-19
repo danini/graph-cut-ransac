@@ -439,7 +439,7 @@ namespace gcransac
 			inlier_container_offset = (inlier_container_offset + 1) % 2;
 
 		if (temp_inner_inliers[inlier_container_offset].size() != so_far_the_best_score.inlier_number)
-			Score score = scoring_function->getScore(points_, // All points
+			so_far_the_best_score = scoring_function->getScore(points_, // All points
 				so_far_the_best_model, // Best model parameters
 				estimator_, // The estimator
 				settings.threshold, // The inlier-outlier threshold
@@ -459,18 +459,19 @@ namespace gcransac
 
 			if (success)
 			{
-				std::vector<size_t> tmp_inliers;
+				size_t inlier_container_idx = (inlier_container_offset + 1) % 2;
+				temp_inner_inliers[inlier_container_idx].clear();
 				Score score = scoring_function->getScore(points_, // All points
 					model, // Best model parameters
 					estimator_, // The estimator
 					settings.threshold, // The inlier-outlier threshold
-					tmp_inliers); // The current inliers
+					temp_inner_inliers[inlier_container_idx]); // The current inliers
 
 				if (so_far_the_best_score < score)
 				{
 					iterative_refitting_applied = true;
 					so_far_the_best_model.descriptor = model.descriptor;
-					tmp_inliers.swap(temp_inner_inliers[inlier_container_offset]);
+					inlier_container_offset = inlier_container_idx;
 				}
 			}
 		}
@@ -478,7 +479,7 @@ namespace gcransac
 		if (!iterative_refitting_applied) // Otherwise, do only one least-squares fitting on all of the inliers
 		{
 			// Estimate the final model using the full inlier set
-			std::vector<Model> models;
+			models.clear();
 			estimator_.estimateModelNonminimal(points_,
 				&(temp_inner_inliers[inlier_container_offset])[0],
 				so_far_the_best_score.inlier_number,
