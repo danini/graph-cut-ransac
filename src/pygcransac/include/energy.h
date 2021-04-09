@@ -259,9 +259,9 @@ inline void Energy<captype,tcaptype,flowtype>::add_term3(Var x, Var y, Var z,
                               Value E100, Value E101,
                               Value E110, Value E111)
 {
-	register Value pi = (E000 + E011 + E101 + E110) - (E100 + E010 + E001 + E111);
-	register Value delta;
-	register Var u;
+	Value pi = (E000 + E011 + E101 + E110) - (E100 + E010 + E001 + E111);
+	Value delta;
+	Var u;
 
 	if (pi >= 0)
 	{
