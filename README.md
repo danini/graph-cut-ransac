@@ -1,3 +1,8 @@
+# Important news
+
+I am happy to announce that Graph-Cut RANSAC had been included in OpenCV.
+You can check the documentation at [link](https://docs.opencv.org/4.5.2/d1/df1/md__build_master-contrib_docs-lin64_opencv_doc_tutorials_calib3d_usac.html).
+
 # Graph-Cut RANSAC
 
 The Graph-Cut RANSAC algorithm proposed in paper: Daniel Barath and Jiri Matas; Graph-Cut RANSAC, Conference on Computer Vision and Pattern Recognition, 2018. 
