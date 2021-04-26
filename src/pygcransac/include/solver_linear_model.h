@@ -222,7 +222,7 @@ namespace gcransac
 						sample_[pointIdx];
 					const double* pointPtr = dataPtr + kColumns * sampleIdx;
 
-					for (size_t column = 0; column < kColumns; ++column)
+					for (size_t column = 0; column < _DimensionNumber; ++column)
 						coefficients(pointIdx, column) = *(pointPtr++);
 				}
 

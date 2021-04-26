@@ -247,13 +247,23 @@ namespace gcransac
 				// Calculating the mass points in both images
 				for (size_t i = 0; i < sampleNumber_; ++i)
 				{
+					size_t sampleIdx = sample_ == nullptr ?
+						i : sample_[i];
+
 					// Get pointer of the current point
-					const double *coordinateIdx = kPointsPtr + kColumns * sample_[i];
+					const double *coordinateIdx = kPointsPtr + kColumns * sampleIdx;
 
 					// Add the coordinates to that of the mass points
 					for (size_t col = 0; col < _DimensionNumber; ++col)
 					{
 						massPoint_(col) += *(coordinateIdx);
+						*(normalizedPointsPtr++) = *(coordinateIdx);
+						++coordinateIdx;
+					}
+
+					// Copy the rest of the matrix if there is
+					for (size_t col = _DimensionNumber; col < kColumns; ++col)
+					{
 						*(normalizedPointsPtr++) = *(coordinateIdx);
 						++coordinateIdx;
 					}
