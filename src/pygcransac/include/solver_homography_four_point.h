@@ -83,14 +83,14 @@ namespace gcransac
 					const double *weights_ = nullptr) const; // The weight for each point
 
 			protected:
-				OLGA_INLINE bool HomographyFourPointSolver::estimateNonMinimalModel(
+				OLGA_INLINE bool estimateNonMinimalModel(
 					const cv::Mat& data_,
 					const size_t* sample_,
 					size_t sample_number_,
 					std::vector<Model>& models_,
 					const double* weights_) const;
 
-				OLGA_INLINE bool HomographyFourPointSolver::estimateMinimalModel(
+				OLGA_INLINE bool estimateMinimalModel(
 					const cv::Mat& data_,
 					const size_t* sample_,
 					size_t sample_number_,
