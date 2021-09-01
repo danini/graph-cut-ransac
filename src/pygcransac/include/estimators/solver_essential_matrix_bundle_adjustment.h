@@ -33,8 +33,6 @@
 // Author: Daniel Barath (barath.daniel@sztaki.mta.hu)
 #pragma once
 
-#include <iostream>
-
 #include "solver_engine.h"
 #include "fundamental_estimator.h"
 #include "../relative_pose/bundle.h"
@@ -113,8 +111,6 @@ namespace gcransac
 				std::vector<Model> &models_, // The estimated model parameters
 				const double *weights_) const // The weights used for the estimation
 			{
-				//std::cout << "ba 1" << std::endl;
-
 				// Check if we have enough points for the bundle adjustment
 				if (sample_number_ < sampleSize())
 					return false;
@@ -170,8 +166,6 @@ namespace gcransac
 						pt1, pt2, // The point correspondence used for the cheirality check
 						&poses); // The decomposed poses
 
-					//std::cout << poses.size() <<std::endl;
-
 					// Iterating through the possible poses and optimizing each
 					for (auto& pose : poses)
 					{
@@ -193,7 +187,7 @@ namespace gcransac
 						models_.emplace_back(model);
 					}
 				}
-				//std::cout << "ba 3" << std::endl;
+
 				return models_.size() > 0;
 			}
 

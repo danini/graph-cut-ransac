@@ -45,7 +45,6 @@ enum Problem {
 	FundamentalMatrixFitting,
 	EssentialMatrixFitting,
 	HomographyFitting,
-	RadialHomographyFitting,
 	RigidTransformationFitting
 };
 
