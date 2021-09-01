@@ -45,6 +45,7 @@ enum Problem {
 	FundamentalMatrixFitting,
 	EssentialMatrixFitting,
 	HomographyFitting,
+	RadialHomographyFitting,
 	RigidTransformationFitting
 };
 
@@ -91,6 +92,14 @@ void testHomographyFitting(
 	const size_t cell_number_in_neighborhood_graph_, // The radius of the neighborhood ball for determining the neighborhoods.
 	const int fps_, // The required FPS limit. If it is set to -1, the algorithm will not be interrupted before finishing.
 	const double minimum_inlier_ratio_for_sprt_ = 0.1); // An assumption about the minimum inlier ratio used for the SPRT test
+
+// An example function showing how to fit homography by Graph-Cut RANSAC
+void testRadialHomographyFitting(
+	const std::string& source_path_, // The source image's path
+	const std::string& destination_path_, // The destination image's path
+	const std::string& out_correspondence_path_, // The path where the detected correspondences (before the robust estimation) will be saved (or loaded from if exists)
+	const std::string& in_correspondence_path_, // The path where the inliers of the estimated fundamental matrices will be saved
+	const std::string& output_match_image_path_, // The path where the matched image pair will be saved
 	const double confidence_, // The RANSAC confidence value
 	const double inlier_outlier_threshold_, // The used inlier-outlier threshold in GC-RANSAC.
 	const double spatial_coherence_weight_, // The weight of the spatial coherence term in the graph-cut energy minimization.
@@ -190,7 +199,7 @@ int main(int argc, const char* argv[])
 	const double inlier_outlier_threshold_pnp = 5.50; // The used inlier-outlier threshold in GC-RANSAC for homography estimation.
 	const double spatial_coherence_weight = 0.975; // The weigd_t of the spatial coherence term in the graph-cut energy minimization.
 	const size_t cell_number_in_neighborhood_graph = 8; // The number of cells along each axis in the neighborhood graph.
-	
+
 	printf("------------------------------------------------------------\n2D line fitting\n------------------------------------------------------------\n");
 	for (const std::string& scene : getAvailableTestScenes(Problem::LineFitting))
 	{
@@ -388,6 +397,8 @@ std::vector<std::string> getAvailableTestScenes(Problem problem_)
 		return { "head", "johnssona", "Kyoto" };
 	case Problem::HomographyFitting:
 		return { "graf", "Eiffel", "adam" };
+	case Problem::RadialHomographyFitting:
+		return { "radial" };
 	case Problem::RigidTransformationFitting:
 		return { "kitchen" };
 	default:
@@ -506,7 +517,7 @@ bool initializeScenePnP(
 		}
 #endif
 	}
-	
+
 	// The path where the intrinsics camera matrix of the source camera can be found
 	intrinsics_path_ =
 		root_directory_ + "data/" + scene_name_ + "/" + scene_name_ + ".K";
@@ -863,7 +874,7 @@ void testRigidTransformFitting(
 	// Loading the 3D-3D correspondences 
 	gcransac::utils::loadPointsFromFile<6, 1, false>(points, // The points in the image
 		points_path_.c_str()); // The path where the image points are stored
-		
+
 	// Load the ground truth pose
 	Eigen::Matrix<double, 8, 4> reference_pose;
 	if (!utils::loadMatrix<double, 8, 4>(ground_truth_pose_path_,
@@ -873,7 +884,6 @@ void testRigidTransformFitting(
 			ground_truth_pose_path_.c_str());
 		return;
 	}
-	
 
 	const Eigen::Matrix4d& initial_T =
 		reference_pose.block<4, 4>(0, 0);
@@ -892,7 +902,7 @@ void testRigidTransformFitting(
 		points.at<double>(point_idx, 1) = initial_T(0, 1) * x + initial_T(1, 1) * y + initial_T(2, 1) * z + initial_T(3, 1);
 		points.at<double>(point_idx, 2) = initial_T(0, 2) * x + initial_T(1, 2) * y + initial_T(2, 2) * z + initial_T(3, 2);
 	}
-	
+
 	// Initialize the neighborhood used in Graph-cut RANSAC and, perhaps,
 	// in the sampler if NAPSAC or Progressive-NAPSAC sampling is applied.
 	std::chrono::time_point<std::chrono::system_clock> start, end; // Variables for time measurement
@@ -984,6 +994,321 @@ void testRigidTransformFitting(
 	printf("The error in the translation = %f\n", translation_error / 10.0);
 }
 
+
+void radialUndistortion(
+	const cv::Mat& image_,
+	const double& undistortion_parameter_,
+	cv::Mat& output_image_,
+	cv::Mat& points_,
+	const Eigen::Vector2d* image_center_,
+	const double focal_length_)
+{
+	output_image_.create(image_.size(), image_.type());
+	cv::Mat map_x(image_.size(), CV_32FC1);
+	cv::Mat map_y(image_.size(), CV_32FC1);
+
+	double newX, newY, newH,
+		image_center_x, image_center_y,
+		focal_length,
+		ratio = 1.0;
+
+	// If the image center is not set, assume that it is in the middle
+	if (image_center_ == nullptr)
+	{
+		image_center_x = image_.cols / 2.0;
+		image_center_y = image_.rows / 2.0;
+	}
+	else
+	{
+		image_center_x = (*image_center_)(0);
+		image_center_y = (*image_center_)(1);
+
+	}
+
+	// If the focal length is not set, assume that it is the image diagonal
+	if (focal_length_ == 0)
+		focal_length =
+			std::sqrt(image_.cols * image_.cols + image_.rows * image_.rows) / 2.0;
+	else
+		focal_length = focal_length_;
+
+	// Calculating the undistorted coordinates of each pixel in the image
+	for (int y = 0; y < image_.rows; ++y)
+	{
+		for (int x = 0; x < image_.cols; ++x)
+		{
+			double xc = (x - image_center_x) / focal_length,
+				yc = (y - image_center_y) / focal_length;
+
+			newH = 1.0 - undistortion_parameter_ * (xc * xc + yc * yc);
+			newX = xc / newH * focal_length;
+			newY = yc / newH * focal_length;
+
+			if (x == 0 && y == 0)
+				ratio = std::abs(image_center_x / newX);
+
+			newX = ratio * newX + image_center_x;
+			newY = ratio * newY + image_center_y;
+
+			map_x.at<float>(y, x) = newX;
+			map_y.at<float>(y, x) = newY;
+		}
+	}
+
+	// Remapping the image so the undistorted one can be visualized
+	cv::remap(image_,
+		output_image_,
+		map_x,
+		map_y,
+		cv::INTER_LINEAR,
+		cv::BORDER_CONSTANT,
+		cv::Scalar(0, 0, 0));
+
+	// Undistorting the points as well
+	ratio = 1.0 / ratio;
+	for (size_t pointIdx = 0; pointIdx < points_.rows; ++pointIdx)
+	{
+		double x = points_.at<double>(pointIdx, 0),
+			y = points_.at<double>(pointIdx, 1);
+
+		double xc = (x - image_center_x) / focal_length,
+			yc = (y - image_center_y) / focal_length;
+
+		newH = 1.0 + undistortion_parameter_ * (xc * xc + yc * yc);
+		newX = xc / newH * focal_length;
+		newY = yc / newH * focal_length;
+
+		points_.at<double>(pointIdx, 0) = ratio * newX + image_center_x;
+		points_.at<double>(pointIdx, 1) = ratio * newY + image_center_y;
+	}
+}
+
+// An example function showing how to fit homography by Graph-Cut RANSAC
+void testRadialHomographyFitting(
+	const std::string& source_path_, // The source image's path
+	const std::string& destination_path_, // The destination image's path
+	const std::string& out_correspondence_path_, // The path where the detected correspondences (before the robust estimation) will be saved (or loaded from if exists)
+	const std::string& in_correspondence_path_, // The path where the inliers of the estimated fundamental matrices will be saved
+	const std::string& output_match_image_path_, // The path where the matched image pair will be saved
+	const double confidence_, // The RANSAC confidence value
+	const double inlier_outlier_threshold_, // The used inlier-outlier threshold in GC-RANSAC.
+	const double spatial_coherence_weight_, // The weight of the spatial coherence term in the graph-cut energy minimization.
+	const size_t cell_number_in_neighborhood_graph_, // The radius of the neighborhood ball for determining the neighborhoods.
+	const int fps_, // The required FPS limit. If it is set to -1, the algorithm will not be interrupted before finishing.
+	const double minimum_inlier_ratio_for_sprt_) // An assumption about the minimum inlier ratio used for the SPRT test
+{
+	// Read the images
+	cv::Mat source_image = cv::imread(source_path_); // The source image
+	cv::Mat destination_image = cv::imread(destination_path_); // The destination image
+
+	if (source_image.empty()) // Check if the source image is loaded successfully
+	{
+		printf("An error occured while loading image '%s'\n",
+			source_path_.c_str());
+		return;
+	}
+
+	if (destination_image.empty()) // Check if the destination image is loaded successfully
+	{
+		printf("An error occured while loading image '%s'\n",
+			destination_path_.c_str());
+		return;
+	}
+
+	// Detect or load point correspondences using AKAZE 
+	cv::Mat points;
+	utils::detectFeatures(
+		in_correspondence_path_, // The path where the correspondences are read from or saved to.
+		source_image, // The source image
+		destination_image, // The destination image
+		points); // The detected point correspondences. Each row is of format "x1 y1 x2 y2"
+
+	// The number of detected correspondences
+	const size_t& point_number = points.rows;
+
+	// Translate the points so the image centers are in the middle.
+	// Scale the points by dividing with the image diagonals.
+	// Notes: 
+	// 1. The normalization could be done by the intrinsic camera matrix.
+	// 2. The normalization is NOT CRUCIAL, the algorithm works without it. 
+	// I do it to have a resonable radial distortion parameter. Otherwise, it becomes a very small number, e.g. <1e-6, that is hard to
+	// reject easily when the estimated radial distortion is too high. 
+	const double source_image_center_x = source_image.cols / 2.0, // Half of the source image's width, this will be the x coordinate of the image center
+		source_image_center_y = source_image.rows / 2.0, // Half of the source image's height, this will be the y coordinate of the image center
+		destination_image_center_x = destination_image.cols / 2.0, // Half of the destination image's width, this will be the x coordinate of the image center
+		destination_image_center_y = destination_image.rows / 2.0; // Half of the destination image's height, this will be the y coordinate of the image center
+	const double half_source_image_diagonal = // Half of the source image's diagonal
+		std::sqrt(source_image.cols * source_image.cols + source_image.rows * source_image.rows) / 2.0;
+	const double half_destination_image_diagonal = // Half of the destination image's diagonal
+		std::sqrt(destination_image.cols * destination_image.cols + destination_image.rows * destination_image.rows) / 2.0;
+
+	// Normalizing the point coordinates as discussed earlier.
+	cv::Mat normalized_points(points.size(), points.type());
+	for (size_t pointIdx = 0; pointIdx < point_number; ++pointIdx)
+	{
+		normalized_points.at<double>(pointIdx, 0) =
+			(points.at<double>(pointIdx, 0) - source_image_center_x) / half_source_image_diagonal;
+		normalized_points.at<double>(pointIdx, 1) = 
+			(points.at<double>(pointIdx, 1) - source_image_center_y) / half_source_image_diagonal;
+		normalized_points.at<double>(pointIdx, 2) = 
+			(points.at<double>(pointIdx, 2) - destination_image_center_x) / half_destination_image_diagonal;
+		normalized_points.at<double>(pointIdx, 3) = 
+			(points.at<double>(pointIdx, 3) - destination_image_center_y) / half_destination_image_diagonal;
+	}
+
+	// Normalizing the threshold similarly as the point coordinates.
+	const double threshold_normalizer =
+		0.5 * (half_source_image_diagonal + half_destination_image_diagonal);
+	const double normalized_threshold =
+		inlier_outlier_threshold_ / threshold_normalizer;
+
+	// Initialize the neighborhood used in Graph-cut RANSAC and, perhaps,
+	// in the sampler if NAPSAC or Progressive-NAPSAC sampling is applied.
+	// We use the original point coordinates here since the neighbhoods do not 
+	// change due to the applied normalization (i.e., uniform scaling and translation).
+	std::chrono::time_point<std::chrono::system_clock> start, end; // Variables for time measurement
+	start = std::chrono::system_clock::now(); // The starting time of the neighborhood calculation
+	neighborhood::GridNeighborhoodGraph<4> neighborhood(&points,
+		{ source_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
+			source_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_),
+			destination_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
+			destination_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_) },
+		cell_number_in_neighborhood_graph_);
+	end = std::chrono::system_clock::now(); // The end time of the neighborhood calculation
+	std::chrono::duration<double> elapsed_seconds = end - start; // The elapsed time in seconds
+	printf("Neighborhood calculation time = %f secs\n", elapsed_seconds.count());
+
+	// Checking if the neighborhood graph is initialized successfully.
+	if (!neighborhood.isInitialized())
+	{
+		fprintf(stderr, "The neighborhood graph is not initialized successfully.\n");
+		return;
+	}
+
+	// Apply Graph-cut RANSAC
+	utils::DefaultRadialHomographyEstimator estimator;
+	Model model;
+
+	// Initializing SPRT test
+	preemption::SPRTPreemptiveVerfication<utils::DefaultRadialHomographyEstimator> preemptive_verification(
+		// The point correspondences
+		normalized_points, 
+		// The model estimator object
+		estimator, 
+		// The minimum inlier ratio for the SPRT test. If the inlier ratio in the actual scene is smaller, the robust estimation will fail.
+		minimum_inlier_ratio_for_sprt_); 
+
+	GCRANSAC<utils::DefaultRadialHomographyEstimator,
+		neighborhood::GridNeighborhoodGraph<4>,
+		MSACScoringFunction<utils::DefaultRadialHomographyEstimator>,
+		preemption::SPRTPreemptiveVerfication<utils::DefaultRadialHomographyEstimator>> gcransac;
+	gcransac.settings.threshold = normalized_threshold; // The inlier-outlier threshold
+	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
+	gcransac.settings.confidence = confidence_; // The required confidence in the results
+	gcransac.settings.max_local_optimization_number = 50; // The maximm number of local optimizations
+	gcransac.settings.max_iteration_number = 5000; // The maximum number of iterations
+	gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
+	gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
+
+	// Initialize the samplers
+	// The main sampler is used inside the local optimization
+	sampler::ProgressiveNapsacSampler<4> main_sampler(&points,
+		{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
+							// (source_image_width / 16) * (source_image_height / 16)  * (destination_image_width / 16)  (destination_image_height / 16), etc.
+		estimator.sampleSize(), // The size of a minimal sample
+		{ static_cast<double>(source_image.cols), // The width of the source image
+			static_cast<double>(source_image.rows), // The height of the source image
+			static_cast<double>(destination_image.cols), // The width of the destination image
+			static_cast<double>(destination_image.rows) },  // The height of the destination image
+		0.5); // The length (i.e., 0.5 * <point number> iterations) of fully blending to global sampling 
+
+	sampler::UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
+
+	// Checking if the samplers are initialized successfully.
+	if (!main_sampler.isInitialized() ||
+		!local_optimization_sampler.isInitialized())
+	{
+		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
+		return;
+	}
+
+	// Start GC-RANSAC
+	gcransac.run(normalized_points,
+		estimator,
+		&main_sampler,
+		&local_optimization_sampler,
+		&neighborhood,
+		model,
+		preemptive_verification);
+
+	// Get the statistics of the results
+	const utils::RANSACStatistics& statistics = gcransac.getRansacStatistics();
+
+	// Write statistics
+	printf("Elapsed time = %f secs\n", statistics.processing_time);
+	printf("Inlier number = %d\n", static_cast<int>(statistics.inliers.size()));
+	printf("Applied number of local optimizations = %d\n", static_cast<int>(statistics.local_optimization_number));
+	printf("Applied number of graph-cuts = %d\n", static_cast<int>(statistics.graph_cut_number));
+	printf("Number of iterations = %d\n\n", static_cast<int>(statistics.iteration_number));
+
+	cv::Mat undistorted_source_image,
+		undistorted_destination_image;
+
+	cv::Mat i1 = source_image.clone(),
+		i2 = destination_image.clone();
+	cv::circle(i1, cv::Point2d(points.at<double>(0, 0), points.at<double>(0, 1)), 6, cv::Scalar(0, 0, 255.0), -1);
+	cv::circle(i2, cv::Point2d(points.at<double>(0, 2), points.at<double>(0, 3)), 6, cv::Scalar(0, 0,255.0), -1);
+
+	radialUndistortion(source_image,
+		model.descriptor(0, 3),
+		undistorted_source_image,
+		points(cv::Rect(0, 0, 2, point_number)),
+		nullptr,
+		0);
+
+	std::cout << points.row(0) << std::endl;
+	radialUndistortion(destination_image,
+		model.descriptor(1, 3),
+		undistorted_destination_image,
+		points(cv::Rect(2, 0, 2, point_number)),
+		nullptr,
+		0);
+
+	cv::Mat i3 = undistorted_source_image.clone(),
+		i4 = undistorted_destination_image.clone();
+	cv::circle(i3, cv::Point2d(points.at<double>(0, 0), points.at<double>(0, 1)), 6, cv::Scalar(0, 0, 255.0), -1);
+	cv::circle(i4, cv::Point2d(points.at<double>(0, 2), points.at<double>(0, 3)), 6, cv::Scalar(0, 0, 255.0), -1);
+
+	cv::imshow("i1", i1);
+	cv::imshow("i2", i2);
+	cv::imshow("i3", i3);
+	cv::imshow("i4", i4);
+
+	cv::waitKey(0);
+
+	// Draw the inlier matches to the images
+	cv::Mat match_image;
+	utils::drawMatches(points,
+		statistics.inliers,
+		undistorted_source_image,
+		undistorted_destination_image,
+		match_image);
+
+	printf("Saving the matched images to file '%s'.\n", output_match_image_path_.c_str());
+	imwrite(output_match_image_path_, match_image); // Save the matched image to file
+	printf("Saving the inlier correspondences to file '%s'.\n", out_correspondence_path_.c_str());
+	utils::savePointsToFile(points, out_correspondence_path_.c_str(), &statistics.inliers); // Save the inliers to file
+
+	printf("Press a button to continue...\n");
+
+	// Showing the image
+	utils::showImage(match_image,
+		"Inlier correspondences",
+		1600,
+		1200,
+		true);
+}
+
 void testHomographyFitting(
 	const std::string& source_path_,
 	const std::string& destination_path_,
@@ -1022,7 +1347,7 @@ void testHomographyFitting(
 		source_image, // The source image
 		destination_image, // The destination image
 		points); // The detected point correspondences. Each row is of format "x1 y1 x2 y2"
-	
+
 	// Initialize the neighborhood used in Graph-cut RANSAC and, perhaps,
 	// in the sampler if NAPSAC or Progressive-NAPSAC sampling is applied.
 	std::chrono::time_point<std::chrono::system_clock> start, end; // Variables for time measurement
@@ -1197,7 +1522,7 @@ void testFundamentalMatrixFitting(
 	// adaptively for each image pair. 
 	const double max_image_diagonal =
 		sqrt(pow(MAX(source_image.cols, destination_image.cols), 2) + pow(MAX(source_image.rows, destination_image.rows), 2));
-	
+
 	// Apply Graph-cut RANSAC
 	utils::DefaultFundamentalMatrixEstimator estimator;
 	std::vector<int> inliers;
@@ -1263,7 +1588,7 @@ void testFundamentalMatrixFitting(
 	printf("Applied number of local optimizations = %d\n", static_cast<int>(statistics.local_optimization_number));
 	printf("Applied number of graph-cuts = %d\n", static_cast<int>(statistics.graph_cut_number));
 	printf("Number of iterations = %d\n\n", static_cast<int>(statistics.iteration_number));
-		
+
 	// Draw the inlier matches to the images
 	cv::Mat match_image;
 	utils::drawMatches(points,
@@ -1380,7 +1705,7 @@ void test6DPoseFitting(
 	{
 		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
 		return;
-	} 
+	}
 
 	// Initializing SPRT test
 	preemption::SPRTPreemptiveVerfication<utils::DefaultPnPEstimator> preemptive_verification(
@@ -1430,7 +1755,7 @@ void test6DPoseFitting(
 	// The estimated translation
 	Eigen::Vector3d translation =
 		model.descriptor.rightCols<1>();
-	
+
 	// The number of inliers found
 	const size_t inlier_number = statistics.inliers.size();
 
@@ -1466,7 +1791,7 @@ void test6DPoseFitting(
 		// Converting the estimated pose parameters OpenCV format
 		cv::Mat cv_rotation(3, 3, CV_64F, rotation.data()), // The estimated rotation matrix converted to OpenCV format
 			cv_translation(3, 1, CV_64F, translation.data()); // The estimated translation converted to OpenCV format
-		
+
 		// Convert the rotation matrix by the rodrigues formula
 		cv::Mat cv_rodrigues(3, 1, CV_64F);
 		cv::Rodrigues(cv_rotation.t(), cv_rodrigues);
@@ -1480,7 +1805,7 @@ void test6DPoseFitting(
 			cv_translation, // The initial translation
 			true, // Use the initial values
 			cv::SOLVEPNP_ITERATIVE); // Apply numerical refinement
-		
+
 		// Convert the rotation vector back to a rotation matrix
 		cv::Rodrigues(cv_rodrigues, cv_rotation);
 
@@ -1622,7 +1947,6 @@ void testEssentialMatrixFitting(
 		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
 		return;
 	}
-	
 
 	GCRANSAC<utils::DefaultEssentialMatrixEstimator,
 		neighborhood::GridNeighborhoodGraph<4>,

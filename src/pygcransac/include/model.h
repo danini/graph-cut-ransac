@@ -129,4 +129,17 @@ namespace gcransac
 			descriptor = other.descriptor;
 		}
 	};
+
+	class RadialHomography : public Model
+	{
+	public:
+		RadialHomography() :
+			Model(Eigen::MatrixXd(3, 7))
+		{}
+
+		RadialHomography(const RadialHomography& other)
+		{
+			descriptor = other.descriptor;
+		}
+	};
 }

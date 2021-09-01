@@ -97,5 +97,9 @@ namespace gcransac
 			estimator::solver::LinearModelSolver<3>,  // The solver used for fitting a model to a non-minimal sample
 			3> // The dimensionality of the problem
 			Default3DPlaneEstimator;
+		// The default estimator for radial distortion homography fitting
+		typedef estimator::RadialHomographyEstimator<estimator::solver::RadialHomography5PC, // The solver used for fitting a model to a minimal sample
+			estimator::solver::RadialHomography6PC>  // The solver used for fitting a model to a non-minimal sample
+			DefaultRadialHomographyEstimator;
 	}
 }
