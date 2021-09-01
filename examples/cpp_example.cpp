@@ -45,7 +45,6 @@ enum Problem {
 	FundamentalMatrixFitting,
 	EssentialMatrixFitting,
 	HomographyFitting,
-	RadialHomographyFitting,
 	RigidTransformationFitting
 };
 
@@ -383,8 +382,6 @@ std::vector<std::string> getAvailableTestScenes(Problem problem_)
 		return { "head", "johnssona", "Kyoto" };
 	case Problem::HomographyFitting:
 		return { "graf", "Eiffel", "adam" };
-	case Problem::RadialHomographyFitting:
-		return { "radial" };
 	case Problem::RigidTransformationFitting:
 		return { "kitchen" };
 	default:
