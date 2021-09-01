@@ -35,7 +35,7 @@
 
 #include <vector>
 #include <Eigen/Eigen>
-#include "estimator.h"
+#include "../estimators/estimator.h"
 
 namespace gcransac
 {
