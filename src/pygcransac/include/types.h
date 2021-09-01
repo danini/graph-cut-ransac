@@ -73,7 +73,7 @@ namespace gcransac
 
 		// The default estimator for essential matrix fitting
 		typedef estimator::EssentialMatrixEstimator<estimator::solver::EssentialMatrixFivePointSteweniusSolver, // The solver used for fitting a model to a minimal sample
-			estimator::solver::EssentialMatrixFivePointSteweniusSolver> // The solver used for fitting a model to a non-minimal sample
+			estimator::solver::EssentialMatrixBundleAdjustmentSolver> // The solver used for fitting a model to a non-minimal sample
 			DefaultEssentialMatrixEstimator;
 
 		// The default estimator for PnP fitting
@@ -97,6 +97,7 @@ namespace gcransac
 			estimator::solver::LinearModelSolver<3>,  // The solver used for fitting a model to a non-minimal sample
 			3> // The dimensionality of the problem
 			Default3DPlaneEstimator;
+
 		// The default estimator for radial distortion homography fitting
 		typedef estimator::RadialHomographyEstimator<estimator::solver::RadialHomography5PC, // The solver used for fitting a model to a minimal sample
 			estimator::solver::RadialHomography6PC>  // The solver used for fitting a model to a non-minimal sample
