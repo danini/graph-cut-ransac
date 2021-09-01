@@ -44,14 +44,13 @@
 #include <Eigen/Eigen>
 
 #include "estimator.h"
-#include "homography_estimator.h"
-#include "grid_neighborhood_graph.h"
+#include "solver_linear_model.h"
 #include "model.h"
-#include "uniform_sampler.h"
+#include "../neighborhood/grid_neighborhood_graph.h"
+#include "../samplers/uniform_sampler.h"
 
 #include "GCRANSAC.h"
 
-#include "solver_linear_model.h"
 
 namespace gcransac
 {

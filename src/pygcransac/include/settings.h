@@ -47,7 +47,7 @@ namespace gcransac
 				do_graph_cut, // Flag to decide of graph-cut is used in the local optimization
 				use_inlier_limit; // Flag to decide if an inlier limit is used in the local optimization to speed up the procedure
 
-			size_t desired_fps; // The desired FPS
+			double desired_fps; // The desired FPS
 
 			size_t max_local_optimization_number, // Maximum number of local optimizations
 				min_iteration_number_before_lo, // Minimum number of RANSAC iterations before applying local optimization

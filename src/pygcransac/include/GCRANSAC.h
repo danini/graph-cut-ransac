@@ -34,12 +34,12 @@
 #pragma once
 
 #include "GCoptimization.h"
-#include "sampler.h"
 #include "model.h"
 #include "settings.h"
 #include "statistics.h"
 #include "scoring_function.h"
-#include "preemption_empty.h"
+#include "samplers/sampler.h"
+#include "preemption/preemption_empty.h"
 
 namespace gcransac
 {
@@ -77,7 +77,7 @@ namespace gcransac
 			const _NeighborhoodGraph *neighborhood_graph_, // The initialized neighborhood graph
 			Model &obtained_model_); // The output model
 
-		void setFPS(size_t fps_) { settings.desired_fps = fps_; time_limit = 1.0 / fps_; } // Set a desired FPS value
+		void setFPS(double fps_) { settings.desired_fps = fps_; time_limit = 1.0 / fps_; } // Set a desired FPS value
 
 		// Return the constant reference of the scoring function
 		const utils::RANSACStatistics &getRansacStatistics() const { return statistics; }
@@ -174,7 +174,7 @@ namespace gcransac
 		const _NeighborhoodGraph *neighborhood_graph_, // The initialized neighborhood graph
 		Model &obtained_model_) // The output model
 	{
-		// Instantiated the preemptive model verification strategy
+		// Instantiate the preemptive model verification strategy
 		_PreemptiveModelVerification preemptive_verification;
 		// Running GC-RANSAC by using the specified preemptive verification
 		run(points_,
@@ -300,7 +300,7 @@ namespace gcransac
 				// The score of the current model
 				Score score;
 
-				// Check if the model should by rejected by the used preemptive verification strategy
+				// Check if the model should be rejected by the used preemptive verification strategy.
 				// If there is no preemption, i.e. EmptyPreemptiveVerfication is used, this should be skipped.
 				if constexpr (!std::is_same<preemption::EmptyPreemptiveVerfication<_ModelEstimator>, _PreemptiveModelVerification>())
 				{
@@ -403,7 +403,11 @@ namespace gcransac
 
 				// Interrupt the algorithm if the time limit is exceeded
 				if (elapsed_seconds.count() > time_limit)
-					break;
+				{
+					settings.min_iteration_number = 0;
+					max_iteration = 0;
+					//break;
+				}
 			}
 		}
 

@@ -106,6 +106,7 @@ namespace gcransac
 				const _ModelEstimator &estimator_)
 			{
 				size_t sample[_ModelEstimator::sampleSize()];
+				std::iota(sample, sample + _ModelEstimator::sampleSize(), 0);
 				for (size_t sampleIdx = 0; sampleIdx < _ModelEstimator::sampleSize(); ++sampleIdx)
 					sample[sampleIdx] = sampleIdx;
 
@@ -120,7 +121,17 @@ namespace gcransac
 				end = std::chrono::system_clock::now();
 
 				std::chrono::duration<double> elapsedSeconds = end - start;
-				t_M = elapsedSeconds.count() * 1000.0; // The of estimating a model
+				t_M = elapsedSeconds.count() * 1000.0; // The time of estimating a model
+
+				if (models.size() > 0)
+				{
+					start = std::chrono::system_clock::now();
+					for (size_t sampleIdx = 0; sampleIdx < _ModelEstimator::sampleSize(); ++sampleIdx)
+						estimator_.residual(points_.row(sampleIdx), models[0]);
+					end = std::chrono::system_clock::now();
+					t_M = (elapsedSeconds.count() * 1000.0 / _ModelEstimator::sampleSize()) / t_M; // The time of estimating a model
+				}
+
 				m_S = _ModelEstimator::maximumMinimalSolutions(); // The maximum number of solutions
 
 				printf("Setting up SPRT test.\n");

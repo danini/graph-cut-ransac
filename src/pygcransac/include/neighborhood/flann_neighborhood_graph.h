@@ -37,7 +37,7 @@
 #include <vector>
 #include <opencv2/core/core.hpp>
 #include <Eigen/Eigen>
-#include "estimator.h"
+#include "../estimators/estimator.h"
 
 namespace gcransac
 {

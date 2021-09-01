@@ -297,6 +297,26 @@ namespace gcransac
 				result_[2] = vector1_[0] * vector2_[st_] - vector1_[st_] * vector2_[0];
 			}
 
+			// Enable a quick check to see if the model is valid. This can be a geometric
+			// check or some other verification of the model structure.
+			OLGA_INLINE bool isValidModel(Model& model,
+				const Datum& data,
+				const std::vector<size_t>& inliers,
+				const size_t* minimal_sample_,
+				const double threshold_,
+				bool& model_updated_) const
+			{ 
+				// Calculate the determinant of the homography
+				const double kDeterminant =
+					model.descriptor.determinant();
+
+				// Check if the homography has a small determinant.
+				constexpr double kMinimumDeterminant = 1e-2;
+				if (abs(kDeterminant) < kMinimumDeterminant)
+					return false;
+				return true;
+			}
+
 			// A function to decide if the selected sample is degenerate or not
 			// before calculating the model parameters
 			OLGA_INLINE bool isValidSample(

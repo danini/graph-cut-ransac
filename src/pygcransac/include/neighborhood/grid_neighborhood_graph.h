@@ -167,7 +167,17 @@ namespace gcransac
 
 			bool initialize(const cv::Mat * const container_);
 			inline const std::vector<size_t> &getNeighbors(size_t point_idx_) const;
+			std::size_t getCellIdentifier(size_t point_idx_) const;
 		};
+
+		template <size_t _DimensionNumber>
+		std::size_t GridNeighborhoodGraph<_DimensionNumber>::getCellIdentifier(size_t point_idx_) const
+		{
+			// Get the pointer of the cell in which the point is.
+			const GridCell<_DimensionNumber>* cell = cells_of_points[point_idx_];
+			// The index of the cell
+			return cell->index;
+		}
 
 		template <size_t _DimensionNumber>
 		bool GridNeighborhoodGraph<_DimensionNumber>::initialize(const cv::Mat * const container_)

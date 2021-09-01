@@ -6,31 +6,35 @@
 #include <Eigen/Eigen>
 
 #include "GCRANSAC.h"
-#include "flann_neighborhood_graph.h"
-#include "grid_neighborhood_graph.h"
-#include "uniform_sampler.h"
-#include "prosac_sampler.h"
-#include "progressive_napsac_sampler.h"
-#include "fundamental_estimator.h"
-#include "homography_estimator.h"
-#include "essential_estimator.h"
-#include "rigid_transformation_estimator.h"
-#include "preemption_sprt.h"
 
-#include "solver_fundamental_matrix_seven_point.h"
-#include "solver_fundamental_matrix_eight_point.h"
-#include "solver_rigid_transformation_svd.h"
-#include "solver_homography_four_point.h"
-#include "solver_essential_matrix_five_point_stewenius.h"
-#include "solver_p3p.h"
-#include "solver_dls_pnp.h"
+#include "neighborhood/flann_neighborhood_graph.h"
+#include "neighborhood/grid_neighborhood_graph.h"
+
+#include "samplers/uniform_sampler.h"
+#include "samplers/prosac_sampler.h"
+#include "samplers/progressive_napsac_sampler.h"
+
+#include "estimators/fundamental_estimator.h"
+#include "estimators/homography_estimator.h"
+#include "estimators/essential_estimator.h"
+#include "estimators/rigid_transformation_estimator.h"
+
+#include "preemption/preemption_sprt.h"
+
+#include "estimators/solver_fundamental_matrix_seven_point.h"
+#include "estimators/solver_fundamental_matrix_eight_point.h"
+#include "estimators/solver_rigid_transformation_svd.h"
+#include "estimators/solver_homography_four_point.h"
+#include "estimators/solver_essential_matrix_five_point_stewenius.h"
+#include "estimators/solver_p3p.h"
+#include "estimators/solver_dls_pnp.h"
 
 #include <ctime>
 #include <sys/types.h>
 #include <sys/stat.h>
 
 #ifdef _WIN32
-	#include <direct.h>
+#include <direct.h>
 #endif 
 
 struct stat info;
@@ -46,13 +50,13 @@ enum Problem {
 
 // An example function showing how to fit essential matrix by Graph-Cut RANSAC
 void testEssentialMatrixFitting(
-	const std::string &source_path_, // The source image's path
-	const std::string &destination_path_, // The destination image's path
-	const std::string &source_intrinsics_path_, // Path where the intrinsics camera matrix of the source image is
-	const std::string &destination_intrinsics_path_, // Path where the intrinsics camera matrix of the destination image is
-	const std::string &out_correspondence_path_, // The path where the detected correspondences (before the robust estimation) will be saved (or loaded from if exists)
-	const std::string &in_correspondence_path_, // The path where the inliers of the estimated fundamental matrices will be saved
-	const std::string &output_match_image_path_, // The path where the matched image pair will be saved
+	const std::string& source_path_, // The source image's path
+	const std::string& destination_path_, // The destination image's path
+	const std::string& source_intrinsics_path_, // Path where the intrinsics camera matrix of the source image is
+	const std::string& destination_intrinsics_path_, // Path where the intrinsics camera matrix of the destination image is
+	const std::string& out_correspondence_path_, // The path where the detected correspondences (before the robust estimation) will be saved (or loaded from if exists)
+	const std::string& in_correspondence_path_, // The path where the inliers of the estimated fundamental matrices will be saved
+	const std::string& output_match_image_path_, // The path where the matched image pair will be saved
 	const double confidence_, // The RANSAC confidence value
 	const double inlier_outlier_threshold_, // The used inlier-outlier threshold in GC-RANSAC.
 	const double spatial_coherence_weight_, // The weight of the spatial coherence term in the graph-cut energy minimization.
@@ -62,11 +66,11 @@ void testEssentialMatrixFitting(
 
 // An example function showing how to fit fundamental matrix by Graph-Cut RANSAC
 void testFundamentalMatrixFitting(
-	const std::string &source_path_, // The source image's path
-	const std::string &destination_path_, // The destination image's path
-	const std::string &out_correspondence_path_, // The path where the detected correspondences (before the robust estimation) will be saved (or loaded from if exists)
-	const std::string &in_correspondence_path_, // The path where the inliers of the estimated fundamental matrices will be saved
-	const std::string &output_match_image_path_, // The path where the matched image pair will be saved
+	const std::string& source_path_, // The source image's path
+	const std::string& destination_path_, // The destination image's path
+	const std::string& out_correspondence_path_, // The path where the detected correspondences (before the robust estimation) will be saved (or loaded from if exists)
+	const std::string& in_correspondence_path_, // The path where the inliers of the estimated fundamental matrices will be saved
+	const std::string& output_match_image_path_, // The path where the matched image pair will be saved
 	const double confidence_, // The RANSAC confidence value
 	const double inlier_outlier_threshold_, // The used inlier-outlier threshold in GC-RANSAC.
 	const double spatial_coherence_weight_, // The weight of the spatial coherence term in the graph-cut energy minimization.
@@ -76,11 +80,17 @@ void testFundamentalMatrixFitting(
 
 // An example function showing how to fit homography by Graph-Cut RANSAC
 void testHomographyFitting(
-	const std::string &source_path_, // The source image's path
-	const std::string &destination_path_, // The destination image's path
-	const std::string &out_correspondence_path_, // The path where the detected correspondences (before the robust estimation) will be saved (or loaded from if exists)
-	const std::string &in_correspondence_path_, // The path where the inliers of the estimated fundamental matrices will be saved
-	const std::string &output_match_image_path_, // The path where the matched image pair will be saved
+	const std::string& source_path_, // The source image's path
+	const std::string& destination_path_, // The destination image's path
+	const std::string& out_correspondence_path_, // The path where the detected correspondences (before the robust estimation) will be saved (or loaded from if exists)
+	const std::string& in_correspondence_path_, // The path where the inliers of the estimated fundamental matrices will be saved
+	const std::string& output_match_image_path_, // The path where the matched image pair will be saved
+	const double confidence_, // The RANSAC confidence value
+	const double inlier_outlier_threshold_, // The used inlier-outlier threshold in GC-RANSAC.
+	const double spatial_coherence_weight_, // The weight of the spatial coherence term in the graph-cut energy minimization.
+	const size_t cell_number_in_neighborhood_graph_, // The radius of the neighborhood ball for determining the neighborhoods.
+	const int fps_, // The required FPS limit. If it is set to -1, the algorithm will not be interrupted before finishing.
+	const double minimum_inlier_ratio_for_sprt_ = 0.1); // An assumption about the minimum inlier ratio used for the SPRT test
 	const double confidence_, // The RANSAC confidence value
 	const double inlier_outlier_threshold_, // The used inlier-outlier threshold in GC-RANSAC.
 	const double spatial_coherence_weight_, // The weight of the spatial coherence term in the graph-cut energy minimization.
@@ -90,10 +100,10 @@ void testHomographyFitting(
 
 // An example function showing how to fit 6D pose to 2D-3D correspondences by Graph-Cut RANSAC
 void test6DPoseFitting(
-	const std::string &intrinsics_path_, // The path where the intrinsic camera matrix can be found
-	const std::string &ground_truth_pose_path_, // The path where the ground truth pose can be found
-	const std::string &points_path_, // The path of the points 
-	const std::string &inliers_point_path_, // The path where the inlier correspondences are saved
+	const std::string& intrinsics_path_, // The path where the intrinsic camera matrix can be found
+	const std::string& ground_truth_pose_path_, // The path where the ground truth pose can be found
+	const std::string& points_path_, // The path of the points 
+	const std::string& inliers_point_path_, // The path where the inlier correspondences are saved
 	const double confidence_, // The RANSAC confidence value
 	const double inlier_outlier_threshold_, // The used inlier-outlier threshold in GC-RANSAC.
 	const double spatial_coherence_weight_, // The weight of the spatial coherence term in the graph-cut energy minimization.
@@ -126,41 +136,41 @@ std::vector<std::string> getAvailableTestScenes(Problem problem_);
 
 // Setting the paths for the data used in homography and fundamental matrix fitting
 bool initializeScene(
-	const std::string &scene_name_, // The name of the scene
-	std::string &src_image_path_, // The path to the source image
-	std::string &dst_image_path_, // The path to the destination image
-	std::string &input_correspondence_path_, // The path to the correspondences
-	std::string &output_correspondence_path_, // The path where the found inliers should be saved
-	std::string &output_matched_image_path_, // The path where the matched image should be saved,
+	const std::string& scene_name_, // The name of the scene
+	std::string& src_image_path_, // The path to the source image
+	std::string& dst_image_path_, // The path to the destination image
+	std::string& input_correspondence_path_, // The path to the correspondences
+	std::string& output_correspondence_path_, // The path where the found inliers should be saved
+	std::string& output_matched_image_path_, // The path where the matched image should be saved,
 	const std::string root_directory_ = ""); // The root directory where the "results" and "data" folder are
 
 // Setting the paths for the data used in essential matrix fitting
 bool initializeScene(
-	const std::string &scene_name_, // The name of the scene
-	std::string &src_image_path_, // The path to the source image
-	std::string &dst_image_path_, // The path to the destination image
-	std::string &src_intrinsics_path_, // The path where the intrinsic parameters of the source camera can be found
-	std::string &dst_intrinsics_path_, // The path where the intrinsic parameters of the destination camera can be found
-	std::string &input_correspondence_path_, // The path to the correspondences
-	std::string &output_correspondence_path_, // The path where the found inliers should be saved
-	std::string &output_matched_image_path_, // The path where the matched image should be saved
+	const std::string& scene_name_, // The name of the scene
+	std::string& src_image_path_, // The path to the source image
+	std::string& dst_image_path_, // The path to the destination image
+	std::string& src_intrinsics_path_, // The path where the intrinsic parameters of the source camera can be found
+	std::string& dst_intrinsics_path_, // The path where the intrinsic parameters of the destination camera can be found
+	std::string& input_correspondence_path_, // The path to the correspondences
+	std::string& output_correspondence_path_, // The path where the found inliers should be saved
+	std::string& output_matched_image_path_, // The path where the matched image should be saved
 	const std::string root_directory_ = ""); // The root directory where the "results" and "data" folder are
 
 // Setting the paths for the data used in 6D pose fitting
 bool initializeScenePnP(
-	const std::string &scene_name_, // The name of the scene
-	std::string &intrinsics_path_, // The path where the intrinsic parameters of the camera can be found
-	std::string &ground_truth_pose_path_, // The path of the ground truth pose used for evaluating the results
-	std::string &points_path_, // The path where the 2D-3D correspondences can be found
-	std::string &inlier_points_path_, // The path where the inlier correspondences should be saved
+	const std::string& scene_name_, // The name of the scene
+	std::string& intrinsics_path_, // The path where the intrinsic parameters of the camera can be found
+	std::string& ground_truth_pose_path_, // The path of the ground truth pose used for evaluating the results
+	std::string& points_path_, // The path where the 2D-3D correspondences can be found
+	std::string& inlier_points_path_, // The path where the inlier correspondences should be saved
 	const std::string root_directory_ = ""); // The root directory where the "results" and "data" folder are
 
 // Setting the paths for the data used in rigid transformation fitting
 bool initializeSceneRigidPose(
-	const std::string &scene_name_, // The name of the scene
-	std::string &ground_truth_pose_path_, // The path of the ground truth pose used for evaluating the results
-	std::string &points_path_, // The path where the 2D-3D correspondences can be found
-	std::string &inlier_points_path_, // The path where the inlier correspondences should be saved
+	const std::string& scene_name_, // The name of the scene
+	std::string& ground_truth_pose_path_, // The path of the ground truth pose used for evaluating the results
+	std::string& points_path_, // The path where the 2D-3D correspondences can be found
+	std::string& inlier_points_path_, // The path where the inlier correspondences should be saved
 	const std::string root_directory_ = ""); // The root directory where the "results" and "data" folder are
 
 using namespace gcransac;
@@ -199,7 +209,7 @@ int main(int argc, const char* argv[])
 	}
 
 	printf("------------------------------------------------------------\nRigid transformation fitting to 3D-3D correspondences\n------------------------------------------------------------\n");
-	for (const std::string &scene : getAvailableTestScenes(Problem::RigidTransformationFitting))
+	for (const std::string& scene : getAvailableTestScenes(Problem::RigidTransformationFitting))
 	{
 		printf("Processed scene = '%s'\n", scene.c_str());
 		std::string points_path, // Path of the image and world points
@@ -225,7 +235,7 @@ int main(int argc, const char* argv[])
 	}
 
 	printf("------------------------------------------------------------\n6D pose fitting by the PnP algorithm\n------------------------------------------------------------\n");
-	for (const std::string &scene : getAvailableTestScenes(Problem::PerspectiveNPointFitting))
+	for (const std::string& scene : getAvailableTestScenes(Problem::PerspectiveNPointFitting))
 	{
 		printf("Processed scene = '%s'\n", scene.c_str());
 		std::string points_path, // Path of the image and world points
@@ -256,7 +266,7 @@ int main(int argc, const char* argv[])
 	}
 
 	printf("------------------------------------------------------------\nFundamental matrix fitting\n------------------------------------------------------------\n");
-	for (const std::string &scene : getAvailableTestScenes(Problem::FundamentalMatrixFitting))
+	for (const std::string& scene : getAvailableTestScenes(Problem::FundamentalMatrixFitting))
 	{
 		printf("Processed scene = '%s'\n", scene.c_str());
 		std::string src_image_path, // Path of the source image
@@ -290,7 +300,7 @@ int main(int argc, const char* argv[])
 	}
 
 	printf("------------------------------------------------------------\nEssential matrix fitting\n------------------------------------------------------------\n");
-	for (const std::string &scene : getAvailableTestScenes(Problem::EssentialMatrixFitting))
+	for (const std::string& scene : getAvailableTestScenes(Problem::EssentialMatrixFitting))
 	{
 		printf("Processed scene = '%s'\n", scene.c_str());
 		std::string src_image_path, // Path of the source image
@@ -330,7 +340,7 @@ int main(int argc, const char* argv[])
 	}
 
 	printf("------------------------------------------------------------\nHomography fitting\n------------------------------------------------------------\n");
-	for (const std::string &scene : getAvailableTestScenes(Problem::HomographyFitting))
+	for (const std::string& scene : getAvailableTestScenes(Problem::HomographyFitting))
 	{
 		printf("Processed scene = '%s'\n", scene.c_str());
 		std::string src_image_path, // Path of the source image
@@ -386,10 +396,10 @@ std::vector<std::string> getAvailableTestScenes(Problem problem_)
 }
 
 bool initializeSceneRigidPose(
-	const std::string &scene_name_,
-	std::string &ground_truth_pose_path_,
-	std::string &points_path_,
-	std::string &inlier_image_points_path_,
+	const std::string& scene_name_,
+	std::string& ground_truth_pose_path_,
+	std::string& points_path_,
+	std::string& inlier_image_points_path_,
 	const std::string root_directory_)
 {
 	// The directory to which the results will be saved
@@ -448,11 +458,11 @@ bool initializeSceneRigidPose(
 }
 
 bool initializeScenePnP(
-	const std::string &scene_name_,
-	std::string &intrinsics_path_,
-	std::string &ground_truth_pose_path_,
-	std::string &points_path_,
-	std::string &inlier_image_points_path_,
+	const std::string& scene_name_,
+	std::string& intrinsics_path_,
+	std::string& ground_truth_pose_path_,
+	std::string& points_path_,
+	std::string& inlier_image_points_path_,
 	const std::string root_directory_) // The root directory where the "results" and "data" folder are
 {
 	// The directory to which the results will be saved
@@ -514,13 +524,13 @@ bool initializeScenePnP(
 }
 
 bool initializeScene(
-	const std::string &scene_name_, // The name of the scene
-	std::string &src_image_path_, // The path to the source image
-	std::string &dst_image_path_, // The path to the destination image
-	std::string &input_correspondence_path_, // The path to the correspondences
-	std::string &output_correspondence_path_, // The path where the found inliers should be saved
-	std::string &output_matched_image_path_, // The path where the matched image should be saved,
-	const std::string root_directory_ ) // The root directory where the "results" and "data" folder are
+	const std::string& scene_name_, // The name of the scene
+	std::string& src_image_path_, // The path to the source image
+	std::string& dst_image_path_, // The path to the destination image
+	std::string& input_correspondence_path_, // The path to the correspondences
+	std::string& output_correspondence_path_, // The path where the found inliers should be saved
+	std::string& output_matched_image_path_, // The path where the matched image should be saved,
+	const std::string root_directory_) // The root directory where the "results" and "data" folder are
 {
 	// The directory to which the results will be saved
 	std::string results_dir = root_directory_ + "results";
@@ -599,14 +609,14 @@ bool initializeScene(
 	return true;
 }
 
-bool initializeScene(const std::string &scene_name_,
-	std::string &src_image_path_,
-	std::string &dst_image_path_,
-	std::string &src_intrinsics_path_,
-	std::string &dst_intrinsics_path_,
-	std::string &input_correspondence_path_,
-	std::string &output_correspondence_path_,
-	std::string &output_matched_image_path_,
+bool initializeScene(const std::string& scene_name_,
+	std::string& src_image_path_,
+	std::string& dst_image_path_,
+	std::string& src_intrinsics_path_,
+	std::string& dst_intrinsics_path_,
+	std::string& input_correspondence_path_,
+	std::string& output_correspondence_path_,
+	std::string& output_matched_image_path_,
 	const std::string root_directory_) // The root directory where the "results" and "data" folder are
 {
 	// The directory to which the results will be saved
@@ -799,7 +809,7 @@ void test2DLineFitting(
 		&local_optimization_sampler, // The sampler used for selecting a minimal sample when doing the local optimization
 		&neighborhood, // The neighborhood-graph
 		model, // The obtained model parameters
-		preemptive_verification); 
+		preemptive_verification);
 
 	// Get the statistics of the results
 	const utils::RANSACStatistics& statistics = gcransac.getRansacStatistics();
@@ -838,9 +848,9 @@ void test2DLineFitting(
 
 // An example function showing how to fit calculate a rigid transformation from a set of 3D-3D correspondences by Graph-Cut RANSAC
 void testRigidTransformFitting(
-	const std::string &ground_truth_pose_path_, // The path where the ground truth pose can be found
-	const std::string &points_path_, // The path of the points 
-	const std::string &inliers_point_path_, // The path where the inlier correspondences are saved
+	const std::string& ground_truth_pose_path_, // The path where the ground truth pose can be found
+	const std::string& points_path_, // The path of the points 
+	const std::string& inliers_point_path_, // The path where the inlier correspondences are saved
 	const double confidence_, // The RANSAC confidence value
 	const double inlier_outlier_threshold_, // The used inlier-outlier threshold in GC-RANSAC.
 	const double spatial_coherence_weight_, // The weight of the spatial coherence term in the graph-cut energy minimization.
@@ -864,9 +874,10 @@ void testRigidTransformFitting(
 		return;
 	}
 	
-	const Eigen::Matrix4d &initial_T =
+
+	const Eigen::Matrix4d& initial_T =
 		reference_pose.block<4, 4>(0, 0);
-	const Eigen::Matrix4d &ground_truth_T =
+	const Eigen::Matrix4d& ground_truth_T =
 		reference_pose.block<4, 4>(4, 0);
 
 	// Transform the point by the initial transformation
@@ -937,7 +948,7 @@ void testRigidTransformFitting(
 		preemptive_verification);
 
 	// Get the statistics of the results
-	const utils::RANSACStatistics &statistics = gcransac.getRansacStatistics();
+	const utils::RANSACStatistics& statistics = gcransac.getRansacStatistics();
 
 	printf("Elapsed time = %f secs\n", statistics.processing_time);
 	printf("Inlier number before = %d\n", static_cast<int>(statistics.inliers.size()));
@@ -949,8 +960,8 @@ void testRigidTransformFitting(
 	utils::savePointsToFile(points, // The loaded data points
 		inliers_point_path_.c_str(), // The path where the results should be saved
 		&statistics.inliers); // The set of inlier found
-	
-	model.descriptor = 
+
+	model.descriptor =
 		initial_T * model.descriptor;
 
 	// The estimated rotation matrix
@@ -964,7 +975,7 @@ void testRigidTransformFitting(
 	const size_t inlier_number = statistics.inliers.size();
 
 	// Calculate the estimation error
-	constexpr double radian_to_degree_multiplier = 180.0 / M_PI;	
+	constexpr double radian_to_degree_multiplier = 180.0 / M_PI;
 	const double angular_error = radian_to_degree_multiplier * (Eigen::Quaterniond(
 		rotation).angularDistance(Eigen::Quaterniond(ground_truth_T.block<3, 3>(0, 0))));
 	const double translation_error = (ground_truth_T.block<1, 3>(3, 0) - translation.transpose()).norm();
@@ -974,11 +985,11 @@ void testRigidTransformFitting(
 }
 
 void testHomographyFitting(
-	const std::string &source_path_,
-	const std::string &destination_path_,
-	const std::string &out_correspondence_path_,
-	const std::string &in_correspondence_path_,
-	const std::string &output_match_image_path_,
+	const std::string& source_path_,
+	const std::string& destination_path_,
+	const std::string& out_correspondence_path_,
+	const std::string& in_correspondence_path_,
+	const std::string& output_match_image_path_,
 	const double confidence_,
 	const double inlier_outlier_threshold_,
 	const double spatial_coherence_weight_,
@@ -1044,7 +1055,7 @@ void testHomographyFitting(
 		estimator,
 		minimum_inlier_ratio_for_sprt_);
 
-	GCRANSAC<utils::DefaultHomographyEstimator, 
+	GCRANSAC<utils::DefaultHomographyEstimator,
 		neighborhood::GridNeighborhoodGraph<4>,
 		MSACScoringFunction<utils::DefaultHomographyEstimator>,
 		preemption::SPRTPreemptiveVerfication<utils::DefaultHomographyEstimator>> gcransac;
@@ -1090,7 +1101,7 @@ void testHomographyFitting(
 		preemptive_verification);
 
 	// Get the statistics of the results
-	const utils::RANSACStatistics &statistics = gcransac.getRansacStatistics();
+	const utils::RANSACStatistics& statistics = gcransac.getRansacStatistics();
 
 	// Write statistics
 	printf("Elapsed time = %f secs\n", statistics.processing_time);
@@ -1123,11 +1134,11 @@ void testHomographyFitting(
 }
 
 void testFundamentalMatrixFitting(
-	const std::string &source_path_,
-	const std::string &destination_path_,
-	const std::string &out_correspondence_path_,
-	const std::string &in_correspondence_path_,
-	const std::string &output_match_image_path_,
+	const std::string& source_path_,
+	const std::string& destination_path_,
+	const std::string& out_correspondence_path_,
+	const std::string& in_correspondence_path_,
+	const std::string& output_match_image_path_,
 	const double confidence_,
 	const double inlier_outlier_threshold_,
 	const double spatial_coherence_weight_,
@@ -1217,8 +1228,8 @@ void testFundamentalMatrixFitting(
 		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
 		return;
 	}
-	
-	GCRANSAC<utils::DefaultFundamentalMatrixEstimator, 
+
+	GCRANSAC<utils::DefaultFundamentalMatrixEstimator,
 		neighborhood::GridNeighborhoodGraph<4>,
 		MSACScoringFunction<utils::DefaultFundamentalMatrixEstimator>,
 		preemption::SPRTPreemptiveVerfication<utils::DefaultFundamentalMatrixEstimator>> gcransac;
@@ -1231,7 +1242,7 @@ void testFundamentalMatrixFitting(
 	gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
 
 	// Printinf the actually used threshold
-	printf("Used threshold is %.2f pixels (%.2f%% of the image diagonal)\n", 
+	printf("Used threshold is %.2f pixels (%.2f%% of the image diagonal)\n",
 		gcransac.settings.threshold, 100.0 * inlier_outlier_threshold_);
 
 	// Start GC-RANSAC
@@ -1244,7 +1255,7 @@ void testFundamentalMatrixFitting(
 		preemptive_verification);
 
 	// Get the statistics of the results
-	const utils::RANSACStatistics &statistics = gcransac.getRansacStatistics();
+	const utils::RANSACStatistics& statistics = gcransac.getRansacStatistics();
 
 	// Write statistics
 	printf("Elapsed time = %f secs\n", statistics.processing_time);
@@ -1261,7 +1272,7 @@ void testFundamentalMatrixFitting(
 		destination_image,
 		match_image);
 
-	printf("Saving the matched images to file '%s'.\n", 
+	printf("Saving the matched images to file '%s'.\n",
 		output_match_image_path_.c_str());
 	imwrite(output_match_image_path_, match_image); // Save the matched image to file
 	printf("Saving the inlier correspondences to file '%s'.\n",
@@ -1279,10 +1290,10 @@ void testFundamentalMatrixFitting(
 }
 
 void test6DPoseFitting(
-	const std::string &intrinsics_path_,
-	const std::string &ground_truth_pose_path_,
-	const std::string &points_path_,
-	const std::string &inlier_image_points_path_,
+	const std::string& intrinsics_path_,
+	const std::string& ground_truth_pose_path_,
+	const std::string& points_path_,
+	const std::string& inlier_image_points_path_,
 	const double confidence_,
 	const double inlier_outlier_threshold_,
 	const double spatial_coherence_weight_,
@@ -1320,11 +1331,11 @@ void test6DPoseFitting(
 	}
 
 	// The ground truth rotation matrix
-	const Eigen::Matrix3d &gt_rotation =
+	const Eigen::Matrix3d& gt_rotation =
 		reference_pose.leftCols<3>();
 
 	// The ground truth translation matrix
-	const Eigen::Vector3d &gt_translation =
+	const Eigen::Vector3d& gt_translation =
 		reference_pose.rightCols<1>();
 
 	// Normalize the point coordinate by the intrinsic matrix
@@ -1337,7 +1348,7 @@ void test6DPoseFitting(
 		normalized_points); // The normalized points
 
 	// Normalize the threshold by the average of the focal lengths
-	const double avg_focal_length = 
+	const double avg_focal_length =
 		(intrinsics(0, 0) + intrinsics(1, 1)) / 2.0;
 	const double normalized_threshold =
 		inlier_outlier_threshold_ / avg_focal_length;
@@ -1377,7 +1388,7 @@ void test6DPoseFitting(
 		estimator,
 		minimum_inlier_ratio_for_sprt_);
 
-	GCRANSAC<utils::DefaultPnPEstimator, 
+	GCRANSAC<utils::DefaultPnPEstimator,
 		neighborhood::FlannNeighborhoodGraph,
 		MSACScoringFunction<utils::DefaultPnPEstimator>,
 		preemption::SPRTPreemptiveVerfication<utils::DefaultPnPEstimator>> gcransac;
@@ -1400,7 +1411,7 @@ void test6DPoseFitting(
 		preemptive_verification);
 
 	// Get the statistics of the results
-	const utils::RANSACStatistics &statistics = gcransac.getRansacStatistics();
+	const utils::RANSACStatistics& statistics = gcransac.getRansacStatistics();
 
 	printf("Elapsed time = %f secs\n", statistics.processing_time);
 	printf("Inlier number before = %d\n", static_cast<int>(statistics.inliers.size()));
@@ -1444,7 +1455,7 @@ void test6DPoseFitting(
 
 		for (size_t i = 0; i < inlier_number; ++i)
 		{
-			const size_t &idx = statistics.inliers[i];
+			const size_t& idx = statistics.inliers[i];
 			inlier_image_points.at<double>(i, 0) = normalized_points.at<double>(idx, 0);
 			inlier_image_points.at<double>(i, 1) = normalized_points.at<double>(idx, 1);
 			inlier_object_points.at<double>(i, 0) = points.at<double>(idx, 2);
@@ -1487,13 +1498,13 @@ void test6DPoseFitting(
 }
 
 void testEssentialMatrixFitting(
-	const std::string &source_path_,
-	const std::string &destination_path_,
-	const std::string &source_intrinsics_path_,
-	const std::string &destination_intrinsics_path_,
-	const std::string &out_correspondence_path_,
-	const std::string &in_correspondence_path_,
-	const std::string &output_match_image_path_,
+	const std::string& source_path_,
+	const std::string& destination_path_,
+	const std::string& source_intrinsics_path_,
+	const std::string& destination_intrinsics_path_,
+	const std::string& out_correspondence_path_,
+	const std::string& in_correspondence_path_,
+	const std::string& output_match_image_path_,
 	const double confidence_,
 	const double inlier_outlier_threshold_,
 	const double spatial_coherence_weight_,
@@ -1612,7 +1623,8 @@ void testEssentialMatrixFitting(
 		return;
 	}
 	
-	GCRANSAC<utils::DefaultEssentialMatrixEstimator, 
+
+	GCRANSAC<utils::DefaultEssentialMatrixEstimator,
 		neighborhood::GridNeighborhoodGraph<4>,
 		MSACScoringFunction<utils::DefaultEssentialMatrixEstimator>,
 		preemption::SPRTPreemptiveVerfication<utils::DefaultEssentialMatrixEstimator>> gcransac;
@@ -1636,7 +1648,7 @@ void testEssentialMatrixFitting(
 		preemptive_verification);
 
 	// Get the statistics of the results
-	const utils::RANSACStatistics &statistics = gcransac.getRansacStatistics();
+	const utils::RANSACStatistics& statistics = gcransac.getRansacStatistics();
 
 	// Print the statistics
 	printf("Elapsed time = %f secs\n", statistics.processing_time);

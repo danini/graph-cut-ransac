@@ -45,9 +45,9 @@
 
 #include "estimator.h"
 #include "homography_estimator.h"
-#include "grid_neighborhood_graph.h"
 #include "model.h"
-#include "uniform_sampler.h"
+#include "../neighborhood/grid_neighborhood_graph.h"
+#include "../samplers/uniform_sampler.h"
 
 #include "GCRANSAC.h"
 
@@ -59,7 +59,7 @@ namespace gcransac
 {
 	namespace estimator
 	{
-		// This is the estimator class for estimating a homography matrix between two images. A model estimation method and error calculation method are implemented
+		// This is the estimator class for estimating a fundamental matrix between two images. A model estimation method and error calculation method are implemented
 		template<class _MinimalSolverEngine,  // The solver used for estimating the model from a minimal sample
 			class _NonMinimalSolverEngine> // The solver used for estimating the model from a non-minimal sample
 			class FundamentalMatrixEstimator : public Estimator < cv::Mat, Model >
