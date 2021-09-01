@@ -5,6 +5,22 @@
 
 namespace pose_lib {
 
+// For the accumulators we support supplying a vector<double> with point-wise weights for the residuals
+// In case we don't want to have weighted residuals, we can pass UniformWeightVector instead of filling a std::vector with 1.0
+// The multiplication is then hopefully is optimized away since it always returns 1.0
+class UniformWeightVector {
+  public:
+    UniformWeightVector() {}
+    constexpr double operator[](std::size_t idx) const { return 1.0; }
+};
+class UniformWeightVectors { // this corresponds to std::vector<std::vector<double>> used for generalized cameras etc
+  public:
+    UniformWeightVectors() {}
+    constexpr const UniformWeightVector &operator[](std::size_t idx) const { return w; }
+    const UniformWeightVector w;
+    typedef UniformWeightVector value_type;
+};
+
 template <typename CameraModel, typename LossFunction>
 class CameraJacobianAccumulator {
   public:
@@ -105,82 +121,21 @@ class CameraJacobianAccumulator {
     const LossFunction &loss_fn;
 };
 
-template <typename LossFunction>
-class GeneralizedCameraJacobianAccumulator {
-  public:
-    GeneralizedCameraJacobianAccumulator(
-        const std::vector<std::vector<Eigen::Vector2d>> &points2D,
-        const std::vector<std::vector<Eigen::Vector3d>> &points3D,
-        const std::vector<CameraPose> &camera_ext,
-        const std::vector<Camera> &camera_int,
-        const LossFunction &l) : num_cams(points2D.size()), x(points2D), X(points3D),
-                                 rig_poses(camera_ext), cameras(camera_int), loss_fn(l) {}
-
-    double residual(const CameraPose &pose) const {
-        double cost = 0.0;
-        for (size_t k = 0; k < num_cams; ++k) {
-            const Camera &camera = cameras[k];
-            CameraPose full_pose;
-            full_pose.R = rig_poses[k].R * pose.R;
-            full_pose.t = rig_poses[k].R * pose.t + rig_poses[k].t;
-
-            switch (camera.model_id) {
-#define SWITCH_CAMERA_MODEL_CASE(Model)                                                             \
-    case Model::model_id: {                                                                         \
-        CameraJacobianAccumulator<Model, decltype(loss_fn)> accum(x[k], X[k], cameras[k], loss_fn); \
-        cost += accum.residual(full_pose);                                                          \
-        break;                                                                                      \
-    }
-                SWITCH_CAMERA_MODELS
-
-#undef SWITCH_CAMERA_MODEL_CASE
-            }
-        }
-        return cost;
-    }
-
-    void accumulate(const CameraPose &pose, Eigen::Matrix<double, 6, 6> &JtJ, Eigen::Matrix<double, 6, 1> &Jtr) const {
-        for (size_t k = 0; k < num_cams; ++k) {
-            const Camera &camera = cameras[k];
-            CameraPose full_pose;
-            full_pose.R = rig_poses[k].R * pose.R;
-            full_pose.t = rig_poses[k].R * pose.t + rig_poses[k].t;
-
-            switch (camera.model_id) {
-#define SWITCH_CAMERA_MODEL_CASE(Model)                                                             \
-    case Model::model_id: {                                                                         \
-        CameraJacobianAccumulator<Model, decltype(loss_fn)> accum(x[k], X[k], cameras[k], loss_fn); \
-        accum.accumulate(full_pose, JtJ, Jtr);                                                      \
-        break;                                                                                      \
-    }
-                SWITCH_CAMERA_MODELS
-
-#undef SWITCH_CAMERA_MODEL_CASE
-            }
-        }
-    }
-
-  private:
-    const size_t num_cams;
-    const std::vector<std::vector<Eigen::Vector2d>> &x;
-    const std::vector<std::vector<Eigen::Vector3d>> &X;
-    const std::vector<CameraPose> &rig_poses;
-    const std::vector<Camera> &cameras;
-    const LossFunction &loss_fn;
-};
-
-template <typename LossFunction>
+template <typename LossFunction, 
+    typename ResidualWeightVector = UniformWeightVector>
 class RelativePoseJacobianAccumulator {
   public:
     RelativePoseJacobianAccumulator(
         const cv::Mat& correspondences_,
         const size_t* sample_,
         const size_t& sample_size_,
-        const LossFunction &l) : 
+        const LossFunction &l,
+        const ResidualWeightVector &w = ResidualWeightVector()) : 
             correspondences(&correspondences_), 
             sample(sample_),
             sample_size(sample_size_),
-            loss_fn(l) {}
+            loss_fn(l),
+            weights(w) {}
 
     double residual(const CameraPose &pose) const {
         Eigen::Matrix3d E;
@@ -200,7 +155,7 @@ class RelativePoseJacobianAccumulator {
                             (E.block<3, 2>(0, 0).transpose() * pt2.homogeneous()).squaredNorm();
 
             double r2 = (C * C) / nJc_sq;
-            cost += loss_fn.loss(r2);
+            cost += weights[k] * loss_fn.loss(r2);
         }
 
         return cost;
@@ -271,7 +226,7 @@ class RelativePoseJacobianAccumulator {
             const double r = C * inv_nJ_C;
 
             // Compute weight from robust loss function (used in the IRLS)
-            const double weight = loss_fn.weight(r * r) / sample_size;
+            const double weight = weights[k] * loss_fn.weight(r * r) / sample_size;
             if(weight == 0.0)
                 continue;
 
@@ -320,6 +275,7 @@ class RelativePoseJacobianAccumulator {
         const size_t sample_size;
 
         const LossFunction &loss_fn;
+        const ResidualWeightVector &weights;
 };
 
 } // namespace pose_lib

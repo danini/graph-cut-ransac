@@ -48,7 +48,8 @@ int findEssentialMatrix_(std::vector<double>& srcPts_norm,
                            double conf,
                            int max_iters,
 						   bool use_sprt,
-						   double min_inlier_ratio_for_sprt);
+						   double min_inlier_ratio_for_sprt,
+						   int sampler_id);
 
 
 int findHomography_(std::vector<double>& srcPts,

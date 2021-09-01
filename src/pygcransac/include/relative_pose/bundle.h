@@ -46,11 +46,12 @@ int bundle_adjust(const std::vector<Eigen::Vector2d> &x,
 
 // Relative pose refinement. Minimizes Sampson error error. Assumes identity intrinsics (calibrated camera)
 // Returns number of iterations.
-int refine_sampson(const cv::Mat &correspondences_,
+int refine_relpose(const cv::Mat &correspondences_,
                    const size_t *sample_,
                    const size_t &sample_size_,
                    CameraPose *pose,
-                   const BundleOptions &opt = BundleOptions());
+                   const BundleOptions &opt = BundleOptions(),
+                   const std::vector<double> &weights = std::vector<double>());
 
 } // namespace pose_lib
 

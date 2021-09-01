@@ -228,7 +228,8 @@ py::tuple findEssentialMatrix(py::array_t<double>  x1y1_,
 								double spatial_coherence_weight,
                                 int max_iters,
 								bool use_sprt,
-								double min_inlier_ratio_for_sprt)
+								double min_inlier_ratio_for_sprt,
+								int sampler)
 {
     py::buffer_info buf1 = x1y1_.request();
     size_t NUM_TENTS = buf1.shape[0];
@@ -285,16 +286,17 @@ py::tuple findEssentialMatrix(py::array_t<double>  x1y1_,
     std::vector<bool> inliers(NUM_TENTS);
     
     int num_inl = findEssentialMatrix_(x1y1,
-                           x2y2,
-                           inliers,
-                           F, K1, K2,     
-                           h1, w1,h2,w2,
-						   spatial_coherence_weight,
-                           threshold,
-						   conf,
-						   max_iters,
-						   use_sprt,
-							min_inlier_ratio_for_sprt);
+                           	x2y2,
+                           	inliers,
+                           	F, K1, K2,     
+                           	h1, w1, h2, w2,
+						   	spatial_coherence_weight,
+                           	threshold,
+						   	conf,
+						   	max_iters,
+						   	use_sprt,
+							min_inlier_ratio_for_sprt,
+							sampler);
     
     py::array_t<bool> inliers_ = py::array_t<bool>(NUM_TENTS);
     py::buffer_info buf3 = inliers_.request();
@@ -447,7 +449,8 @@ PYBIND11_PLUGIN(pygcransac) {
 		py::arg("spatial_coherence_weight") = 0.975,
           py::arg("max_iters") = 10000,
 		py::arg("use_sprt") = true,
-		py::arg("min_inlier_ratio_for_sprt") = 0.1);
+		py::arg("min_inlier_ratio_for_sprt") = 0.1,
+		py::arg("sampler") = 2);
     
   m.def("findHomography", &findHomography, R"doc(some doc)doc",
         py::arg("x1y1"),

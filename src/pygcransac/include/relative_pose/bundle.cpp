@@ -5,6 +5,20 @@
 
 namespace pose_lib {
 
+#define SWITCH_LOSS_FUNCTIONS                     \
+    case BundleOptions::LossType::TRIVIAL:        \
+        SWITCH_LOSS_FUNCTION_CASE(TrivialLoss);   \
+        break;                                    \
+    case BundleOptions::LossType::TRUNCATED:      \
+        SWITCH_LOSS_FUNCTION_CASE(TruncatedLoss); \
+        break;                                    \
+    case BundleOptions::LossType::HUBER:          \
+        SWITCH_LOSS_FUNCTION_CASE(HuberLoss);     \
+        break;                                    \
+    case BundleOptions::LossType::CAUCHY:         \
+        SWITCH_LOSS_FUNCTION_CASE(CauchyLoss);    \
+        break;
+
 template <typename JacobianAccumulator>
 int lm_6dof_impl(const JacobianAccumulator &accum, CameraPose *pose, const BundleOptions &opt) {
     Eigen::Matrix<double, 6, 6> JtJ;
@@ -199,36 +213,45 @@ int bundle_adjust(const std::vector<Eigen::Vector2d> &x, const std::vector<Eigen
     }
 }
 
-int refine_sampson(const cv::Mat &correspondences_,
+int refine_relpose(const cv::Mat &correspondences_,
                     const size_t *sample_,
                     const size_t &sample_size_,
                     CameraPose *pose, 
-                    const BundleOptions &opt) 
+                    const BundleOptions &opt,
+                    const std::vector<double> &weights) 
 {
-    switch (opt.loss_type) {
-    case BundleOptions::LossType::TRIVIAL: {
-        TrivialLoss loss_fn;
-        RelativePoseJacobianAccumulator<TrivialLoss> accum(correspondences_, sample_, sample_size_, loss_fn);
-        return lm_5dof_impl<decltype(accum)>(accum, pose, opt);
+    if (weights.size() != sample_size_) 
+    {
+        // We have per-residual weights
+        switch (opt.loss_type) {
+#define SWITCH_LOSS_FUNCTION_CASE(LossFunction)                                                             \
+        {                                                                                                       \
+            LossFunction loss_fn(opt.loss_scale);                                                               \
+            RelativePoseJacobianAccumulator<LossFunction, std::vector<double>> accum(correspondences_, sample_, sample_size_, loss_fn, weights); \
+            return lm_5dof_impl<decltype(accum)>(accum, pose, opt);                                             \
+        }
+            SWITCH_LOSS_FUNCTIONS
+#undef SWITCH_LOSS_FUNCTION_CASE
+        default:
+            return -1;
+        };
+    } else {
+        // Uniformly weighted residuals
+        switch (opt.loss_type) {
+#define SWITCH_LOSS_FUNCTION_CASE(LossFunction)                               \
+        {                                                                         \
+            LossFunction loss_fn(opt.loss_scale);                                 \
+            RelativePoseJacobianAccumulator<LossFunction> accum(correspondences_, sample_, sample_size_, loss_fn); \
+            return lm_5dof_impl<decltype(accum)>(accum, pose, opt);               \
+        }
+            SWITCH_LOSS_FUNCTIONS
+#undef SWITCH_LOSS_FUNCTION_CASE
+
+        default:
+            return -1;
+        };
     }
-    case BundleOptions::LossType::TRUNCATED: {
-        TruncatedLoss loss_fn(opt.loss_scale);
-        RelativePoseJacobianAccumulator<TruncatedLoss> accum(correspondences_, sample_, sample_size_, loss_fn);
-        return lm_5dof_impl<decltype(accum)>(accum, pose, opt);
-    }
-    case BundleOptions::LossType::HUBER: {
-        HuberLoss loss_fn(opt.loss_scale);
-        RelativePoseJacobianAccumulator<HuberLoss> accum(correspondences_, sample_, sample_size_, loss_fn);
-        return lm_5dof_impl<decltype(accum)>(accum, pose, opt);
-    }
-    case BundleOptions::LossType::CAUCHY: {
-        CauchyLoss loss_fn(opt.loss_scale);
-        RelativePoseJacobianAccumulator<CauchyLoss> accum(correspondences_, sample_, sample_size_, loss_fn);
-        return lm_5dof_impl<decltype(accum)>(accum, pose, opt);
-    }
-    default:
-        return -1;
-    };
+
     return 0;
 }
 

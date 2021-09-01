@@ -708,8 +708,8 @@ namespace gcransac
 					*normalized_points_ptr++ = (x2 - mass_point_dst[0]) * ratio_dst;
 					*normalized_points_ptr++ = (y2 - mass_point_dst[1]) * ratio_dst;
 
-					for (size_t i = 4; i < normalized_points_.cols; ++i)
-						*normalized_points_ptr++ = *(d_idx + i);
+					for (int j = 4; j < normalized_points_.cols; ++j)
+						*normalized_points_ptr++ = *(d_idx + j);
 				}
 
 				// Creating the normalizing transformations
