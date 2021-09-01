@@ -6,20 +6,20 @@
 #include <Eigen/Eigen>
 
 #include "GCRANSAC.h"
-#include "flann_neighborhood_graph.h"
-#include "grid_neighborhood_graph.h"
-#include "uniform_sampler.h"
-#include "prosac_sampler.h"
-#include "progressive_napsac_sampler.h"
-#include "fundamental_estimator.h"
-#include "homography_estimator.h"
-#include "essential_estimator.h"
-#include "preemption_sprt.h"
+#include "neighborhood/flann_neighborhood_graph.h"
+#include "neighborhood/grid_neighborhood_graph.h"
+#include "samplers/uniform_sampler.h"
+#include "samplers/prosac_sampler.h"
+#include "samplers/progressive_napsac_sampler.h"
+#include "estimators/fundamental_estimator.h"
+#include "estimators/homography_estimator.h"
+#include "estimators/essential_estimator.h"
+#include "preemption/preemption_sprt.h"
 
-#include "solver_fundamental_matrix_seven_point.h"
-#include "solver_fundamental_matrix_eight_point.h"
-#include "solver_homography_four_point.h"
-#include "solver_essential_matrix_five_point_stewenius.h"
+#include "estimators/solver_fundamental_matrix_seven_point.h"
+#include "estimators/solver_fundamental_matrix_eight_point.h"
+#include "estimators/solver_homography_four_point.h"
+#include "estimators/solver_essential_matrix_five_point_stewenius.h"
 
 #include <ctime>
 #include <sys/types.h>
