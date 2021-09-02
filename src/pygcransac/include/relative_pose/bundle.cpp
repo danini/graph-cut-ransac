@@ -218,16 +218,16 @@ int refine_relpose(const cv::Mat &correspondences_,
                     const size_t &sample_size_,
                     CameraPose *pose, 
                     const BundleOptions &opt,
-                    const std::vector<double> &weights) 
+                    const double* weights)
 {
-    if (weights.size() == sample_size_) 
+    if (weights == nullptr) 
     {
         // We have per-residual weights
         switch (opt.loss_type) {
 #define SWITCH_LOSS_FUNCTION_CASE(LossFunction)                                                             \
         {                                                                                                       \
             LossFunction loss_fn(opt.loss_scale);                                                               \
-            RelativePoseJacobianAccumulator<LossFunction, std::vector<double>> accum(correspondences_, sample_, sample_size_, loss_fn, weights); \
+            RelativePoseJacobianAccumulator<LossFunction> accum(correspondences_, sample_, sample_size_, loss_fn, weights); \
             return lm_5dof_impl<decltype(accum)>(accum, pose, opt);                                             \
         }
             SWITCH_LOSS_FUNCTIONS

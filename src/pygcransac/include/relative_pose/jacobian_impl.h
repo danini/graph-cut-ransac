@@ -5,22 +5,6 @@
 
 namespace pose_lib {
 
-// For the accumulators we support supplying a vector<double> with point-wise weights for the residuals
-// In case we don't want to have weighted residuals, we can pass UniformWeightVector instead of filling a std::vector with 1.0
-// The multiplication is then hopefully is optimized away since it always returns 1.0
-class UniformWeightVector {
-  public:
-    UniformWeightVector() {}
-    constexpr double operator[](std::size_t idx) const { return 1.0; }
-};
-class UniformWeightVectors { // this corresponds to std::vector<std::vector<double>> used for generalized cameras etc
-  public:
-    UniformWeightVectors() {}
-    constexpr const UniformWeightVector &operator[](std::size_t idx) const { return w; }
-    const UniformWeightVector w;
-    typedef UniformWeightVector value_type;
-};
-
 template <typename CameraModel, typename LossFunction>
 class CameraJacobianAccumulator {
   public:
@@ -121,8 +105,7 @@ class CameraJacobianAccumulator {
     const LossFunction &loss_fn;
 };
 
-template <typename LossFunction, 
-    typename ResidualWeightVector = UniformWeightVector>
+template <typename LossFunction>
 class RelativePoseJacobianAccumulator {
   public:
     RelativePoseJacobianAccumulator(
@@ -130,7 +113,7 @@ class RelativePoseJacobianAccumulator {
         const size_t* sample_,
         const size_t& sample_size_,
         const LossFunction &l,
-        const ResidualWeightVector &w = ResidualWeightVector()) : 
+        const double *w = nullptr) : 
             correspondences(&correspondences_), 
             sample(sample_),
             sample_size(sample_size_),
@@ -155,7 +138,10 @@ class RelativePoseJacobianAccumulator {
                             (E.block<3, 2>(0, 0).transpose() * pt2.homogeneous()).squaredNorm();
 
             double r2 = (C * C) / nJc_sq;
-            cost += weights[k] * loss_fn.loss(r2);
+            if (weights == nullptr)
+                cost += loss_fn.loss(r2);
+            else
+                cost += weights[k] * loss_fn.loss(r2);
         }
 
         return cost;
@@ -226,7 +212,10 @@ class RelativePoseJacobianAccumulator {
             const double r = C * inv_nJ_C;
 
             // Compute weight from robust loss function (used in the IRLS)
-            const double weight = weights[k] * loss_fn.weight(r * r) / sample_size;
+            double weight = loss_fn.weight(r * r) / sample_size;
+            if (weights != nullptr)
+                weight = weights[k] * weight;
+
             if(weight == 0.0)
                 continue;
 
@@ -275,7 +264,7 @@ class RelativePoseJacobianAccumulator {
         const size_t sample_size;
 
         const LossFunction &loss_fn;
-        const ResidualWeightVector &weights;
+        const double *weights;
 };
 
 } // namespace pose_lib

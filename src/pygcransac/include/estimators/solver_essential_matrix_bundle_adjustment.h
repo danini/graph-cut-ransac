@@ -175,7 +175,8 @@ namespace gcransac
 							sample_, // The sample, i.e., indices of points to be used
 							sample_number_, // The size of the sample
 							&pose, // The optimized pose
-							bundle_options); // The bundle adjustment options
+							bundle_options, // The bundle adjustment options
+							weights_); // The weights for the weighted LSQ fitting
 
 						// Composing the essential matrix from the pose
 						Eigen::Matrix3d E;

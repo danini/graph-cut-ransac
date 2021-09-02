@@ -51,7 +51,7 @@ int refine_relpose(const cv::Mat &correspondences_,
                    const size_t &sample_size_,
                    CameraPose *pose,
                    const BundleOptions &opt = BundleOptions(),
-                   const std::vector<double> &weights = std::vector<double>());
+                   const double *weights = nullptr);
 
 } // namespace pose_lib
 
