@@ -134,9 +134,9 @@ namespace gcransac
 
 				m_S = _ModelEstimator::maximumMinimalSolutions(); // The maximum number of solutions
 
-				printf("Setting up SPRT test.\n");
+				/*printf("Setting up SPRT test.\n");
 				printf("\tThe estimation of one models takes %f ms.\n", t_M);
-				printf("\tAt most %.0f models are returned.\n", m_S);
+				printf("\tAt most %.0f models are returned.\n", m_S);*/
 			}
 
 			SPRTPreemptiveVerfication(const cv::Mat &points_,
