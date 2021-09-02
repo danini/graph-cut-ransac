@@ -35,6 +35,9 @@
 
 #include "solver_engine.h"
 #include "fundamental_estimator.h"
+#include <iostream>
+#include <opencv2/core.hpp>
+#include <opencv2/calib3d.hpp>
 
 namespace gcransac
 {
@@ -43,14 +46,14 @@ namespace gcransac
 		namespace solver
 		{
 			// This is the estimator class for estimating a homography matrix between two images. A model estimation method and error calculation method are implemented
-			class FundamentalMatrixEightPointSolver : public SolverEngine
+			class EPnPLM : public SolverEngine
 			{
 			public:
-				FundamentalMatrixEightPointSolver()
+				EPnPLM()
 				{
 				}
 
-				~FundamentalMatrixEightPointSolver()
+				~EPnPLM()
 				{
 				}
 
@@ -61,6 +64,7 @@ namespace gcransac
 					return maximumSolutions() > 1;
 				}
 
+				// The maximum number of solutions returned by the estimator
 				static constexpr size_t maximumSolutions()
 				{
 					return 1;
@@ -69,7 +73,7 @@ namespace gcransac
 				// The minimum number of points required for the estimation
 				static constexpr size_t sampleSize()
 				{
-					return 8;
+					return 3;
 				}
 
 				// Estimate the model parameters from the given point sample
@@ -82,96 +86,81 @@ namespace gcransac
 					const double *weights_ = nullptr) const; // The weight for each point
 			};
 
-			OLGA_INLINE bool FundamentalMatrixEightPointSolver::estimateModel(
-				const cv::Mat& data_,
-				const size_t *sample_,
-				size_t sample_number_,
-				std::vector<Model> &models_,
-				const double *weights_) const
+
+			// Estimate the model parameters from the given point sample
+			// using weighted fitting if possible.
+			OLGA_INLINE bool EPnPLM::estimateModel(
+				const cv::Mat& data_, // The set of data points
+				const size_t *sample_, // The sample used for the estimation
+				size_t sample_number_, // The size of the sample
+				std::vector<Model> &models_, // The estimated model parameters
+				const double *weights_) const // The weight for each point
 			{
 				if (sample_ == nullptr)
 					sample_number_ = data_.rows;
 
-				Eigen::MatrixXd coefficients(sample_number_, 9);
-				const double *data_ptr = reinterpret_cast<double *>(data_.data);
-				const int cols = data_.cols;
+				if (sample_number_ < sampleSize())
+					return false;
 
-				// form a linear system: i-th row of A(=a) represents
-				// the equation: (m2[i], 1)'*F*(m1[i], 1) = 0
-				double weight = 1.0;
-				size_t offset;
-				for (size_t i = 0; i < sample_number_; i++)
+				if (sample_ == nullptr)
+					sample_number_ = data_.rows;
+
+				if (sample_number_ < sampleSize())
+					return false;
+
+				const double * data_ptr = reinterpret_cast<double *>(data_.data);
+				const size_t columns = data_.cols;
+
+				cv::Mat inlier_image_points(sample_number_, 2, CV_64F),
+					inlier_object_points(sample_number_, 3, CV_64F);
+
+				for (size_t i = 0; i < sample_number_; ++i)
 				{
-					if (sample_ == nullptr)
-					{
-						offset = cols * i;
-						if (weights_ != nullptr)
-							weight = weights_[i];
-					} 
-					else
-					{
-						offset = cols * sample_[i];
-						if (weights_ != nullptr)
-							weight = weights_[sample_[i]];
-					}
-
-					const double
-						x0 = data_ptr[offset],
-						y0 = data_ptr[offset + 1],
-						x1 = data_ptr[offset + 2],
-						y1 = data_ptr[offset + 3];
-
-					// If not weighted least-squares is applied
-					if (weights_ == nullptr)
-					{
-						coefficients(i, 0) = x1 * x0;
-						coefficients(i, 1) = x1 * y0;
-						coefficients(i, 2) = x1;
-						coefficients(i, 3) = y1 * x0;
-						coefficients(i, 4) = y1 * y0;
-						coefficients(i, 5) = y1;
-						coefficients(i, 6) = x0;
-						coefficients(i, 7) = y0;
-						coefficients(i, 8) = 1;
-					}
-					else
-					{
-						// Precalculate these values to avoid calculating them multiple times
-						const double
-							weight_times_x0 = weight * x0,
-							weight_times_y0 = weight * y0,
-							weight_times_x1 = weight * x1,
-							weight_times_y1 = weight * y1;
-
-						coefficients(i, 0) = weight_times_x1 * x0;
-						coefficients(i, 1) = weight_times_x1 * y0;
-						coefficients(i, 2) = weight_times_x1;
-						coefficients(i, 3) = weight_times_y1 * x0;
-						coefficients(i, 4) = weight_times_y1 * y0;
-						coefficients(i, 5) = weight_times_y1;
-						coefficients(i, 6) = weight_times_x0;
-						coefficients(i, 7) = weight_times_y0;
-						coefficients(i, 8) = weight;
-					}
+					const size_t idx = 
+						sample_ == nullptr ? i : sample_[i];
+					inlier_image_points.at<double>(i, 0) = data_.at<double>(idx, 0);
+					inlier_image_points.at<double>(i, 1) = data_.at<double>(idx, 1);
+					inlier_object_points.at<double>(i, 0) = data_.at<double>(idx, 2);
+					inlier_object_points.at<double>(i, 1) = data_.at<double>(idx, 3);
+					inlier_object_points.at<double>(i, 2) = data_.at<double>(idx, 4);
 				}
 
-				// A*(f11 f12 ... f33)' = 0 is singular (8 equations for 9 variables), so
-				// the solution is linear subspace of dimensionality 1.
-				// => use the last two singular std::vectors as a basis of the space
-				// (according to SVD properties)
-				const Eigen::FullPivHouseholderQR<Eigen::MatrixXd> qr(
-					coefficients.transpose() * coefficients);
-				const Eigen::MatrixXd& Q = qr.matrixQ();
-				const Eigen::Matrix<double, 9, 1>& null_space =
-					Q.rightCols<1>();
+				// Converting the estimated pose parameters OpenCV format
+				Eigen::Matrix3d rotation;
+				Eigen::Vector3d translation;
 
-				FundamentalMatrix model;
-				model.descriptor << null_space(0), null_space(1), null_space(2),
-					null_space(3), null_space(4), null_space(5),
-					null_space(6), null_space(7), null_space(8);
-				models_.push_back(model);
+				cv::Mat cv_rotation(3, 3, CV_64F, rotation.data()), // The estimated rotation matrix converted to OpenCV format
+					cv_translation(3, 1, CV_64F, translation.data()); // The estimated translation converted to OpenCV format
+
+				// Convert the rotation matrix by the rodrigues formula
+				cv::Mat cv_rodrigues(3, 1, CV_64F);
+				cv::Rodrigues(cv_rotation.t(), cv_rodrigues);
+
+				// Applying numerical optimization to the estimated pose parameters
+				cv::solvePnP(inlier_object_points, // The object points
+					inlier_image_points, // The image points
+					cv::Mat::eye(3, 3, CV_64F), // The camera's intrinsic parameters 
+					cv::Mat(), // An empty vector since the radial distortion is not known
+					cv_rodrigues, // The initial rotation
+					cv_translation, // The initial translation
+					false, // Use the initial values
+					cv::SOLVEPNP_ITERATIVE); // Apply numerical refinement
+				
+				// Convert the rotation vector back to a rotation matrix
+				cv::Rodrigues(cv_rodrigues, cv_rotation);
+
+				// Transpose the rotation matrix back
+				cv_rotation = cv_rotation.t();
+
+				Model model;
+				model.descriptor = Eigen::Matrix<double, 3, 4>();
+				model.descriptor.block<3, 3>(0, 0) = rotation;
+				model.descriptor.block<3, 1>(0, 3) = translation;
+				models_.emplace_back(model);
+
 				return true;
 			}
+		
 		}
 	}
 }

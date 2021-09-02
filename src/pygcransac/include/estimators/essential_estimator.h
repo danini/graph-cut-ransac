@@ -51,7 +51,7 @@ namespace gcransac
 {
 	namespace estimator
 	{
-		// This is the estimator class for estimating a homography matrix between two images. A model_ estimation method and error calculation method are implemented
+		// This is the estimator class for estimating a essential matrix between two images. A model_ estimation method and error calculation method are implemented
 		template<class _MinimalSolverEngine,  // The solver used for estimating the model_ from a minimal sample
 			class _NonMinimalSolverEngine> // The solver used for estimating the model_ from a non-minimal sample
 			class EssentialMatrixEstimator : public Estimator < cv::Mat, Model >

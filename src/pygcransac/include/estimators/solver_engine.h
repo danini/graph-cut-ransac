@@ -33,51 +33,63 @@
 // Author: Daniel Barath (barath.daniel@sztaki.mta.hu)
 #pragma once
 
+#include <math.h>
+#include <chrono>
+#include <random>
 #include <vector>
+
+#include <opencv2/core/core.hpp>
+#include <unsupported/Eigen/Polynomials>
 #include <Eigen/Eigen>
-#include "estimator.h"
+
+#include "model.h"
 
 namespace gcransac
 {
-	namespace neighborhood
+	namespace estimator
 	{
-		template <typename _DataContainer>
-		class NeighborhoodGraph
+		namespace solver
 		{
-		protected:
-			// The pointer of the container consisting of the data points from which
-			// the neighborhood graph is constructed.
-			const _DataContainer  * const container;
-
-			// The number of neighbors, i.e., edges in the neighborhood graph.
-			size_t neighbor_number;
-
-			// A flag indicating if the initialization was successfull.
-			bool initialized;
-
-		public:
-			NeighborhoodGraph() : initialized(false), 
-				container(nullptr) 
+			// This is the estimator class for estimating a homography matrix between two images. A model estimation method and error calculation method are implemented
+			class SolverEngine
 			{
-			}
+			public:
+				SolverEngine()
+				{
+				}
 
-			NeighborhoodGraph(const _DataContainer * const container_) :
-				neighbor_number(0),
-				container(container_)
-			{
-			}
+				~SolverEngine()
+				{
+				}
 
-			// A function to initialize and create the neighbordhood graph.
-			virtual bool initialize(const _DataContainer * const container_) = 0;
+				// Determines if there is a chance of returning multiple models
+				// the function 'estimateModel' is applied.
+				static constexpr bool returnMultipleModels()
+				{
+					return maximumSolutions() > 1;
+				}
 
-			// Returns the neighbors of the current point in the graph.
-			inline virtual const std::vector<size_t> &getNeighbors(size_t point_idx_) const = 0;
+				// The maximum number of solutions returned by the estimator
+				static constexpr size_t maximumSolutions()
+				{
+					return 1;
+				}
 
-			// Returns the number of edges in the neighborhood graph.
-			size_t getNeighborNumber() const { return neighbor_number; }
+				// The minimum number of points required for the estimation
+				static constexpr size_t sampleSize()
+				{
+					return 0;
+				}
 
-			// Returns if the initialization was successfull.
-			bool isInitialized() const { return initialized; }
-		};
+				// Estimate the model parameters from the given point sample
+				// using weighted fitting if possible.
+				virtual OLGA_INLINE bool estimateModel(
+					const cv::Mat& data_,
+					const size_t *sample_,
+					size_t sample_number_,
+					std::vector<Model> &models_,
+					const double *weights_ = nullptr) const = 0;
+			};
+		}
 	}
 }

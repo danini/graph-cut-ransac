@@ -36,7 +36,7 @@
 #include <vector>
 #include <opencv2/core/core.hpp>
 #include "uniform_random_generator.h"
-#include "grid_neighborhood_graph.h"
+#include "neighborhood/grid_neighborhood_graph.h"
 #include "prosac_sampler.h"
 #include "sampler.h"
 

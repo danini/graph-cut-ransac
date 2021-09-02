@@ -36,7 +36,7 @@
 #include <opencv2/core/core.hpp>
 #include <vector>
 #include <Eigen/Eigen>
-#include "estimator.h"
+#include "estimators/estimator.h"
 
 namespace gcransac
 {
@@ -125,6 +125,19 @@ namespace gcransac
 		{}
 
 		Homography(const Homography& other)
+		{
+			descriptor = other.descriptor;
+		}
+	};
+
+	class RadialHomography : public Model
+	{
+	public:
+		RadialHomography() :
+			Model(Eigen::MatrixXd(3, 7))
+		{}
+
+		RadialHomography(const RadialHomography& other)
 		{
 			descriptor = other.descriptor;
 		}

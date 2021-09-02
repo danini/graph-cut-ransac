@@ -6,20 +6,20 @@
 #include <Eigen/Eigen>
 
 #include "GCRANSAC.h"
-#include "flann_neighborhood_graph.h"
-#include "grid_neighborhood_graph.h"
-#include "uniform_sampler.h"
-#include "prosac_sampler.h"
-#include "progressive_napsac_sampler.h"
-#include "fundamental_estimator.h"
-#include "homography_estimator.h"
-#include "essential_estimator.h"
-#include "preemption_sprt.h"
+#include "neighborhood/flann_neighborhood_graph.h"
+#include "neighborhood/grid_neighborhood_graph.h"
+#include "samplers/uniform_sampler.h"
+#include "samplers/prosac_sampler.h"
+#include "samplers/progressive_napsac_sampler.h"
+#include "estimators/fundamental_estimator.h"
+#include "estimators/homography_estimator.h"
+#include "estimators/essential_estimator.h"
+#include "preemption/preemption_sprt.h"
 
-#include "solver_fundamental_matrix_seven_point.h"
-#include "solver_fundamental_matrix_eight_point.h"
-#include "solver_homography_four_point.h"
-#include "solver_essential_matrix_five_point_stewenius.h"
+#include "estimators/solver_fundamental_matrix_seven_point.h"
+#include "estimators/solver_fundamental_matrix_eight_point.h"
+#include "estimators/solver_homography_four_point.h"
+#include "estimators/solver_essential_matrix_five_point_stewenius.h"
 
 #include <ctime>
 #include <sys/types.h>
@@ -421,7 +421,8 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 	double conf,
 	int max_iters,
 	bool use_sprt,
-	double min_inlier_ratio_for_sprt)
+	double min_inlier_ratio_for_sprt,
+	int sampler_id)
 {
 	int num_tents = srcPts.size() / 2;
 	cv::Mat points(num_tents, 4, CV_64F);
@@ -432,6 +433,7 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 		points.at<double>(i, 2) = dstPts[2 * i];
 		points.at<double>(i, 3) = dstPts[2 * i + 1];
 	}
+
 	const size_t cell_number_in_neighborhood_graph_ = 8;
 	neighborhood::GridNeighborhoodGraph<4> neighborhood1(&points,
 		{ w1 / static_cast<double>(cell_number_in_neighborhood_graph_),
@@ -446,11 +448,6 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 		fprintf(stderr, "The neighborhood graph is not initialized successfully.\n");
 		return 0;
 	}
-
-	// Calculating the maximum image diagonal to be used for setting the threshold
-	// adaptively for each image pair. 
-	const double max_image_diagonal =
-		sqrt(pow(MAX(w1, w2), 2) + pow(MAX(h1, h2), 2));
 
 	Eigen::Matrix3d intrinsics_src,
 		intrinsics_dst;
@@ -467,6 +464,11 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 		}
 	}
 
+	// Calculating the maximum image diagonal to be used for setting the threshold
+	// adaptively for each image pair. 
+	const double threshold_normalizer =
+		0.25 * (intrinsics_src(0,0) + intrinsics_src(1,1) + intrinsics_dst(0,0) + intrinsics_dst(1,1));
+
 	cv::Mat normalized_points(points.size(), CV_64F);
 	utils::normalizeCorrespondences(points,
 		intrinsics_src,
@@ -479,19 +481,35 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 	EssentialMatrix model;
 
 	// Initialize the samplers
-	// The main sampler is used inside the local optimization
-	sampler::ProgressiveNapsacSampler<4> main_sampler(&points,
-		{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
-							// (source_image_width / 16) * (source_image_height / 16)  * (destination_image_width / 16)  (destination_image_height / 16), etc.
-		estimator.sampleSize(), // The size of a minimal sample
-		{ static_cast<double>(w1), // The width of the source image
-			static_cast<double>(h1), // The height of the source image
-			static_cast<double>(w2), // The width of the destination image
-			static_cast<double>(h2) });  // The height of the destination image
-	sampler::UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
+	// The main sampler is used for sampling in the main RANSAC loop
+	typedef sampler::Sampler<cv::Mat, size_t> AbstractSampler;
+	std::unique_ptr<AbstractSampler> main_sampler;
+	if (sampler_id == 0)
+		main_sampler = std::unique_ptr<AbstractSampler>(new sampler::UniformSampler(&points));
+	else if (sampler_id == 1)
+		main_sampler = std::unique_ptr<AbstractSampler>(new sampler::ProsacSampler(&points, estimator.sampleSize()));
+	else if (sampler_id == 2)
+		main_sampler = std::unique_ptr<AbstractSampler>(new sampler::ProgressiveNapsacSampler<4>(&points,
+			{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
+								// (source_image_width / 16) * (source_image_height / 16)  * (destination_image_width / 16)  (destination_image_height / 16), etc.
+			estimator.sampleSize(), // The size of a minimal sample
+			{ static_cast<double>(w1), // The width of the source image
+				static_cast<double>(h1), // The height of the source image
+				static_cast<double>(w2), // The width of the destination image
+				static_cast<double>(h2) },  // The height of the destination image
+			0.5)); // The length (i.e., 0.5 * <point number> iterations) of fully blending to global sampling 
+	else
+	{
+		fprintf(stderr, "Unknown sampler identifier: %d. The accepted samplers are 0 (uniform sampling), 1 (PROSAC sampling), 2 (P-NAPSAC sampling)\n",
+			sampler_id);
+		return 0;
+	}
+	
+	// The local optimization sampler is used inside the local optimization
+	sampler::UniformSampler local_optimization_sampler(&points);
 
 	// Checking if the samplers are initialized successfully.
-	if (!main_sampler.isInitialized() ||
+	if (!main_sampler->isInitialized() ||
 		!local_optimization_sampler.isInitialized())
 	{
 		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
@@ -512,29 +530,7 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 			neighborhood::GridNeighborhoodGraph<4>,
 			MSACScoringFunction<utils::DefaultEssentialMatrixEstimator>,
 			preemption::SPRTPreemptiveVerfication<utils::DefaultEssentialMatrixEstimator>> gcransac;
-		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
-		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
-		gcransac.settings.confidence = conf; // The required confidence in the results
-		gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
-		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
-		gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
-		gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
-
-		// Start GC-RANSAC
-		gcransac.run(points,
-			estimator,
-			&main_sampler,
-			&local_optimization_sampler,
-			&neighborhood1,
-			model,
-			preemptive_verification);
-
-		statistics = gcransac.getRansacStatistics();
-	}
-	else
-	{
-		GCRANSAC<utils::DefaultEssentialMatrixEstimator, neighborhood::GridNeighborhoodGraph<4>> gcransac;
-		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
+		gcransac.settings.threshold = threshold / threshold_normalizer; // The inlier-outlier threshold
 		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
 		gcransac.settings.confidence = conf; // The required confidence in the results
 		gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
@@ -545,7 +541,30 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 		// Start GC-RANSAC
 		gcransac.run(normalized_points,
 			estimator,
-			&main_sampler,
+			main_sampler.get(),
+			&local_optimization_sampler,
+			&neighborhood1,
+			model,
+			preemptive_verification);
+
+		statistics = gcransac.getRansacStatistics();
+	}
+	else
+	{
+		
+		GCRANSAC<utils::DefaultEssentialMatrixEstimator, neighborhood::GridNeighborhoodGraph<4>> gcransac;
+		gcransac.settings.threshold = threshold / threshold_normalizer; // The inlier-outlier threshold
+		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
+		gcransac.settings.confidence = conf; // The required confidence in the results
+		gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
+		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
+		gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
+		gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
+
+		// Start GC-RANSAC
+		gcransac.run(normalized_points,
+			estimator,
+			main_sampler.get(),
 			&local_optimization_sampler,
 			&neighborhood1,
 			model);
@@ -563,7 +582,6 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 	for (auto pt_idx = 0; pt_idx < num_inliers; ++pt_idx) {
 		inliers[statistics.inliers[pt_idx]] = 1;
 	}
-
 
 	E.resize(9);
 

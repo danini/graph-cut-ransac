@@ -478,10 +478,10 @@ namespace gcransac
 		}
 
 		void saveStatisticsToFile(
-			const gcransac::utils::RANSACStatistics &statistics_,
-			const std::string &source_path_,
-			const std::string &destination_path_,
-			const std::string &filename_,
+			const gcransac::utils::RANSACStatistics& statistics_,
+			const std::string& source_path_,
+			const std::string& destination_path_,
+			const std::string& filename_,
 #ifdef _WIN32
 			const int mode_
 #else

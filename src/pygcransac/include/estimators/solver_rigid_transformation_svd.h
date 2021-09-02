@@ -62,6 +62,7 @@ namespace gcransac
 					return maximumSolutions() > 1;
 				}
 
+				// The maximum number of returned solutions
 				static constexpr size_t maximumSolutions()
 				{
 					return 1;
