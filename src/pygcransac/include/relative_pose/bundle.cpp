@@ -220,7 +220,7 @@ int refine_relpose(const cv::Mat &correspondences_,
                     const BundleOptions &opt,
                     const std::vector<double> &weights) 
 {
-    if (weights.size() != sample_size_) 
+    if (weights.size() == sample_size_) 
     {
         // We have per-residual weights
         switch (opt.loss_type) {
