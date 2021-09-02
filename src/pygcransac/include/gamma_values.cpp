@@ -1,3 +1,4 @@
+#pragma once
 
 constexpr unsigned int stored_gamma_number = 36000;
 constexpr unsigned int stored_incomplete_gamma_number = 100000;
