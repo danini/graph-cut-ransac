@@ -36,6 +36,18 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
 						   bool use_sprt,
 						   double min_inlier_ratio_for_sprt);
 
+ int findLine2D_(std::vector<double>& srcPts,
+                  std::vector<bool>& inliers,
+                            std::vector<double>&abc,
+                            int h1, int w1,
+ 						   double spatial_coherence_weight,
+                            double threshold,
+                            double conf,
+                            int max_iters,
+ 						   bool use_sprt,
+ 						   double min_inlier_ratio_for_sprt);
+
+
 int findEssentialMatrix_(std::vector<double>& srcPts_norm,
                            std::vector<double>& dstPts_norm,
                            std::vector<bool>& inliers,

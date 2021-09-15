@@ -56,7 +56,7 @@ int find6DPose_(std::vector<double>& imagePoints,
 	utils::DefaultPnPEstimator estimator;
 	Pose6D model;
 
-	// Initialize the samplers	
+	// Initialize the samplers
 	sampler::UniformSampler main_sampler(&points);  // The main sampler is used inside the local optimization
 	sampler::UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
 
@@ -175,7 +175,7 @@ int findRigidTransform_(std::vector<double>& points1,
 	utils::DefaultRigidTransformationEstimator estimator;
 	RigidTransformation model;
 
-	// Initialize the samplers	
+	// Initialize the samplers
 	sampler::UniformSampler main_sampler(&points);  // The main sampler is used inside the local optimization
 	sampler::UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
 
@@ -265,6 +265,140 @@ int findRigidTransform_(std::vector<double>& points1,
 	return num_inliers;
 }
 
+
+int findLine2D_(std::vector<double>& srcPts,
+	std::vector<bool>& inliers,
+	std::vector<double>& abc,
+	int h1, int w1,
+	double spatial_coherence_weight,
+	double threshold,
+	double conf,
+	int max_iters,
+	bool use_sprt,
+	double min_inlier_ratio_for_sprt)
+{
+	int num_tents = srcPts.size() / 2;
+	cv::Mat points(num_tents, 2, CV_64F);
+	int iterations = 0;
+	for (int i = 0; i < num_tents; ++i) {
+		points.at<double>(i, 0) = srcPts[2 * i];
+		points.at<double>(i, 1) = srcPts[2 * i + 1];
+
+	}
+	const size_t cell_number_in_neighborhood_graph_ = 16;
+	neighborhood::GridNeighborhoodGraph<2> neighborhood1(&points,
+		{ w1 / static_cast<double>(cell_number_in_neighborhood_graph_),
+			h1 / static_cast<double>(cell_number_in_neighborhood_graph_)},
+		cell_number_in_neighborhood_graph_);
+
+	// Checking if the neighborhood graph is initialized successfully.
+	if (!neighborhood1.isInitialized())
+	{
+		fprintf(stderr, "The neighborhood graph is not initialized successfully.\n");
+		return 0;
+	}
+
+
+	// Apply Graph-cut RANSAC
+	utils::Default2DLineEstimator estimator; // The estimator used for the pose fitting
+	Line2D model; // The estimated model parameters
+
+	// Initialize the samplers
+	// The main sampler is used inside the local optimization
+	// The main sampler is used inside the local optimization
+	sampler::ProgressiveNapsacSampler<2> main_sampler(&points,
+		{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension
+							// (image_width / 16) * (image_height / 16), etc.
+		estimator.sampleSize(), // The size of a minimal sample
+		{ static_cast<double>(w1), // The width of the image
+			static_cast<double>(h1) });  // The height of the image
+	sampler::UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
+
+
+	// Checking if the samplers are initialized successfully.
+	if (!main_sampler.isInitialized() ||
+		!local_optimization_sampler.isInitialized())
+	{
+		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
+		return 0;
+	}
+
+
+	utils::RANSACStatistics statistics;
+
+	if (use_sprt)
+	{
+		// Initializing SPRT test
+		preemption::SPRTPreemptiveVerfication<utils::Default2DLineEstimator> preemptive_verification(
+			points,
+			estimator,
+			min_inlier_ratio_for_sprt);
+
+		GCRANSAC<utils::Default2DLineEstimator,
+			neighborhood::GridNeighborhoodGraph<2>,
+			MSACScoringFunction<utils::Default2DLineEstimator>,
+			preemption::SPRTPreemptiveVerfication<utils::Default2DLineEstimator>> gcransac;
+
+		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
+		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
+		gcransac.settings.confidence = conf; // The required confidence in the results
+		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
+		gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
+
+		// Start GC-RANSAC
+		gcransac.run(points,
+			estimator,
+			&main_sampler,
+			&local_optimization_sampler,
+			&neighborhood1,
+			model,
+			preemptive_verification);
+
+		statistics = gcransac.getRansacStatistics();
+	}
+	else
+	{
+		GCRANSAC<utils::Default2DLineEstimator,
+		neighborhood::GridNeighborhoodGraph<2>> gcransac;
+		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
+		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
+		gcransac.settings.confidence = conf; // The required confidence in the results
+		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
+		gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
+	// Start GC-RANSAC
+		gcransac.run(points,
+			estimator,
+			&main_sampler,
+			&local_optimization_sampler,
+			&neighborhood1,
+			model);
+
+		statistics = gcransac.getRansacStatistics();
+	}
+
+	printf("Inlier number = %d\n", static_cast<int>(statistics.inliers.size()));
+
+	inliers.resize(num_tents);
+
+	const int num_inliers = statistics.inliers.size();
+	for (auto pt_idx = 0; pt_idx < num_tents; ++pt_idx) {
+		inliers[pt_idx] = 0;
+	}
+
+	for (auto pt_idx = 0; pt_idx < num_inliers; ++pt_idx) {
+		inliers[statistics.inliers[pt_idx]] = 1;
+	}
+
+	abc.resize(3);
+
+	for (int i = 0; i < 3; i++) {
+			abc[i] = (double)model.descriptor(i);
+	
+	}
+	return num_inliers;
+}
+
+
 int findFundamentalMatrix_(std::vector<double>& srcPts,
 	std::vector<double>& dstPts,
 	std::vector<bool>& inliers,
@@ -302,7 +436,7 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
 	}
 
 	// Calculating the maximum image diagonal to be used for setting the threshold
-	// adaptively for each image pair. 
+	// adaptively for each image pair.
 	const double max_image_diagonal =
 		sqrt(pow(MAX(w1, w2), 2) + pow(MAX(h1, h2), 2));
 
@@ -313,7 +447,7 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
 	// Initialize the samplers
 	// The main sampler is used inside the local optimization
 	sampler::ProgressiveNapsacSampler<4> main_sampler(&points,
-		{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
+		{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension
 							// (source_image_width / 16) * (source_image_height / 16)  * (destination_image_width / 16)  (destination_image_height / 16), etc.
 		estimator.sampleSize(), // The size of a minimal sample
 		{ static_cast<double>(w1), // The width of the source image
@@ -465,7 +599,7 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 	}
 
 	// Calculating the maximum image diagonal to be used for setting the threshold
-	// adaptively for each image pair. 
+	// adaptively for each image pair.
 	const double threshold_normalizer =
 		0.25 * (intrinsics_src(0,0) + intrinsics_src(1,1) + intrinsics_dst(0,0) + intrinsics_dst(1,1));
 
@@ -490,21 +624,21 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 		main_sampler = std::unique_ptr<AbstractSampler>(new sampler::ProsacSampler(&points, estimator.sampleSize()));
 	else if (sampler_id == 2)
 		main_sampler = std::unique_ptr<AbstractSampler>(new sampler::ProgressiveNapsacSampler<4>(&points,
-			{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
+			{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension
 								// (source_image_width / 16) * (source_image_height / 16)  * (destination_image_width / 16)  (destination_image_height / 16), etc.
 			estimator.sampleSize(), // The size of a minimal sample
 			{ static_cast<double>(w1), // The width of the source image
 				static_cast<double>(h1), // The height of the source image
 				static_cast<double>(w2), // The width of the destination image
 				static_cast<double>(h2) },  // The height of the destination image
-			0.5)); // The length (i.e., 0.5 * <point number> iterations) of fully blending to global sampling 
+			0.5)); // The length (i.e., 0.5 * <point number> iterations) of fully blending to global sampling
 	else
 	{
 		fprintf(stderr, "Unknown sampler identifier: %d. The accepted samplers are 0 (uniform sampling), 1 (PROSAC sampling), 2 (P-NAPSAC sampling)\n",
 			sampler_id);
 		return 0;
 	}
-	
+
 	// The local optimization sampler is used inside the local optimization
 	sampler::UniformSampler local_optimization_sampler(&points);
 
@@ -515,7 +649,7 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
 		return 0;
 	}
-	
+
 	utils::RANSACStatistics statistics;
 
 	if (use_sprt)
@@ -551,7 +685,7 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 	}
 	else
 	{
-		
+
 		GCRANSAC<utils::DefaultEssentialMatrixEstimator, neighborhood::GridNeighborhoodGraph<4>> gcransac;
 		gcransac.settings.threshold = threshold / threshold_normalizer; // The inlier-outlier threshold
 		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
@@ -633,7 +767,7 @@ int findHomography_(std::vector<double>& srcPts,
 	}
 
 	// Calculating the maximum image diagonal to be used for setting the threshold
-	// adaptively for each image pair. 
+	// adaptively for each image pair.
 	const double max_image_diagonal =
 		sqrt(pow(MAX(w1, w2), 2) + pow(MAX(h1, h2), 2));
 
@@ -641,14 +775,14 @@ int findHomography_(std::vector<double>& srcPts,
 	Homography model;
 
 	sampler::ProgressiveNapsacSampler<4> main_sampler(&points,
-		{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
+		{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension
 							// (source_image_width / 16) * (source_image_height / 16)  * (destination_image_width / 16)  (destination_image_height / 16), etc.
 		estimator.sampleSize(), // The size of a minimal sample
 		{ static_cast<double>(w1), // The width of the source image
 			static_cast<double>(h1), // The height of the source image
 			static_cast<double>(w2), // The width of the destination image
 			static_cast<double>(h2) },  // The height of the destination image
-		0.5); // The length (i.e., 0.5 * <point number> iterations) of fully blending to global sampling 
+		0.5); // The length (i.e., 0.5 * <point number> iterations) of fully blending to global sampling
 
 	sampler::UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
 
