@@ -219,11 +219,11 @@ py::tuple findFundamentalMatrix(py::array_t<double>  x1y1_,
 
 
 py::tuple findLine2D(py::array_t<double>  x1y1_,
-	int h1, int w1,
+	int w1, int h1,
 	double threshold,
 	double conf,
-	double spatial_coherence_weight,
 	int max_iters,
+	double spatial_coherence_weight,
 	bool use_sprt,
 	double min_inlier_ratio_for_sprt)
 {
@@ -234,7 +234,7 @@ py::tuple findLine2D(py::array_t<double>  x1y1_,
 	if (DIM != 2) {
 		throw std::invalid_argument("x1y1 should be an array with dims [n,2], n>=2");
 	}
-	if (NUM_TENTS < 7) {
+	if (NUM_TENTS < 2) {
 		throw std::invalid_argument("x1y1 should be an array with dims [n,2], n>=2");
 	}
 
@@ -248,11 +248,11 @@ py::tuple findLine2D(py::array_t<double>  x1y1_,
 	int num_inl = findLine2D_(x1y1,
 		inliers,
 		linemodel,
-		h1, w1,
-		spatial_coherence_weight,
+		w1, h1,
 		threshold,
 		conf,
 		max_iters,
+		spatial_coherence_weight,
 		use_sprt,
 		min_inlier_ratio_for_sprt);
 
@@ -278,13 +278,13 @@ py::tuple findEssentialMatrix(py::array_t<double>  x1y1_,
                                 py::array_t<double>  K1_,
                                 py::array_t<double>  K2_,
                                 int h1, int w1, int h2, int w2,
-								double threshold,
-                                double conf,
-								double spatial_coherence_weight,
-                                int max_iters,
-								bool use_sprt,
-								double min_inlier_ratio_for_sprt,
-								int sampler)
+																double threshold,
+								                double conf,
+																double spatial_coherence_weight,
+								                int max_iters,
+																bool use_sprt,
+																double min_inlier_ratio_for_sprt,
+																int sampler)
 {
     py::buffer_info buf1 = x1y1_.request();
     size_t NUM_TENTS = buf1.shape[0];
@@ -374,10 +374,10 @@ py::tuple findHomography(py::array_t<double>  x1y1_,
                          int h1, int w1, int h2, int w2,
                          double threshold,
                          double conf,
-						 double spatial_coherence_weight,
-                         int max_iters,
-						 bool use_sprt,
-						 double min_inlier_ratio_for_sprt)
+												 double spatial_coherence_weight,
+						             int max_iters,
+												 bool use_sprt,
+												 double min_inlier_ratio_for_sprt)
 {
     py::buffer_info buf1 = x1y1_.request();
     size_t NUM_TENTS = buf1.shape[0];
@@ -473,13 +473,13 @@ PYBIND11_PLUGIN(pygcransac) {
 
 		m.def("findLine2D", &findLine2D, R"doc(some doc)doc",
 			py::arg("x1y1"),
-			py::arg("h1"),
 			py::arg("w1"),
+			py::arg("h1"),
 			py::arg("threshold") = 1.0,
 			py::arg("conf") = 0.99,
-			py::arg("spatial_coherence_weight") = 0.975,
 			py::arg("max_iters") = 10000,
-			py::arg("use_sprt") = true,
+			py::arg("spatial_coherence_weight") = 0.975,
+			py::arg("use_sprt") = false,
 			py::arg("min_inlier_ratio_for_sprt") = 0.1);
 
 

@@ -269,11 +269,11 @@ int findRigidTransform_(std::vector<double>& points1,
 int findLine2D_(std::vector<double>& srcPts,
 	std::vector<bool>& inliers,
 	std::vector<double>& abc,
-	int h1, int w1,
-	double spatial_coherence_weight,
+	int w1, int wh,
 	double threshold,
 	double conf,
 	int max_iters,
+	double spatial_coherence_weight,
 	bool use_sprt,
 	double min_inlier_ratio_for_sprt)
 {
@@ -393,7 +393,7 @@ int findLine2D_(std::vector<double>& srcPts,
 
 	for (int i = 0; i < 3; i++) {
 			abc[i] = (double)model.descriptor(i);
-	
+
 	}
 	return num_inliers;
 }
