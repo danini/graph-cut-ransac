@@ -171,7 +171,9 @@ namespace gcransac
 					random_generator->resetGenerator(0,
 						point_number - 1);
 				else // Increment the size of the sampling pool while required			
-					while (kth_sample_number > growth_function[subset_size - 1]) {
+					while (kth_sample_number > growth_function[subset_size - 1] && 
+						subset_size != point_number)
+					{
 						++subset_size; // n = n + 1
 						if (subset_size > point_number)
 							subset_size = point_number;

@@ -214,6 +214,11 @@ namespace gcransac
 					f2[8] * (f1[0] * f1[4] - f1[1] * f1[3]);
 
 				c[3] = f1[0] * t0 - f1[1] * t1 + f1[2] * t2;
+				
+				// Check if the sum of the polynomical coefficients is close to zero. 
+				// In this case "psolve.realRoots(real_roots)" gets into an infinite loop.
+				if (fabs(c[0]+c[1]+c[2]+c[3]) < 1e-9) 
+					return false;
 
 				// solve the cubic equation; there can be 1 to 3 roots ...
 				Eigen::Matrix<double, 4, 1> polynomial;
