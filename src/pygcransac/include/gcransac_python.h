@@ -10,7 +10,10 @@ int findRigidTransform_(std::vector<double>& points1,
 	double conf,
 	int max_iters,
 	bool use_sprt,
-	double min_inlier_ratio_for_sprt);
+	double min_inlier_ratio_for_sprt,
+	int sampler_id,
+	int neighborhood_id,
+	double neighborhood_size);
 
 int find6DPose_(
 	std::vector<double>& imagePoints,
@@ -22,7 +25,10 @@ int find6DPose_(
 	double conf,
 	int max_iters,
 	bool use_sprt,
-	double min_inlier_ratio_for_sprt);
+	double min_inlier_ratio_for_sprt,
+	int sampler_id,
+	int neighborhood_id,
+	double neighborhood_size);
 
 int findFundamentalMatrix_(std::vector<double>& srcPts,
                            std::vector<double>& dstPts,
@@ -34,18 +40,24 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
                            double conf,
                            int max_iters,
 						   bool use_sprt,
-						   double min_inlier_ratio_for_sprt);
+						   double min_inlier_ratio_for_sprt,
+						   int sampler_id,
+						   int neighborhood_id,
+						   double neighborhood_size);
 
  int findLine2D_(std::vector<double>& srcPts,
-                 std::vector<bool>& inliers,
-                 std::vector<double>&abc,
-                 int w1, int h1,
-		             double threshold,
-                 double conf,
-                 int max_iters,
-								 double spatial_coherence_weight,
-	               bool use_sprt,
-		   			 		 double min_inlier_ratio_for_sprt);
+				std::vector<bool>& inliers,
+				std::vector<double>&abc,
+				int w1, int h1,
+				double threshold,
+				double conf,
+				int max_iters,
+				double spatial_coherence_weight,
+				bool use_sprt,
+				double min_inlier_ratio_for_sprt,
+				int sampler_id,
+				int neighborhood_id,
+				double neighborhood_size);
 
 
 int findEssentialMatrix_(std::vector<double>& srcPts_norm,
@@ -61,7 +73,9 @@ int findEssentialMatrix_(std::vector<double>& srcPts_norm,
                            int max_iters,
 						   bool use_sprt,
 						   double min_inlier_ratio_for_sprt,
-						   int sampler_id);
+						   int sampler_id,
+						   int neighborhood_id,
+						   double neighborhood_size);
 
 
 int findHomography_(std::vector<double>& srcPts,
@@ -74,4 +88,7 @@ int findHomography_(std::vector<double>& srcPts,
                     double conf,
                     int max_iters,
 					bool use_sprt,
-					double min_inlier_ratio_for_sprt);
+					double min_inlier_ratio_for_sprt,
+					int sampler_id,
+					int neighborhood_id,
+					double neighborhood_size);

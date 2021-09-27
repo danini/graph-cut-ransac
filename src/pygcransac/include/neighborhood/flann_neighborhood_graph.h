@@ -43,7 +43,7 @@ namespace gcransac
 {
 	namespace neighborhood 
 	{
-		class FlannNeighborhoodGraph : NeighborhoodGraph<cv::Mat>
+		class FlannNeighborhoodGraph : public NeighborhoodGraph<cv::Mat>
 		{
 		public:
 			// The possible methods for building the neighborhood graph.

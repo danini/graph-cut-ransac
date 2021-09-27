@@ -16,7 +16,10 @@ py::tuple findRigidTransform(
 	double spatial_coherence_weight,
 	int max_iters,
 	bool use_sprt,
-	double min_inlier_ratio_for_sprt)
+	double min_inlier_ratio_for_sprt,
+	int sampler,
+	int neighborhood,
+	double neighborhood_size)
 {
 	py::buffer_info buf1 = x1y1z1_.request();
 	size_t NUM_TENTS = buf1.shape[0];
@@ -60,7 +63,10 @@ py::tuple findRigidTransform(
 		conf,
 		max_iters,
 		use_sprt,
-		min_inlier_ratio_for_sprt);
+		min_inlier_ratio_for_sprt,
+		sampler,
+		neighborhood,
+		neighborhood_size);
 
 	py::array_t<bool> inliers_ = py::array_t<bool>(NUM_TENTS);
 	py::buffer_info buf3 = inliers_.request();
@@ -87,7 +93,10 @@ py::tuple find6DPose(
 	double spatial_coherence_weight,
 	int max_iters,
 	bool use_sprt,
-	double min_inlier_ratio_for_sprt)
+	double min_inlier_ratio_for_sprt,
+	int sampler,
+	int neighborhood,
+	double neighborhood_size)
 {
 	py::buffer_info buf1 = x1y1_.request();
 	size_t NUM_TENTS = buf1.shape[0];
@@ -130,7 +139,10 @@ py::tuple find6DPose(
 		conf,
 		max_iters,
 		use_sprt,
-		min_inlier_ratio_for_sprt);
+		min_inlier_ratio_for_sprt,
+		sampler,
+		neighborhood,
+		neighborhood_size);
 
 	py::array_t<bool> inliers_ = py::array_t<bool>(NUM_TENTS);
 	py::buffer_info buf3 = inliers_.request();
@@ -156,7 +168,10 @@ py::tuple findFundamentalMatrix(py::array_t<double>  x1y1_,
 	double spatial_coherence_weight,
 	int max_iters,
 	bool use_sprt,
-	double min_inlier_ratio_for_sprt)
+	double min_inlier_ratio_for_sprt,
+	int sampler,
+	int neighborhood,
+	double neighborhood_size)
 {
 	py::buffer_info buf1 = x1y1_.request();
 	size_t NUM_TENTS = buf1.shape[0];
@@ -199,7 +214,10 @@ py::tuple findFundamentalMatrix(py::array_t<double>  x1y1_,
 		conf,
 		max_iters,
 		use_sprt,
-		min_inlier_ratio_for_sprt);
+		min_inlier_ratio_for_sprt,
+		sampler,
+		neighborhood,
+		neighborhood_size);
 
 	py::array_t<bool> inliers_ = py::array_t<bool>(NUM_TENTS);
 	py::buffer_info buf3 = inliers_.request();
@@ -225,7 +243,10 @@ py::tuple findLine2D(py::array_t<double>  x1y1_,
 	int max_iters,
 	double spatial_coherence_weight,
 	bool use_sprt,
-	double min_inlier_ratio_for_sprt)
+	double min_inlier_ratio_for_sprt,
+	int sampler,
+	int neighborhood,
+	double neighborhood_size)
 {
 	py::buffer_info buf1 = x1y1_.request();
 	size_t NUM_TENTS = buf1.shape[0];
@@ -254,7 +275,10 @@ py::tuple findLine2D(py::array_t<double>  x1y1_,
 		max_iters,
 		spatial_coherence_weight,
 		use_sprt,
-		min_inlier_ratio_for_sprt);
+		min_inlier_ratio_for_sprt,
+		sampler,
+		neighborhood,
+		neighborhood_size);
 
 	py::array_t<bool> inliers_ = py::array_t<bool>(NUM_TENTS);
 	py::buffer_info buf3 = inliers_.request();
@@ -278,13 +302,15 @@ py::tuple findEssentialMatrix(py::array_t<double>  x1y1_,
                                 py::array_t<double>  K1_,
                                 py::array_t<double>  K2_,
                                 int h1, int w1, int h2, int w2,
-																double threshold,
-								                double conf,
-																double spatial_coherence_weight,
-								                int max_iters,
-																bool use_sprt,
-																double min_inlier_ratio_for_sprt,
-																int sampler)
+								double threshold,
+								double conf,
+								double spatial_coherence_weight,
+								int max_iters,
+								bool use_sprt,
+								double min_inlier_ratio_for_sprt,
+								int sampler,
+								int neighborhood,
+								double neighborhood_size)
 {
     py::buffer_info buf1 = x1y1_.request();
     size_t NUM_TENTS = buf1.shape[0];
@@ -351,7 +377,9 @@ py::tuple findEssentialMatrix(py::array_t<double>  x1y1_,
 						   	max_iters,
 						   	use_sprt,
 							min_inlier_ratio_for_sprt,
-							sampler);
+							sampler,
+							neighborhood,
+							neighborhood_size);
 
     py::array_t<bool> inliers_ = py::array_t<bool>(NUM_TENTS);
     py::buffer_info buf3 = inliers_.request();
@@ -374,10 +402,13 @@ py::tuple findHomography(py::array_t<double>  x1y1_,
                          int h1, int w1, int h2, int w2,
                          double threshold,
                          double conf,
-												 double spatial_coherence_weight,
-						             int max_iters,
-												 bool use_sprt,
-												 double min_inlier_ratio_for_sprt)
+							double spatial_coherence_weight,
+							int max_iters,
+							bool use_sprt,
+							double min_inlier_ratio_for_sprt,
+							int sampler,
+							int neighborhood,
+							double neighborhood_size)
 {
     py::buffer_info buf1 = x1y1_.request();
     size_t NUM_TENTS = buf1.shape[0];
@@ -420,7 +451,10 @@ py::tuple findHomography(py::array_t<double>  x1y1_,
                     conf,
                     max_iters,
 					use_sprt,
-					min_inlier_ratio_for_sprt);
+					min_inlier_ratio_for_sprt,
+					sampler,
+					neighborhood,
+					neighborhood_size);
 
     py::array_t<bool> inliers_ = py::array_t<bool>(NUM_TENTS);
     py::buffer_info buf3 = inliers_.request();
@@ -449,8 +483,8 @@ PYBIND11_PLUGIN(pygcransac) {
            :toctree: _generate
 
            findFundamentalMatrix,
-					 findLine2D,
-					 findHomography,
+			findLine2D,
+			findHomography,
 		   find6DPose,
 		   findEssentialMatrix,
 		   findRigidTransform,
@@ -469,7 +503,10 @@ PYBIND11_PLUGIN(pygcransac) {
 		py::arg("spatial_coherence_weight") = 0.975,
 		py::arg("max_iters") = 10000,
 		py::arg("use_sprt") = true,
-		py::arg("min_inlier_ratio_for_sprt") = 0.1);
+		py::arg("min_inlier_ratio_for_sprt") = 0.1,
+		py::arg("sampler") = 1,
+		py::arg("neighborhood") = 0,
+		py::arg("neighborhood_size") = 20.0);
 
 		m.def("findLine2D", &findLine2D, R"doc(some doc)doc",
 			py::arg("x1y1"),
@@ -480,7 +517,10 @@ PYBIND11_PLUGIN(pygcransac) {
 			py::arg("max_iters") = 10000,
 			py::arg("spatial_coherence_weight") = 0.975,
 			py::arg("use_sprt") = false,
-			py::arg("min_inlier_ratio_for_sprt") = 0.1);
+			py::arg("min_inlier_ratio_for_sprt") = 0.1,
+			py::arg("sampler") = 1,
+			py::arg("neighborhood") = 0,
+			py::arg("neighborhood_size") = 20.0);
 
 
 	m.def("findRigidTransform", &findRigidTransform, R"doc(some doc)doc",
@@ -491,7 +531,10 @@ PYBIND11_PLUGIN(pygcransac) {
 		py::arg("spatial_coherence_weight") = 0.975,
 		py::arg("max_iters") = 10000,
 		py::arg("use_sprt") = true,
-		py::arg("min_inlier_ratio_for_sprt") = 0.1);
+		py::arg("min_inlier_ratio_for_sprt") = 0.1,
+		py::arg("sampler") = 1,
+		py::arg("neighborhood") = 0,
+		py::arg("neighborhood_size") = 20.0);
 
 	m.def("find6DPose", &find6DPose, R"doc(some doc)doc",
 		py::arg("x1y1"),
@@ -501,7 +544,10 @@ PYBIND11_PLUGIN(pygcransac) {
 		py::arg("spatial_coherence_weight") = 0.975,
 		py::arg("max_iters") = 10000,
 		py::arg("use_sprt") = true,
-		py::arg("min_inlier_ratio_for_sprt") = 0.1);
+		py::arg("min_inlier_ratio_for_sprt") = 0.1,
+		py::arg("sampler") = 2,
+		py::arg("neighborhood") = 0,
+		py::arg("neighborhood_size") = 8.0);
 
     m.def("findEssentialMatrix", &findEssentialMatrix, R"doc(some doc)doc",
           py::arg("x1y1"),
@@ -518,7 +564,9 @@ PYBIND11_PLUGIN(pygcransac) {
           py::arg("max_iters") = 10000,
 		py::arg("use_sprt") = true,
 		py::arg("min_inlier_ratio_for_sprt") = 0.1,
-		py::arg("sampler") = 2);
+		py::arg("sampler") = 2,
+		py::arg("neighborhood") = 0,
+		py::arg("neighborhood_size") = 8.0);
 
   m.def("findHomography", &findHomography, R"doc(some doc)doc",
         py::arg("x1y1"),
@@ -531,8 +579,11 @@ PYBIND11_PLUGIN(pygcransac) {
 		py::arg("conf") = 0.99,
         py::arg("spatial_coherence_weight") = 0.975,
         py::arg("max_iters") = 10000,
-	  py::arg("use_sprt") = true,
-	  py::arg("min_inlier_ratio_for_sprt") = 0.1);
+	  	py::arg("use_sprt") = true,
+	  	py::arg("min_inlier_ratio_for_sprt") = 0.1,
+		py::arg("sampler") = 2,
+		py::arg("neighborhood") = 0,
+		py::arg("neighborhood_size") = 8.0);
 
   return m.ptr();
 }
