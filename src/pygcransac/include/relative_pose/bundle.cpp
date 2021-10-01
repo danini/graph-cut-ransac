@@ -168,6 +168,95 @@ int lm_5dof_impl(const JacobianAccumulator &accum, CameraPose *pose, const Bundl
     return iter;
 }
 
+template <typename JacobianAccumulator>
+int lm_F_impl(const JacobianAccumulator &accum, Eigen::Matrix3d *fundamental_matrix, const BundleOptions &opt) 
+{
+    Eigen::Matrix<double, 7, 7> JtJ;
+    Eigen::Matrix<double, 7, 1> Jtr;
+    double lambda = opt.initial_lambda;
+    Eigen::Matrix3d sw1, sw2;
+    sw1.setZero();
+    sw2.setZero();
+
+    // compute factorization which is used for the optimization
+    FactorizedFundamentalMatrix F(*fundamental_matrix);
+
+    // Compute initial cost
+    double cost = accum.residual(F);
+    bool recompute_jac = true;
+    int iter;
+    for (iter = 0; iter < opt.max_iterations; ++iter) {
+        // We only recompute jacobian and residual vector if last step was successful
+        if (recompute_jac) {
+            JtJ.setZero();
+            Jtr.setZero();
+            accum.accumulate(F, JtJ, Jtr);
+            if (Jtr.norm() < opt.gradient_tol) {
+                break;
+            }
+        }
+
+        // Add dampening
+        for (size_t k = 0; k < 7; ++k) {
+            JtJ(k, k) += lambda;
+        }
+
+        Eigen::Matrix<double, 7, 1> sol = -JtJ.selfadjointView<Eigen::Lower>().llt().solve(Jtr);
+        if (sol.norm() < opt.step_tol) {
+            break;
+        }
+
+        // Update U and V
+        Eigen::Vector3d w1 = sol.block<3, 1>(0, 0);
+        Eigen::Vector3d w2 = sol.block<3, 1>(3, 0);
+        const double theta1 = w1.norm();
+        const double theta2 = w2.norm();
+        w1 /= theta1;
+        w2 /= theta2;
+        const double a1 = std::sin(theta1);
+        const double b1 = std::cos(theta1);
+        sw1(0, 1) = -w1(2);
+        sw1(0, 2) = w1(1);
+        sw1(1, 2) = -w1(0);
+        sw1(1, 0) = w1(2);
+        sw1(2, 0) = -w1(1);
+        sw1(2, 1) = w1(0);
+        const double a2 = std::sin(theta2);
+        const double b2 = std::cos(theta2);
+        sw2(0, 1) = -w2(2);
+        sw2(0, 2) = w2(1);
+        sw2(1, 2) = -w2(0);
+        sw2(1, 0) = w2(2);
+        sw2(2, 0) = -w2(1);
+        sw2(2, 1) = w2(0);
+
+        FactorizedFundamentalMatrix F_new;
+        F_new.U = F.U + (a1 * sw1 + (1 - b1) * sw1 * sw1) * F.U;
+        F_new.V = F.V + (a2 * sw2 + (1 - b2) * sw2 * sw2) * F.V;
+        F_new.sigma = F.sigma + sol(6);
+
+        double cost_new = accum.residual(F_new);
+
+        if (cost_new < cost) {
+            F = F_new;
+            lambda /= 10;
+            cost = cost_new;
+            recompute_jac = true;
+        } else {
+            // Remove dampening
+            for (size_t k = 0; k < 7; ++k) {
+                JtJ(k, k) -= lambda;
+            }
+            lambda *= 10;
+            recompute_jac = false;
+        }
+    }
+
+    *fundamental_matrix = F.F();
+
+    return iter;
+}
+
 int bundle_adjust(const std::vector<Eigen::Vector2d> &x, const std::vector<Eigen::Vector3d> &X, CameraPose *pose, const BundleOptions &opt) {
     pose_lib::Camera camera;
     camera.model_id = -1;
@@ -245,6 +334,55 @@ int refine_relpose(const cv::Mat &correspondences_,
             return lm_5dof_impl<decltype(accum)>(accum, pose, opt);               \
         }
             SWITCH_LOSS_FUNCTIONS
+#undef SWITCH_LOSS_FUNCTION_CASE
+
+        default:
+            return -1;
+        };
+    }
+
+    return 0;
+}
+
+int refine_fundamental(const cv::Mat &correspondences_,
+                       const size_t *sample_,
+                       const size_t &sample_size_,
+                       Eigen::Matrix3d *pose,
+                       const BundleOptions &opt,
+                       const double *weights) {
+
+    if (weights != nullptr) 
+    {
+        // We have per-residual weights
+
+        switch (opt.loss_type) {
+#define SWITCH_LOSS_FUNCTION_CASE(LossFunction)                                                            \
+    {                                                                                                      \
+        LossFunction loss_fn(opt.loss_scale);                                                              \
+        FundamentalJacobianAccumulator<LossFunction> accum(correspondences_, sample_, sample_size_, loss_fn, weights); \
+        return lm_F_impl<decltype(accum)>(accum, pose, opt);                                               \
+    }
+
+            SWITCH_LOSS_FUNCTIONS
+
+#undef SWITCH_LOSS_FUNCTION_CASE
+
+        default:
+            return -1;
+        };
+    } else {
+
+        // Uniformly weighted residuals
+        switch (opt.loss_type) {
+#define SWITCH_LOSS_FUNCTION_CASE(LossFunction)                              \
+        {                                                                        \
+            LossFunction loss_fn(opt.loss_scale);                                \
+            FundamentalJacobianAccumulator<LossFunction> accum(correspondences_, sample_, sample_size_, loss_fn); \
+            return lm_F_impl<decltype(accum)>(accum, pose, opt);                 \
+        }
+
+            SWITCH_LOSS_FUNCTIONS
+
 #undef SWITCH_LOSS_FUNCTION_CASE
 
         default:

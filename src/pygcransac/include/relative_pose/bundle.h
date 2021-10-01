@@ -53,6 +53,15 @@ int refine_relpose(const cv::Mat &correspondences_,
                    const BundleOptions &opt = BundleOptions(),
                    const double *weights = nullptr);
 
+// Fundamental matrix refinement. Minimizes Sampson error error.
+// Returns number of iterations.
+int refine_fundamental(const cv::Mat &correspondences_,
+                       const size_t *sample_,
+                       const size_t &sample_size_,
+                       Eigen::Matrix3d *pose,
+                       const BundleOptions &opt = BundleOptions(),
+                       const double *weights = nullptr);
+
 } // namespace pose_lib
 
 #endif

@@ -46,6 +46,7 @@
 
 #include "estimators/solver_fundamental_matrix_seven_point.h"
 #include "estimators/solver_fundamental_matrix_eight_point.h"
+#include "estimators/solver_fundamental_matrix_bundle_adjustment.h"
 #include "estimators/solver_p3p.h"
 #include "estimators/solver_epnp_lm.h"
 #include "estimators/solver_dls_pnp.h"
@@ -63,7 +64,7 @@ namespace gcransac
 	{
 		// The default estimator for fundamental matrix fitting
 		typedef estimator::FundamentalMatrixEstimator<estimator::solver::FundamentalMatrixSevenPointSolver, // The solver used for fitting a model to a minimal sample
-			estimator::solver::FundamentalMatrixEightPointSolver> // The solver used for fitting a model to a non-minimal sample
+			estimator::solver::FundamentalMatrixBundleAdjustmentSolver> // The solver used for fitting a model to a non-minimal sample
 			DefaultFundamentalMatrixEstimator;
 
 		// The default estimator for homography fitting

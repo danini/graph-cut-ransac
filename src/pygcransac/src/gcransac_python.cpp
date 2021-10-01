@@ -27,10 +27,10 @@
 
 using namespace gcransac;
 
- int findLine2D_(std::vector<double>& srcPts,
+ int findLine2D_(std::vector<double>& input_points,
 				std::vector<bool>& inliers,
-				std::vector<double>&abc,
-				int w1, int h1,
+				std::vector<double>& estimated_line,
+				int w, int h,
 				double threshold,
 				double conf,
 				int max_iters,
@@ -41,7 +41,163 @@ using namespace gcransac;
 				int neighborhood_id,
 				double neighborhood_size)
 {
-	return 0;	
+	// The number of points provided
+	const size_t &num_points = input_points.size();
+
+	// The matrix containing the points that will be passed to GC-RANSAC
+	cv::Mat points(num_points, 2, CV_64F);
+
+	// Copying the point coordinates to the matrx
+	// TODO: do not do copying
+	for (int i = 0; i < num_points; ++i) {
+		points.at<double>(i, 0) = input_points[2 * i];
+		points.at<double>(i, 1) = input_points[2 * i + 1];
+	}
+
+	// Initializing the neighborhood structure based on the provided paramereters
+	typedef neighborhood::NeighborhoodGraph<cv::Mat> AbstractNeighborhood;
+	std::unique_ptr<AbstractNeighborhood> neighborhood_graph;
+
+	// The cell size or radius-search radius of the neighborhood graph
+	const size_t cell_number_in_neighborhood_graph_ = 
+		static_cast<size_t>(neighborhood_size);
+
+	// Initializing a grid-based neighborhood graph
+	if (neighborhood_id == 0)
+		neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
+			new neighborhood::GridNeighborhoodGraph<4>(&points, // The input points
+			{ w / static_cast<double>(cell_number_in_neighborhood_graph_), // The cell size along axis X
+				h / static_cast<double>(cell_number_in_neighborhood_graph_) }, // The cell size along axis Y
+			cell_number_in_neighborhood_graph_)); // The cell number along every axis
+	else if (neighborhood_id == 1) // Initializing the neighbhood graph by FLANN
+		neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
+			new neighborhood::FlannNeighborhoodGraph(&points, neighborhood_size));
+	else
+	{
+		fprintf(stderr, "Unknown neighborhood-graph identifier: %d. The accepted values are 0 (Grid-based), 1 (FLANN-based neighborhood)\n",
+			neighborhood_id);
+		return 0;
+	}
+
+	// Checking if the neighborhood graph is initialized successfully.
+	if (!neighborhood_graph->isInitialized())
+	{
+		fprintf(stderr, "The neighborhood graph is not initialized successfully.\n");
+		return 0;
+	}
+
+	// Initializing the line estimator
+	utils::Default2DLineEstimator estimator;
+
+	// Initializing the model object
+	Line2D model;
+
+	// Initialize the samplers
+	// The main sampler is used for sampling in the main RANSAC loop
+	typedef sampler::Sampler<cv::Mat, size_t> AbstractSampler;
+	std::unique_ptr<AbstractSampler> main_sampler;
+	if (sampler_id == 0) // Initializing a RANSAC-like uniformly random sampler
+		main_sampler = std::unique_ptr<AbstractSampler>(new sampler::UniformSampler(&points));
+	else if (sampler_id == 1)  // Initializing a PROSAC sampler. This requires the points to be ordered according to the quality.
+		main_sampler = std::unique_ptr<AbstractSampler>(new sampler::ProsacSampler(&points, estimator.sampleSize()));
+	else if (sampler_id == 2) // Initializing a Progressive NAPSAC sampler
+		main_sampler = std::unique_ptr<AbstractSampler>(new sampler::ProgressiveNapsacSampler<4>(&points,
+			{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
+								// (source_image_width / 16) * (source_image_height / 16)  * (destination_image_width / 16)  (destination_image_height / 16), etc.
+			estimator.sampleSize(), // The size of a minimal sample
+			{ static_cast<double>(w), // The width of the image
+				static_cast<double>(h) },  // The height of the image
+			0.5)); // The length (i.e., 0.5 * <point number> iterations) of fully blending to global sampling 
+	else
+	{
+		fprintf(stderr, "Unknown sampler identifier: %d. The accepted samplers are 0 (uniform sampling), 1 (PROSAC sampling), 2 (P-NAPSAC sampling)\n",
+			sampler_id);
+		return 0;
+	}
+
+ 	// The local optimization sampler is used inside the local optimization
+	sampler::UniformSampler local_optimization_sampler(&points);
+
+	// Checking if the samplers are initialized successfully.
+	if (!main_sampler->isInitialized() ||
+		!local_optimization_sampler.isInitialized())
+	{
+		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
+		return 0;
+	}
+
+	utils::RANSACStatistics statistics;
+
+	if (use_sprt)
+	{
+		// Initializing SPRT test
+		preemption::SPRTPreemptiveVerfication<utils::Default2DLineEstimator> preemptive_verification(
+			points,
+			estimator);
+
+		GCRANSAC<utils::Default2DLineEstimator,
+			AbstractNeighborhood,
+			MSACScoringFunction<utils::Default2DLineEstimator>,
+			preemption::SPRTPreemptiveVerfication<utils::Default2DLineEstimator>> gcransac;
+		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
+		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
+		gcransac.settings.confidence = conf; // The required confidence in the results
+		gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
+		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
+		gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
+		gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
+
+		// Start GC-RANSAC
+		gcransac.run(points,
+			estimator,
+			main_sampler.get(),
+			&local_optimization_sampler,
+			neighborhood_graph.get(),
+			model,
+			preemptive_verification);
+
+		statistics = gcransac.getRansacStatistics();
+	}
+	else
+	{
+		GCRANSAC<utils::Default2DLineEstimator, AbstractNeighborhood> gcransac;
+		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
+		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
+		gcransac.settings.confidence = conf; // The required confidence in the results
+		gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
+		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
+		gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
+		gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
+
+		// Start GC-RANSAC
+		gcransac.run(points,
+			estimator,
+			main_sampler.get(),
+			&local_optimization_sampler,
+			neighborhood_graph.get(),
+			model);
+
+		statistics = gcransac.getRansacStatistics();
+	}
+
+	estimated_line.resize(3);
+
+	for (int i = 0; i < 3; i++) {
+		estimated_line[i] = model.descriptor(i);
+	}
+
+	inliers.resize(num_points);
+
+	const int num_inliers = statistics.inliers.size();
+	for (auto pt_idx = 0; pt_idx < num_points; ++pt_idx) {
+		inliers[pt_idx] = 0;
+
+	}
+	for (auto pt_idx = 0; pt_idx < num_inliers; ++pt_idx) {
+		inliers[statistics.inliers[pt_idx]] = 1;
+	}
+
+	return num_inliers;
 }
 
 int find6DPose_(std::vector<double>& imagePoints,
@@ -500,8 +656,6 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
 
 		statistics = gcransac.getRansacStatistics();
 	}
-
-	printf("Inlier number = %d\n", static_cast<int>(statistics.inliers.size()));
 
 	inliers.resize(num_tents);
 
