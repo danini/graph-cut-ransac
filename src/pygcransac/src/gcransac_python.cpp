@@ -112,6 +112,16 @@ using namespace gcransac;
 	{
 		fprintf(stderr, "Unknown sampler identifier: %d. The accepted samplers are 0 (uniform sampling), 1 (PROSAC sampling), 2 (P-NAPSAC sampling)\n",
 			sampler_id);
+
+		// It is ugly: the unique_ptr does not check for virtual descructors in the base class.
+		// Therefore, the derived class's objects are not deleted automatically. 
+		// This causes a memory leaking. I hate C++.
+		AbstractSampler *sampler_ptr = main_sampler.release();
+		delete sampler_ptr;
+		
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph_ptr.release();
+		delete neighborhood_graph_ptr;
+
 		return 0;
 	}
 
@@ -197,6 +207,16 @@ using namespace gcransac;
 		inliers[statistics.inliers[pt_idx]] = 1;
 	}
 
+	// It is ugly: the unique_ptr does not check for virtual descructors in the base class.
+	// Therefore, the derived class's objects are not deleted automatically. 
+	// This causes a memory leaking. I hate C++.
+	AbstractSampler *sampler_ptr = main_sampler.release();
+	delete sampler_ptr;
+
+	AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph_ptr.release();
+	delete neighborhood_graph_ptr;
+
+	// The number of inliers found
 	return num_inliers;
 }
 
@@ -268,6 +288,16 @@ int find6DPose_(std::vector<double>& imagePoints,
 		!local_optimization_sampler.isInitialized())
 	{
 		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
+
+		// It is ugly: the unique_ptr does not check for virtual descructors in the base class.
+		// Therefore, the derived class's objects are not deleted automatically. 
+		// This causes a memory leaking. I hate C++.
+		AbstractSampler *sampler_ptr = main_sampler.release();
+		delete sampler_ptr;
+
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph_ptr.release();
+		delete neighborhood_graph_ptr;
+
 		return 0;
 	}
 
@@ -345,6 +375,17 @@ int find6DPose_(std::vector<double>& imagePoints,
 			pose[i * 4 + j] = (double)model.descriptor(i, j);
 		}
 	}
+
+	// It is ugly: the unique_ptr does not check for virtual descructors in the base class.
+	// Therefore, the derived class's objects are not deleted automatically. 
+	// This causes a memory leaking. I hate C++.
+	AbstractSampler *sampler_ptr = main_sampler.release();
+	delete sampler_ptr;
+
+	AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph_ptr.release();
+	delete neighborhood_graph_ptr;
+
+	// The number of inliers found
 	return num_inliers;
 }
 
@@ -417,6 +458,16 @@ int findRigidTransform_(std::vector<double>& points1,
 		!local_optimization_sampler.isInitialized())
 	{
 		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
+
+		// It is ugly: the unique_ptr does not check for virtual descructors in the base class.
+		// Therefore, the derived class's objects are not deleted automatically. 
+		// This causes a memory leaking. I hate C++.
+		AbstractSampler *sampler_ptr = main_sampler.release();
+		delete sampler_ptr;
+
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph_ptr.release();
+		delete neighborhood_graph_ptr;
+
 		return 0;
 	}
 
@@ -495,6 +546,17 @@ int findRigidTransform_(std::vector<double>& points1,
 			pose[i * 4 + j] = (double)model.descriptor(i, j);
 		}
 	}
+
+	// It is ugly: the unique_ptr does not check for virtual descructors in the base class.
+	// Therefore, the derived class's objects are not deleted automatically. 
+	// This causes a memory leaking. I hate C++.
+	AbstractSampler *sampler_ptr = main_sampler.release();
+	delete sampler_ptr;
+
+	AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph_ptr.release();
+	delete neighborhood_graph_ptr;
+
+	// The number of inliers found
 	return num_inliers;
 }
 
@@ -598,6 +660,16 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
 		!local_optimization_sampler.isInitialized())
 	{
 		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
+
+		// It is ugly: the unique_ptr does not check for virtual descructors in the base class.
+		// Therefore, the derived class's objects are not deleted automatically. 
+		// This causes a memory leaking.
+		AbstractSampler *sampler_ptr = main_sampler.release();
+		delete sampler_ptr;
+
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph_ptr.release();
+		delete neighborhood_graph_ptr;
+
 		return 0;
 	}
 
@@ -675,6 +747,17 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
 			F[i * 3 + j] = (double)model.descriptor(i, j);
 		}
 	}
+
+	// It is ugly: the unique_ptr does not check for virtual descructors in the base class.
+	// Therefore, the derived class's objects are not deleted automatically. 
+	// This causes a memory leaking. I hate C++.
+	AbstractSampler *sampler_ptr = main_sampler.release();
+	delete sampler_ptr;
+
+	AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph_ptr.release();
+	delete neighborhood_graph_ptr;
+
+	// The number of inliers found
 	return num_inliers;
 }
 
@@ -791,6 +874,13 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 	{
 		fprintf(stderr, "Unknown sampler identifier: %d. The accepted samplers are 0 (uniform sampling), 1 (PROSAC sampling), 2 (P-NAPSAC sampling)\n",
 			sampler_id);
+
+		// It is ugly: the unique_ptr does not check for virtual descructors in the base class.
+		// Therefore, the derived class's objects are not deleted automatically. 
+		// This causes a memory leaking. I hate C++.
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph_ptr.release();
+		delete neighborhood_graph_ptr;
+
 		return 0;
 	}
 	
@@ -801,6 +891,15 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 	if (!main_sampler->isInitialized() ||
 		!local_optimization_sampler.isInitialized())
 	{
+		// It is ugly: the unique_ptr does not check for virtual descructors in the base class.
+		// Therefore, the derived class's objects are not deleted automatically. 
+		// This causes a memory leaking. I hate C++.
+		AbstractSampler *sampler_ptr = main_sampler.release();
+		delete sampler_ptr;
+
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph_ptr.release();
+		delete neighborhood_graph_ptr;
+
 		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
 		return 0;
 	}
@@ -881,6 +980,17 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 			E[i * 3 + j] = (double)model.descriptor(i, j);
 		}
 	}
+
+	// It is ugly: the unique_ptr does not check for virtual descructors in the base class.
+	// Therefore, the derived class's objects are not deleted automatically. 
+	// This causes a memory leaking. I hate C++.
+	AbstractSampler *sampler_ptr = main_sampler.release();
+	delete sampler_ptr;
+
+	AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph_ptr.release();
+	delete neighborhood_graph_ptr;
+
+	// The number of inliers found
 	return num_inliers;
 }
 
@@ -981,6 +1091,15 @@ int findHomography_(std::vector<double>& srcPts,
 	if (!main_sampler->isInitialized() ||
 		!local_optimization_sampler.isInitialized())
 	{
+		// It is ugly: the unique_ptr does not check for virtual descructors in the base class.
+		// Therefore, the derived class's objects are not deleted automatically. 
+		// This causes a memory leaking. I hate C++.
+		AbstractSampler *sampler_ptr = main_sampler.release();
+		delete sampler_ptr;
+
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph_ptr.release();
+		delete neighborhood_graph_ptr;
+
 		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
 		return 0;
 	}
@@ -1058,5 +1177,15 @@ int findHomography_(std::vector<double>& srcPts,
 		inliers[statistics.inliers[pt_idx]] = 1;
 	}
 
+	// It is ugly: the unique_ptr does not check for virtual descructors in the base class.
+	// Therefore, the derived class's objects are not deleted automatically. 
+	// This causes a memory leaking. I hate C++.
+	AbstractSampler *sampler_ptr = main_sampler.release();
+	delete sampler_ptr;
+
+	AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph_ptr.release();
+	delete neighborhood_graph_ptr;
+
+	// Return the number of inliers found
 	return num_inliers;
 }
