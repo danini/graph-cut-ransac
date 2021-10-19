@@ -100,7 +100,11 @@ namespace gcransac
 				initialized = initialize(container);
 			}
 
-			~ProsacSampler() {}
+			~ProsacSampler() 
+			{
+				utils::UniformRandomGenerator<size_t> *generator_ptr = random_generator.release();
+				delete generator_ptr;
+			}
 
 			const std::string getName() const { return "PROSAC Sampler"; }
 

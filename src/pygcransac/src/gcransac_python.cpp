@@ -82,6 +82,9 @@ using namespace gcransac;
 	// Checking if the neighborhood graph is initialized successfully.
 	if (!neighborhood_graph->isInitialized())
 	{
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
+		delete neighborhood_graph_ptr;
+
 		fprintf(stderr, "The neighborhood graph is not initialized successfully.\n");
 		return 0;
 	}
@@ -116,10 +119,7 @@ using namespace gcransac;
 		// It is ugly: the unique_ptr does not check for virtual descructors in the base class.
 		// Therefore, the derived class's objects are not deleted automatically. 
 		// This causes a memory leaking. I hate C++.
-		AbstractSampler *sampler_ptr = main_sampler.release();
-		delete sampler_ptr;
-		
-		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph_ptr.release();
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
 		delete neighborhood_graph_ptr;
 
 		return 0;
@@ -132,6 +132,12 @@ using namespace gcransac;
 	if (!main_sampler->isInitialized() ||
 		!local_optimization_sampler.isInitialized())
 	{
+		AbstractSampler *sampler_ptr = main_sampler.release();
+		delete sampler_ptr;
+
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
+		delete neighborhood_graph_ptr;
+
 		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
 		return 0;
 	}
@@ -213,7 +219,7 @@ using namespace gcransac;
 	AbstractSampler *sampler_ptr = main_sampler.release();
 	delete sampler_ptr;
 
-	AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph_ptr.release();
+	AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
 	delete neighborhood_graph_ptr;
 
 	// The number of inliers found
@@ -276,6 +282,9 @@ int find6DPose_(std::vector<double>& imagePoints,
 		main_sampler = std::unique_ptr<AbstractSampler>(new sampler::ProsacSampler(&points, estimator.sampleSize()));
 	else
 	{
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
+		delete neighborhood_graph_ptr;
+
 		fprintf(stderr, "Unknown sampler identifier: %d. The accepted samplers are 0 (uniform sampling), 1 (PROSAC sampling)\n",
 			sampler_id);
 		return 0;
@@ -295,7 +304,7 @@ int find6DPose_(std::vector<double>& imagePoints,
 		AbstractSampler *sampler_ptr = main_sampler.release();
 		delete sampler_ptr;
 
-		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph_ptr.release();
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
 		delete neighborhood_graph_ptr;
 
 		return 0;
@@ -382,7 +391,7 @@ int find6DPose_(std::vector<double>& imagePoints,
 	AbstractSampler *sampler_ptr = main_sampler.release();
 	delete sampler_ptr;
 
-	AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph_ptr.release();
+	AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
 	delete neighborhood_graph_ptr;
 
 	// The number of inliers found
@@ -446,6 +455,9 @@ int findRigidTransform_(std::vector<double>& points1,
 		main_sampler = std::unique_ptr<AbstractSampler>(new sampler::ProsacSampler(&points, estimator.sampleSize()));
 	else
 	{
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
+		delete neighborhood_graph_ptr;
+
 		fprintf(stderr, "Unknown sampler identifier: %d. The accepted samplers are 0 (uniform sampling), 1 (PROSAC sampling)\n",
 			sampler_id);
 		return 0;
@@ -465,7 +477,7 @@ int findRigidTransform_(std::vector<double>& points1,
 		AbstractSampler *sampler_ptr = main_sampler.release();
 		delete sampler_ptr;
 
-		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph_ptr.release();
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
 		delete neighborhood_graph_ptr;
 
 		return 0;
@@ -553,7 +565,7 @@ int findRigidTransform_(std::vector<double>& points1,
 	AbstractSampler *sampler_ptr = main_sampler.release();
 	delete sampler_ptr;
 
-	AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph_ptr.release();
+	AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
 	delete neighborhood_graph_ptr;
 
 	// The number of inliers found
@@ -613,6 +625,9 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
 	// Checking if the neighborhood graph is initialized successfully.
 	if (!neighborhood_graph->isInitialized())
 	{
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
+		delete neighborhood_graph_ptr;
+
 		fprintf(stderr, "The neighborhood graph is not initialized successfully.\n");
 		return 0;
 	}
@@ -650,6 +665,9 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
 	{
 		fprintf(stderr, "Unknown sampler identifier: %d. The accepted samplers are 0 (uniform sampling), 1 (PROSAC sampling), 2 (P-NAPSAC sampling)\n",
 			sampler_id);
+
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
+		delete neighborhood_graph_ptr;
 		return 0;
 	}
 
@@ -667,7 +685,7 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
 		AbstractSampler *sampler_ptr = main_sampler.release();
 		delete sampler_ptr;
 
-		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph_ptr.release();
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
 		delete neighborhood_graph_ptr;
 
 		return 0;
@@ -754,7 +772,7 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
 	AbstractSampler *sampler_ptr = main_sampler.release();
 	delete sampler_ptr;
 
-	AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph_ptr.release();
+	AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
 	delete neighborhood_graph_ptr;
 
 	// The number of inliers found
@@ -816,7 +834,9 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 	// Checking if the neighborhood graph is initialized successfully.
 	if (!neighborhood_graph->isInitialized())
 	{
-		std::cout << points.size() << std::endl;
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
+		delete neighborhood_graph_ptr;
+
 		fprintf(stderr, "The neighborhood graph is not initialized successfully.\n");
 		return 0;
 	}
@@ -878,7 +898,7 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 		// It is ugly: the unique_ptr does not check for virtual descructors in the base class.
 		// Therefore, the derived class's objects are not deleted automatically. 
 		// This causes a memory leaking. I hate C++.
-		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph_ptr.release();
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
 		delete neighborhood_graph_ptr;
 
 		return 0;
@@ -897,7 +917,7 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 		AbstractSampler *sampler_ptr = main_sampler.release();
 		delete sampler_ptr;
 
-		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph_ptr.release();
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
 		delete neighborhood_graph_ptr;
 
 		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
@@ -987,7 +1007,7 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 	AbstractSampler *sampler_ptr = main_sampler.release();
 	delete sampler_ptr;
 
-	AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph_ptr.release();
+	AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
 	delete neighborhood_graph_ptr;
 
 	// The number of inliers found
@@ -1048,6 +1068,9 @@ int findHomography_(std::vector<double>& srcPts,
 	// Checking if the neighborhood graph is initialized successfully.
 	if (!neighborhood_graph->isInitialized())
 	{
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
+		delete neighborhood_graph_ptr;
+
 		fprintf(stderr, "The neighborhood graph is not initialized successfully.\n");
 		return 0;
 	}
@@ -1080,6 +1103,9 @@ int findHomography_(std::vector<double>& srcPts,
 			0.5)); // The length (i.e., 0.5 * <point number> iterations) of fully blending to global sampling 
 	else
 	{
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
+		delete neighborhood_graph_ptr;
+
 		fprintf(stderr, "Unknown sampler identifier: %d. The accepted samplers are 0 (uniform sampling), 1 (PROSAC sampling), 2 (P-NAPSAC sampling)\n",
 			sampler_id);
 		return 0;
@@ -1097,7 +1123,7 @@ int findHomography_(std::vector<double>& srcPts,
 		AbstractSampler *sampler_ptr = main_sampler.release();
 		delete sampler_ptr;
 
-		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph_ptr.release();
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
 		delete neighborhood_graph_ptr;
 
 		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
@@ -1183,7 +1209,7 @@ int findHomography_(std::vector<double>& srcPts,
 	AbstractSampler *sampler_ptr = main_sampler.release();
 	delete sampler_ptr;
 
-	AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph_ptr.release();
+	AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
 	delete neighborhood_graph_ptr;
 
 	// Return the number of inliers found

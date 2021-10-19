@@ -57,8 +57,11 @@ namespace gcransac
 			scoring_function(std::make_unique<_ScoringFunction>())
 		{
 		}
-		~GCRANSAC() { }
-
+		~GCRANSAC() 
+		{ 
+			_ScoringFunction * scoring_function_ptr = scoring_function.release();
+			delete scoring_function_ptr;
+		}
 
 		// The main method applying Graph-Cut RANSAC to the input data points
 		void run(const cv::Mat &points_,  // Data points
@@ -103,7 +106,7 @@ namespace gcransac
 		const _NeighborhoodGraph *neighborhood_graph;
 		sampler::Sampler<cv::Mat, size_t> *main_sampler; // The main sampler is used outside the local optimization
 		sampler::Sampler<cv::Mat, size_t> *local_optimization_sampler; // The local optimization sampler is used inside the local optimization
-		const std::unique_ptr<_ScoringFunction> scoring_function; // The scoring function used to measure the quality of a model
+		std::unique_ptr<_ScoringFunction> scoring_function; // The scoring function used to measure the quality of a model
 
 		Graph<double, double, double> *graph; // The graph for graph-cut
 

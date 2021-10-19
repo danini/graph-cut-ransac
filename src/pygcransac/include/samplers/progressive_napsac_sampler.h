@@ -95,7 +95,11 @@ namespace gcransac
 				initialized = initialize(container_);
 			}
 
-			~ProgressiveNapsacSampler() {}
+			~ProgressiveNapsacSampler() 
+			{
+				utils::UniformRandomGenerator<size_t> *generator_ptr = random_generator.release();
+				delete generator_ptr;
+			}
 
 			// Initializes any non-trivial variables and sets up sampler if
 			// necessary. Must be called before sample is called.
