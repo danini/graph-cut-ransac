@@ -67,6 +67,11 @@ namespace gcransac
 			{
 			}
 
+			virtual ~NeighborhoodGraph()
+			{
+
+			}
+
 			// A function to initialize and create the neighbordhood graph.
 			virtual bool initialize(const _DataContainer * const container_) = 0;
 

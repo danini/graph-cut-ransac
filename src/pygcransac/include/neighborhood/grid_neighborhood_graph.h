@@ -147,6 +147,10 @@ namespace gcransac
 		public:
 			GridNeighborhoodGraph() : NeighborhoodGraph() {}
 
+			~GridNeighborhoodGraph() 
+			{
+			}
+
 			GridNeighborhoodGraph(
 				const cv::Mat * const container_, // The pointer of the container consisting of the data points.
 				const std::vector<double> &cell_sizes_,
