@@ -57,6 +57,11 @@ namespace gcransac
 
 			}
 
+			std::mt19937 &getGenerator()
+			{
+				return generator;
+			}
+
 			OLGA_INLINE int getRandomNumber() {
 				return generate(generator);
 			}
