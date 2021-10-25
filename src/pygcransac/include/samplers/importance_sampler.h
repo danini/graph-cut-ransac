@@ -118,11 +118,7 @@ namespace gcransac
 				}
 
 				for (size_t sample_idx = 0; sample_idx < sample_size_; ++sample_idx)
-				{
 					subset_[sample_idx] = multinomial_distribution(random_generator->getGenerator());
-					printf("%d ", subset_[sample_idx]);
-				}
-				printf("\n");
 				return true;
 			}
 		};
