@@ -56,7 +56,7 @@ namespace gcransac
 			explicit ProbabilisticReorderingSampler(const cv::Mat * const container_,
 				const std::vector<double> &inlier_probabilities_,
 				const size_t sample_size_,
-				const double estimator_variance_ = 0.001, //0.12,
+				const double estimator_variance_ = 0.244, //0.12,
 				const bool ordered_ = false)
 				: Sampler(container_),
 					estimator_variance(estimator_variance_)
