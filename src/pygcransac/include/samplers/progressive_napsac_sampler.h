@@ -100,6 +100,15 @@ namespace gcransac
 				utils::UniformRandomGenerator<size_t> *generator_ptr = random_generator.release();
 				delete generator_ptr;
 			}
+			
+			void update(
+				const size_t* const subset_,
+				const size_t& sample_size_,
+				const size_t& iteration_number_,
+				const double& inlier_ratio_) 
+			{
+				
+			}
 
 			// Initializes any non-trivial variables and sets up sampler if
 			// necessary. Must be called before sample is called.

@@ -74,6 +74,12 @@ namespace gcransac
 				_IndexType * const subset_,
 				size_t sample_size_) = 0;
 
+			virtual void update(
+				const size_t* const subset_,
+				const size_t& sample_size_,
+				const size_t& iteration_number_,
+				const double& inlier_ratio_) = 0;
+
 			bool isInitialized()
 			{
 				return initialized;

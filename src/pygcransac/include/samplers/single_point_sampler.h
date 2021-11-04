@@ -79,6 +79,15 @@ namespace gcransac
 			{
 				return true;
 			}
+			
+			void update(
+				const size_t* const subset_,
+				const size_t& sample_size_,
+				const size_t& iteration_number_,
+				const double& inlier_ratio_) 
+			{
+				
+			}
 
 			void reset()
 			{

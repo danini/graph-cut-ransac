@@ -279,23 +279,51 @@ namespace gcransac
 				if (!sample<0>(pool, // The current pool from which the points are chosen
 					sample_number, // Number of points to select
 					current_sample.get())) // The current sample
+				{
+					//printf("Invalid sample 1\n");
+					main_sampler->update(
+						current_sample.get(),
+						sample_number,
+						statistics.iteration_number,
+						0.0);
 					continue;
+				}
 
 				// Check if the selected sample is valid before estimating the model
 				// parameters which usually takes more time. 
 				if (!estimator_.isValidSample(points_, // All points
 					current_sample.get())) // The current sample
+				{
+					//printf("Invalid sample 2\n");
+					main_sampler->update(
+						current_sample.get(),
+						sample_number,
+						statistics.iteration_number,
+						0.0);
 					continue;
+				}
 
 				// Estimate the model parameters using the current sample
 				if (estimator_.estimateModel(points_,  // All points
 					current_sample.get(), // The current sample
 					&models)) // The estimated model parameters
 					break;
+
+				//printf("Invalid model (%d)\n", models.size());
+				main_sampler->update(
+					current_sample.get(),
+					sample_number,
+					statistics.iteration_number,
+					0.0);
 			}
+		
+			//printf("Check model\n");
 
 			// Increase the iteration number by the number of unsuccessful model generations as well.
 			statistics.iteration_number += unsuccessful_model_generations;
+
+			// Best score of the sample
+			Score best_sample_score;
 
 			// Select the so-far-the-best from the estimated models
 			for (auto &model : models)
@@ -340,6 +368,9 @@ namespace gcransac
 
 				bool is_model_updated = false;
 
+				if (best_sample_score < score)
+					best_sample_score = score;
+
 				// Store the model of its score is higher than that of the previous best
 				if (so_far_the_best_score < score && // Comparing the so-far-the-best model's score and current model's score
 					estimator_.isValidModel(model, // The current model parameters
@@ -374,6 +405,14 @@ namespace gcransac
 						log_probability); // The logarithm of 1 - confidence
 				}
 			}
+
+			//printf("%d %d\n", best_sample_score.inlier_number, so_far_the_best_score.inlier_number);
+
+			main_sampler->update(
+				current_sample.get(),
+				sample_number,
+				statistics.iteration_number,
+				static_cast<double>(best_sample_score.inlier_number) / static_cast<double>(so_far_the_best_score.inlier_number));
 
 			// Apply local optimziation
 			if (settings.do_local_optimization && // Input flag to decide if local optimization is needed

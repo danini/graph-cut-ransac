@@ -77,6 +77,15 @@ namespace gcransac
 				random_generator->resetGenerator(0,
 					static_cast<size_t>(container->rows));
 			}
+			
+			void update(
+				const size_t* const subset_,
+				const size_t& sample_size_,
+				const size_t& iteration_number_,
+				const double& inlier_ratio_) 
+			{
+				
+			}
 
 			// Samples the input variable data and fills the std::vector subset with the
 			// samples.
