@@ -48,6 +48,9 @@ namespace gcransac
 		protected:
 			std::vector<std::tuple<double, size_t, size_t, double, double>> probabilities;
 			double estimator_variance;
+			double randomness,
+				randomness_2,
+				randomness_rand_max;
 			
 			std::priority_queue<std::pair<double, size_t>, 
 				std::vector<std::pair<double, size_t>> > processing_queue;
@@ -56,9 +59,13 @@ namespace gcransac
 			explicit ProbabilisticReorderingSampler(const cv::Mat * const container_,
 				const std::vector<double> &inlier_probabilities_,
 				const size_t sample_size_,
-				const double estimator_variance_ = 0.244, //0.12,
+				const double estimator_variance_ = 0.9765, //0.12,
+				const double randomness_ = 0.01,
 				const bool ordered_ = false)
 				: Sampler(container_),
+					randomness(randomness_),
+					randomness_2(randomness_ / 2.0),
+					randomness_rand_max(randomness_ / static_cast<double>(RAND_MAX)),
 					estimator_variance(estimator_variance_)
 			{
 				if (inlier_probabilities_.size() != container_->rows)
@@ -134,7 +141,11 @@ namespace gcransac
 				double& updated_inlier_ratio = std::get<0>(probabilities[sample_idx]);
 
 				updated_inlier_ratio = 
-					MAX(0.0, MIN(0.999, abs(a / (a + b + appearance_number))));
+					abs(a / (a + b + appearance_number)) + 
+					randomness_rand_max * static_cast<double>(rand()) - randomness_2;
+					
+				updated_inlier_ratio = 
+					MAX(0.0, MIN(0.999, updated_inlier_ratio));
 
 				processing_queue.emplace(std::make_pair(updated_inlier_ratio, sample_idx));
 			}
