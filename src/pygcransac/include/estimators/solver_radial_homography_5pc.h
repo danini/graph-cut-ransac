@@ -88,6 +88,16 @@ namespace gcransac
 					return 3;
 				}
 
+				static constexpr bool needsGravity()
+				{
+					return false;
+				}
+
+				void setGravity(const Eigen::Matrix3d &gravity_source_,
+								const Eigen::Matrix3d &gravity_destination_)
+				{
+				}
+
 				// Estimate the model parameters from the given point sample
 				// using weighted fitting if possible.
 				OLGA_INLINE bool estimateModel(

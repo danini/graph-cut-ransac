@@ -62,6 +62,14 @@ namespace gcransac
 				{
 				}
 
+				static constexpr bool needsGravity()
+				{
+					return false;
+				}
+
+				virtual void setGravity(const Eigen::Matrix3d &gravity_source_,
+								const Eigen::Matrix3d &gravity_destination_) = 0;
+
 				// Determines if there is a chance of returning multiple models
 				// the function 'estimateModel' is applied.
 				static constexpr bool returnMultipleModels()

@@ -58,10 +58,10 @@ namespace gcransac
 		{
 		protected:
 			// Minimal solver engine used for estimating a model_ from a minimal sample
-			const std::shared_ptr<const _MinimalSolverEngine> minimal_solver;
+			const std::shared_ptr<_MinimalSolverEngine> minimal_solver;
 
 			// Non-minimal solver engine used for estimating a model_ from a bigger than minimal sample
-			const std::shared_ptr<const _NonMinimalSolverEngine> non_minimal_solver;
+			const std::shared_ptr<_NonMinimalSolverEngine> non_minimal_solver;
 
 			const Eigen::Matrix3d intrinsics_src, // The intrinsic parameters of the source camera
 				intrinsics_dst; // The intrinsic parameters of the destination camera
@@ -86,9 +86,9 @@ namespace gcransac
 				// The intrinsic parameters of the destination camera
 				intrinsics_dst(intrinsics_dst_),
 				// Minimal solver engine used for estimating a model from a minimal sample
-				minimal_solver(std::make_shared<const _MinimalSolverEngine>()),
+				minimal_solver(std::make_shared<_MinimalSolverEngine>()),
 				// Non-minimal solver engine used for estimating a model from a bigger than minimal sample
-				non_minimal_solver(std::make_shared<const _NonMinimalSolverEngine>()),
+				non_minimal_solver(std::make_shared<_NonMinimalSolverEngine>()),
 				// The lower bound of the inlier ratio which is required to pass the validity test.
 				// It is clamped to be in interval [0, 1].
 				minimum_inlier_ratio_in_validity_check(std::clamp(minimum_inlier_ratio_in_validity_check_, 0.0, 1.0)),
@@ -98,6 +98,14 @@ namespace gcransac
 				point_ratio_for_selecting_from_multiple_models(std::clamp(point_ratio_for_selecting_from_multiple_models_, 0.0, 1.0))
 			{}
 			~EssentialMatrixEstimator() {}
+
+			_MinimalSolverEngine *getMinimalSolver() {
+				return minimal_solver.get();
+			}
+
+			_NonMinimalSolverEngine *getNonMinimalSolver() {
+				return non_minimal_solver.get();
+			}
 
 			// The size of a non-minimal sample required for the estimation
 			static constexpr size_t nonMinimalSampleSize() {

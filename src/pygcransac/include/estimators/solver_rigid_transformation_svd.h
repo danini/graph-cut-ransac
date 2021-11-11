@@ -74,6 +74,16 @@ namespace gcransac
 					return 3;
 				}
 
+				static constexpr bool needsGravity()
+				{
+					return false;
+				}
+
+				void setGravity(const Eigen::Matrix3d &gravity_source_,
+								const Eigen::Matrix3d &gravity_destination_)
+				{
+				}
+
 				inline bool estimateModel(
 					const cv::Mat& data_, // The set of data points
 					const size_t *sample_, // The sample used for the estimation
