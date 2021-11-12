@@ -55,6 +55,9 @@ void runTest(
 	Eigen::Matrix3d &kGroundTruthRotation_,
 	Eigen::Vector3d &kGroundTruthTranslation_,
 	const double kGroundTruthFocalLength_,
+	gcransac::utils::RANSACStatistics &statistics_, 
+	double &rotationError_, 
+	double &translationError_,
 	const double kInlierOutlierThreshold_,
 	const double kSpatialWeight_,
 	const double kConfidence_,
@@ -75,20 +78,189 @@ void poseError(
 	double &rotationError_,
 	double &translationError_);
 
+template<typename _EstimatorClass>
+void processImage(
+		const std::string &kPath_,
+		const std::string &kFrameSource_,
+		const std::string &kFrameDestination_);
+
+template<typename _EstimatorClass>
+void processVideo(
+	const std::string &kPath_,
+	const size_t kImageNumber_,
+	const size_t kOffset_,
+	const std::string &kOutputFile_,
+	const size_t kCoreNumber_);
+
 using namespace gcransac;
 
 int main(int argc, const char* argv[])
 {
 	srand(static_cast<int>(time(NULL)));
 
+	std::string outputFile = "results.csv";
+	size_t coreNumber = 4;
+	bool removeOldResults = true;
+
+	if (removeOldResults)
+	{
+		std::fstream file(outputFile);
+		file.close();
+	}
+
+	// The default estimator class
+	typedef estimator::EssentialMatrixEstimator<estimator::solver::EssentialOnefocal4PC, // The solver used for fitting a model to a minimal sample
+		estimator::solver::EssentialMatrixBundleAdjustmentSolver> // The solver used for fitting a model to a non-minimal sample
+		EstimatorClass;
+
+	processVideo<gcransac::utils::DefaultFundamentalMatrixEstimator>(
+		"/home/danini/research/solver_e4f/graph-cut-ransac/examples/test_data/video_00/video_data/", 1545, 10, outputFile, coreNumber);	
+	processVideo<EstimatorClass>(
+		"/home/danini/research/solver_e4f/graph-cut-ransac/examples/test_data/video_00/video_data/", 1545, 10, outputFile, coreNumber);	
+	
+	processImage<EstimatorClass>("/home/danini/research/solver_e4f/graph-cut-ransac/examples/test_data/", "00001", "00011");		
+	processImage<gcransac::utils::DefaultFundamentalMatrixEstimator>("/home/danini/research/solver_e4f/graph-cut-ransac/examples/test_data/", "00001", "00011");
+	return 0;
+}
+
+template<typename _EstimatorClass>
+void processVideo(
+	const std::string &kPath_,
+	const size_t kImageNumber_,
+	const size_t kOffset_,
+	const std::string &kOutputFile_,
+	const size_t kCoreNumber_)
+{
+	Eigen::Matrix3d cameraIntrinsics;
+	cameraIntrinsics << 1080.098755, 0.0, 639.5, 
+		0.0, 1080.098755, 359.500000,
+		0.0, 0.0, 1.0;
+	const double kFocalLength = 1080.098755;
+
+	const cv::Mat kTempImage(2000, 2000, CV_64F);
+
+	// Initializing the estimator
+	std::unique_ptr<_EstimatorClass> estimator;
+	if constexpr (std::is_same<gcransac::utils::DefaultFundamentalMatrixEstimator, _EstimatorClass>())
+		estimator = std::unique_ptr<_EstimatorClass>(new _EstimatorClass());
+	else
+		estimator = std::unique_ptr<_EstimatorClass>(new _EstimatorClass(cameraIntrinsics, cameraIntrinsics));
+
+	std::mutex savingGuard;
+
+#pragma omp parallel for num_threads(kCoreNumber_)
+	for (size_t frame = 0; frame < kImageNumber_ - kOffset_; ++frame)
+	{
+		const size_t &kFrameSource = frame,
+			kFrameDestination = frame + kOffset_;
+		
+		std::string paddingSource = "";
+		for (size_t padding = 0; padding < 6 - std::to_string(kFrameSource).size(); ++padding)
+			paddingSource += "0";
+			
+		std::string paddingDestination = "";
+		for (size_t padding = 0; padding < 6 - std::to_string(kFrameDestination).size(); ++padding)
+			paddingDestination += "0";
+
+		printf("Processing frames %d and %d\n", kFrameSource, kFrameDestination);
+
+		// Read gravity
+		const std::string kSourceGravityPath = kPath_ + "frame_" + paddingSource + std::to_string(kFrameSource) + "_gravity.txt",
+			kDestinationGravityPath = kPath_ + "frame_" + paddingDestination + std::to_string(kFrameDestination) + "_gravity.txt";
+
+		Eigen::Matrix3d sourceGravity, destinationGravity;
+
+		gcransac::utils::loadMatrix<double, 3, 3>(kSourceGravityPath, sourceGravity);
+		gcransac::utils::loadMatrix<double, 3, 3>(kDestinationGravityPath, destinationGravity);
+
+		// Read pose
+		const std::string kSourcePosePath = kPath_ + "frame_" + paddingSource + std::to_string(kFrameSource) + "_pose.txt",
+			kDestinationPosePath = kPath_ + "frame_" + paddingDestination + std::to_string(kFrameDestination) + "_pose.txt";
+		Eigen::Matrix<double, 3, 4> poseSource, poseDestination;
+		gcransac::utils::loadMatrix<double, 3, 4>(kSourcePosePath, poseSource);
+		gcransac::utils::loadMatrix<double, 3, 4>(kDestinationPosePath, poseDestination);
+
+		Eigen::Matrix3d rotationSource = poseSource.block<3, 3>(0, 0),
+			rotationDestination = poseDestination.block<3, 3>(0, 0);
+
+		Eigen::Vector3d translationSource = poseSource.block<1, 3>(3, 0),
+			translationDestination = poseDestination.block<1, 3>(3, 0);
+
+		Eigen::Matrix3d relativeRotation =
+		 	rotationDestination * rotationSource.transpose();
+		Eigen::Vector3d relativeTranslation =
+			translationDestination - rotationSource.transpose() * translationSource;
+
+		// Read correspondences
+		const std::string kCorrespondencePath = 
+			kPath_ + "frame_" + std::to_string(kFrameSource) + "_" + std::to_string(kFrameDestination) + "_corrs.txt";
+			
+		cv::Mat correspondences;		
+		gcransac::utils::loadPointsFromFile<8, 1, 0>(
+			correspondences,
+			kCorrespondencePath.c_str()),
+
+		printf("Loaded matches = %d\n", correspondences.rows);
+
+		// We don't need the SIFT parameters so remove them
+		correspondences = correspondences(cv::Rect(0, 0, 4, correspondences.rows));
+
+		// Normalizing correspondences
+		cv::Mat normalizedCorrespondences(correspondences.size(), correspondences.type());
+		utils::normalizeCorrespondences(
+				correspondences,
+				cameraIntrinsics,
+				cameraIntrinsics,
+				normalizedCorrespondences);
+				
+		// Run tests
+		utils::RANSACStatistics statistics;
+		double rotationError, translationError;
+
+		runTest<_EstimatorClass>(
+				correspondences, normalizedCorrespondences,
+				kTempImage, kTempImage,
+				cameraIntrinsics, cameraIntrinsics, 
+				sourceGravity, destinationGravity,
+				relativeRotation, relativeTranslation, kFocalLength,
+				statistics, rotationError, translationError,
+				0.75, 0.0, 0.999, 10000, 20);
+
+		// Print the statistics
+		printf("Elapsed time = %f secs\n", statistics.processing_time);
+		printf("Inlier number = %d\n", static_cast<int>(statistics.inliers.size()));
+		printf("Applied number of local optimizations = %d\n", static_cast<int>(statistics.local_optimization_number));
+		printf("Applied number of graph-cuts = %d\n", static_cast<int>(statistics.graph_cut_number));
+		printf("Number of iterations = %d\n", static_cast<int>(statistics.iteration_number));
+		printf("Rotation error = %f degrees\n", rotationError);
+		printf("Translation error = %f degrees\n\n", translationError);
+
+		savingGuard.lock();
+		std::ofstream file(kOutputFile_, std::fstream::app);
+		file << kFrameSource << ";" 
+			<< kFrameDestination << ";"
+			<< estimator->getMinimalSolver()->getName() << ";"
+			<< estimator->getNonMinimalSolver()->getName() << ";"
+			<< statistics.processing_time << ";"
+			<< statistics.inliers.size() << ";"
+			<< statistics.iteration_number << ";"
+			<< rotationError << ";"
+			<< translationError << "\n";
+		file.close();
+		savingGuard.unlock();
+	}
+}
+
+template<typename _EstimatorClass>
+void processImage(
+		const std::string &kPath_,
+		const std::string &kFrameSource_,
+		const std::string &kFrameDestination_)
+{
 	// The paths for the example data
 	const std::string 
-		kPath = "/home/danini/research/solver_e4f/graph-cut-ransac/examples/test_data/",
-		kSourceFrameName = "00001",
-		kDestinationFrameName = "00011";
-	const std::string 
-		kSourceImagePath = "Frame" + kSourceFrameName + ".png",
-		kDestinationImagePath = "Frame" + kDestinationFrameName + ".png";
+		kSourceImagePath = "Frame" + kFrameSource_ + ".png",
+		kDestinationImagePath = "Frame" + kFrameDestination_ + ".png";
 	const double kFocalLength = 1610;
 
 	// Read the extrinsic calibration files
@@ -111,26 +283,26 @@ int main(int argc, const char* argv[])
 		-0.00598309352923827, -0.100670040434885, 0.994901877348042;
 
 	// Read the images
-	const cv::Mat kSourceImage = cv::imread(kPath + kSourceImagePath);
+	const cv::Mat kSourceImage = cv::imread(kPath_ + kSourceImagePath);
 
 	if (kSourceImage.empty())
 	{
 		fprintf(stderr, "Image '%s' is not found.", kSourceImagePath.c_str());
-		return 0;	
+		return;	
 	}
 
-	const cv::Mat kDestinationImage = cv::imread(kPath + kDestinationImagePath);
+	const cv::Mat kDestinationImage = cv::imread(kPath_ + kDestinationImagePath);
 
 	if (kDestinationImage.empty())
 	{
 		fprintf(stderr, "Image '%s' is not found.", kDestinationImagePath.c_str());
-		return 0;	
+		return;	
 	}
 		
 	// Find or load correspondences
 	cv::Mat correspondences;
 	detectFeatures(
-		kPath + kSourceFrameName + "_" + kDestinationFrameName + "_matches.txt",
+		kPath_ + kFrameSource_ + "_" + kFrameDestination_ + "_matches.txt",
 		kSourceImage,
 		kDestinationImage,
 		correspondences);
@@ -158,29 +330,19 @@ int main(int argc, const char* argv[])
 			intrinsicsSource,
 			intrinsicsDestination,
 			normalizedCorrespondences);
-
-	// The default estimator class
-	typedef estimator::EssentialMatrixEstimator<estimator::solver::EssentialOnefocal4PC, // The solver used for fitting a model to a minimal sample
-		estimator::solver::EssentialMatrixBundleAdjustmentSolver> // The solver used for fitting a model to a non-minimal sample
-		EstimatorClass;
 		
 	// Run tests
-	runTest<EstimatorClass>(
+	utils::RANSACStatistics statistics;
+	double rotationError, translationError;
+
+	runTest<_EstimatorClass>(
 			correspondences, normalizedCorrespondences,
 			kSourceImage, kDestinationImage,
 			intrinsicsSource, intrinsicsDestination, 
 			gravitySource, gravityDestination,
 			rotation, translation, kFocalLength,
+			statistics, rotationError, translationError,
 			0.75, 0.0, 0.999, 10000, 20);
-			
-	runTest<gcransac::utils::DefaultFundamentalMatrixEstimator>(
-			correspondences, normalizedCorrespondences,
-			kSourceImage, kDestinationImage,
-			intrinsicsSource, intrinsicsDestination, 
-			gravitySource, gravityDestination,
-			rotation, translation, kFocalLength,
-			0.75, 0.0, 0.999, 10000, 20);
-	return 0;
 }
 
 template<typename _EstimatorClass>
@@ -195,7 +357,10 @@ void runTest(
 	const Eigen::Matrix3d &kGravityDestination_,
 	Eigen::Matrix3d &kGroundTruthRotation_,
 	Eigen::Vector3d &kGroundTruthTranslation_,
-	const double kGroundTruthFocalLength_,
+	const double kGroundTruthFocalLength_,	
+	utils::RANSACStatistics &statistics_, 
+	double &rotationError_, 
+	double &translationError_,
 	const double kInlierOutlierThreshold_,
 	const double kSpatialWeight_,
 	const double kConfidence_,
@@ -255,8 +420,7 @@ void runTest(
 
 	// Initialize the samplers
 	// The main sampler is used inside the local optimization
-	//sampler::ProsacSampler mainSampler(&kCorrespondences_, _EstimatorClass::sampleSize());  
-	sampler::UniformSampler mainSampler(&kCorrespondences_); // The local optimization sampler is used inside the local optimization
+	sampler::ProsacSampler mainSampler(&kCorrespondences_, _EstimatorClass::sampleSize());  
 	sampler::UniformSampler localOptimizationSampler(&kCorrespondences_); // The local optimization sampler is used inside the local optimization
 
 	// Checking if the samplers are initialized successfully.
@@ -326,17 +490,10 @@ void runTest(
 		cv_GroundTruthRotation,
 		cv_Translation,
 		cv_GroundTruthTranslation,
-		rotationError,
-		translationError);
+		rotationError_,
+		translationError_);
 
-	// Print the statistics
-	printf("Elapsed time = %f secs\n", statistics.processing_time);
-	printf("Inlier number = %d\n", static_cast<int>(statistics.inliers.size()));
-	printf("Applied number of local optimizations = %d\n", static_cast<int>(statistics.local_optimization_number));
-	printf("Applied number of graph-cuts = %d\n", static_cast<int>(statistics.graph_cut_number));
-	printf("Number of iterations = %d\n", static_cast<int>(statistics.iteration_number));
-	printf("Rotation error = %f degrees\n", rotationError);
-	printf("Translation error = %f degrees\n\n", translationError);
+	statistics_ = statistics;
 }
 
 void poseError(
@@ -348,11 +505,10 @@ void poseError(
 	double &translationError_)
 {
 	// Calculate angle between provided rotations
-	cv::Mat R12 = R2_ * R1_.t();
-	cv::Mat rotationVector;
-	cv::Rodrigues(R12, rotationVector);
-
-	rotationError_ = cv::norm(rotationVector) * 180 / M_PI;
+	cv::Mat R2R1 = R2_ * R1_.t();
+	const double cos_angle =
+		std::max(std::min(1.0, 0.5 * (cv::trace(R2R1).val[0] - 1.0)), -1.0);
+	rotationError_ = 180.0 / M_PI * std::acos(cos_angle);
 	
 	// calculate angle between provided translations
 	double translationError1 = t2_.dot(t1_) / cv::norm(t2_) / cv::norm(t1_);
@@ -361,7 +517,7 @@ void poseError(
 	
 	double translationError2 = t2_.dot(-t1_) / cv::norm(t2_) / cv::norm(t1_);
 	translationError2 = MAX(-1.0, MIN(1.0, translationError2));
-	translationError2 = acos(translationError1) * 180 / M_PI;
+	translationError2 = acos(translationError2) * 180 / M_PI;
 
 	translationError_ = MIN(translationError1, translationError2);
 }
