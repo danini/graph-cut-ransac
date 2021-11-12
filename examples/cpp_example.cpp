@@ -20,6 +20,7 @@
 #include "estimators/rigid_transformation_estimator.h"
 
 #include "preemption/preemption_sprt.h"
+#include "types.h"
 
 #include "estimators/solver_fundamental_matrix_seven_point.h"
 #include "estimators/solver_fundamental_matrix_eight_point.h"
@@ -41,8 +42,7 @@
 
 struct stat info;
 
-template<typename _MinimalSolver, 
-	typename _NonMinimalSolver>
+template<typename _EstimatorClass>
 void runTest(
 	const cv::Mat &kCorrespondences_,
 	const cv::Mat &kNormalizedCorrespondences_,
@@ -52,8 +52,9 @@ void runTest(
 	const Eigen::Matrix3d &kIntrinsicsDestination_,
 	const Eigen::Matrix3d &kGravitySource_,
 	const Eigen::Matrix3d &kGravityDestination_,
-	const Eigen::Matrix3d &kGroundTruthRotation_,
-	const Eigen::Vector3d &kGroundTruthTranslation_,
+	Eigen::Matrix3d &kGroundTruthRotation_,
+	Eigen::Vector3d &kGroundTruthTranslation_,
+	const double kGroundTruthFocalLength_,
 	const double kInlierOutlierThreshold_,
 	const double kSpatialWeight_,
 	const double kConfidence_,
@@ -65,6 +66,14 @@ void detectFeatures(
 	const cv::Mat &kSourceImage_,
 	const cv::Mat &kDestinationImage_,
 	cv::Mat& correspondences_);
+
+void poseError(
+	const cv::Mat &R1_,
+	const cv::Mat &R2_,
+	const cv::Mat &t1_,
+	const cv::Mat &t2_,
+	double &rotationError_,
+	double &translationError_);
 
 using namespace gcransac;
 
@@ -117,22 +126,6 @@ int main(int argc, const char* argv[])
 		fprintf(stderr, "Image '%s' is not found.", kDestinationImagePath.c_str());
 		return 0;	
 	}
-
-	// Compose the intrinsic camera matrices
-	Eigen::Matrix3d intrinsicsSource,
-		intrinsicsDestination;
-
-	intrinsicsSource(0, 0) = 1;
-	intrinsicsSource(1, 1) = 1;
-	intrinsicsSource(0, 2) = kSourceImage.cols / 2.0;
-	intrinsicsSource(1, 2) = kSourceImage.rows / 2.0;
-	intrinsicsSource(2, 2) = 1.0;
-	
-	intrinsicsDestination(0, 0) = 1;
-	intrinsicsDestination(1, 1) = 1;
-	intrinsicsDestination(0, 2) = kDestinationImage.cols / 2.0;
-	intrinsicsDestination(1, 2) = kDestinationImage.rows / 2.0;
-	intrinsicsDestination(2, 2) = 1.0;
 		
 	// Find or load correspondences
 	cv::Mat correspondences;
@@ -142,6 +135,22 @@ int main(int argc, const char* argv[])
 		kDestinationImage,
 		correspondences);
 
+	// Compose the intrinsic camera matrices
+	Eigen::Matrix3d intrinsicsSource = Eigen::Matrix3d::Zero(),
+		intrinsicsDestination = Eigen::Matrix3d::Zero();
+
+	intrinsicsSource(0, 0) = kFocalLength;
+	intrinsicsSource(1, 1) = kFocalLength;
+	intrinsicsSource(0, 2) = kSourceImage.cols / 2.0;
+	intrinsicsSource(1, 2) = kSourceImage.rows / 2.0;
+	intrinsicsSource(2, 2) = 1.0;
+	
+	intrinsicsDestination(0, 0) = kFocalLength;
+	intrinsicsDestination(1, 1) = kFocalLength;
+	intrinsicsDestination(0, 2) = kDestinationImage.cols / 2.0;
+	intrinsicsDestination(1, 2) = kDestinationImage.rows / 2.0;
+	intrinsicsDestination(2, 2) = 1.0;
+
 	// Normalizing the point correspondences
 	cv::Mat normalizedCorrespondences(correspondences.size(), correspondences.type());
 	utils::normalizeCorrespondences(
@@ -150,31 +159,31 @@ int main(int argc, const char* argv[])
 			intrinsicsDestination,
 			normalizedCorrespondences);
 
+	// The default estimator class
+	typedef estimator::EssentialMatrixEstimator<estimator::solver::EssentialOnefocal4PC, // The solver used for fitting a model to a minimal sample
+		estimator::solver::EssentialMatrixBundleAdjustmentSolver> // The solver used for fitting a model to a non-minimal sample
+		EstimatorClass;
+		
 	// Run tests
-	runTest<estimator::solver::EssentialOnefocal4PC,
-		estimator::solver::EssentialMatrixBundleAdjustmentSolver>(
-			correspondences,
-			normalizedCorrespondences,
-			kSourceImage,
-			kDestinationImage,
-			intrinsicsSource,
-			intrinsicsDestination, 
-			gravitySource,
-			gravityDestination,
-			rotation,
-			translation,
-			kFocalLength,
-			0.75,
-			0.0,
-			0.999,
-			10000,
-			20);
-	
+	runTest<EstimatorClass>(
+			correspondences, normalizedCorrespondences,
+			kSourceImage, kDestinationImage,
+			intrinsicsSource, intrinsicsDestination, 
+			gravitySource, gravityDestination,
+			rotation, translation, kFocalLength,
+			0.75, 0.0, 0.999, 10000, 20);
+			
+	runTest<gcransac::utils::DefaultFundamentalMatrixEstimator>(
+			correspondences, normalizedCorrespondences,
+			kSourceImage, kDestinationImage,
+			intrinsicsSource, intrinsicsDestination, 
+			gravitySource, gravityDestination,
+			rotation, translation, kFocalLength,
+			0.75, 0.0, 0.999, 10000, 20);
 	return 0;
 }
 
-template<typename _MinimalSolver, 
-	typename _NonMinimalSolver>
+template<typename _EstimatorClass>
 void runTest(
 	const cv::Mat &kCorrespondences_,
 	const cv::Mat &kNormalizedCorrespondences_,
@@ -184,8 +193,8 @@ void runTest(
 	const Eigen::Matrix3d &kIntrinsicsDestination_,
 	const Eigen::Matrix3d &kGravitySource_,
 	const Eigen::Matrix3d &kGravityDestination_,
-	const Eigen::Matrix3d &kGroundTruthRotation_,
-	const Eigen::Vector3d &kGroundTruthTranslation_,
+	Eigen::Matrix3d &kGroundTruthRotation_,
+	Eigen::Vector3d &kGroundTruthTranslation_,
 	const double kGroundTruthFocalLength_,
 	const double kInlierOutlierThreshold_,
 	const double kSpatialWeight_,
@@ -193,22 +202,21 @@ void runTest(
 	const size_t kMaximumIterations_,
 	const size_t kMinimumIterations_)
 {	
-	// The default estimator class
-	typedef estimator::EssentialMatrixEstimator<_MinimalSolver, // The solver used for fitting a model to a minimal sample
-		_NonMinimalSolver> // The solver used for fitting a model to a non-minimal sample
-		EstimatorClass;
-
 	// Initializing the estimator
-	EstimatorClass estimator(kIntrinsicsSource_, kIntrinsicsDestination_);
+	std::unique_ptr<_EstimatorClass> estimator;
+	if constexpr (std::is_same<gcransac::utils::DefaultFundamentalMatrixEstimator, _EstimatorClass>())
+		estimator = std::unique_ptr<_EstimatorClass>(new _EstimatorClass());
+	else
+		estimator = std::unique_ptr<_EstimatorClass>(new _EstimatorClass(kIntrinsicsSource_, kIntrinsicsDestination_));
 
 	// Setting the gravity if the solver needs it
-	if (_MinimalSolver::needsGravity())
-		estimator.getMinimalSolver()->setGravity(
+	if (estimator->getMinimalSolver()->needsGravity())
+		estimator->getMinimalSolver()->setGravity(
 			kGravitySource_,
 			kGravityDestination_);
 			
-	if (_NonMinimalSolver::needsGravity())
-		estimator.getNonMinimalSolver()->setGravity(
+	if (estimator->getNonMinimalSolver()->needsGravity())
+		estimator->getNonMinimalSolver()->setGravity(
 			kGravitySource_,
 			kGravityDestination_);
 
@@ -243,11 +251,12 @@ void runTest(
 	EssentialMatrix model;
 
 	// Initializing SPRT test
-	preemption::EmptyPreemptiveVerfication<EstimatorClass> preemptiveVerification;
+	preemption::EmptyPreemptiveVerfication<_EstimatorClass> preemptiveVerification;
 
 	// Initialize the samplers
 	// The main sampler is used inside the local optimization
-	sampler::ProsacSampler mainSampler(&kCorrespondences_, EstimatorClass::sampleSize());  
+	//sampler::ProsacSampler mainSampler(&kCorrespondences_, _EstimatorClass::sampleSize());  
+	sampler::UniformSampler mainSampler(&kCorrespondences_); // The local optimization sampler is used inside the local optimization
 	sampler::UniformSampler localOptimizationSampler(&kCorrespondences_); // The local optimization sampler is used inside the local optimization
 
 	// Checking if the samplers are initialized successfully.
@@ -258,10 +267,10 @@ void runTest(
 		return;
 	}
 
-	GCRANSAC<EstimatorClass,
+	GCRANSAC<_EstimatorClass,
 		neighborhood::GridNeighborhoodGraph<4>,
-		MSACScoringFunction<EstimatorClass>,
-		preemption::EmptyPreemptiveVerfication<EstimatorClass>> gcransac;
+		MSACScoringFunction<_EstimatorClass>,
+		preemption::EmptyPreemptiveVerfication<_EstimatorClass>> gcransac;
 	gcransac.settings.threshold = kNormalizedThreshold; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = kSpatialWeight_; // The weight of the spatial coherence term
 	gcransac.settings.confidence = kConfidence_; // The required confidence in the results
@@ -272,7 +281,7 @@ void runTest(
 
 	// Start GC-RANSAC
 	gcransac.run(kNormalizedCorrespondences_,
-		estimator,
+		*estimator,
 		&mainSampler,
 		&localOptimizationSampler,
 		&neighborhood,
@@ -282,12 +291,79 @@ void runTest(
 	// Get the statistics of the results
 	const utils::RANSACStatistics& statistics = gcransac.getRansacStatistics();
 
+	double rotationError = std::numeric_limits<double>::max(),
+		translationError = std::numeric_limits<double>::max();
+
+	if (statistics.inliers.size() <= _EstimatorClass::sampleSize())
+		model.descriptor = Eigen::Matrix3d::Identity();
+
+	// Calculate the pose error
+	Eigen::Matrix3d essentialMatrix = model.descriptor.block<3, 3>(0, 0);
+	cv::Mat cv_EssentialMatrix(3, 3, CV_64F, essentialMatrix.data());
+	cv_EssentialMatrix = cv_EssentialMatrix.t();
+	cv::Mat cv_Rotation, cv_Translation;
+
+	const int &kPointNumber = kNormalizedCorrespondences_.rows;
+	std::vector<uchar> inlierMask(kPointNumber, 0);
+	for (const auto &inlierIdx : statistics.inliers)
+		inlierMask[inlierIdx] = 1;
+
+	cv::recoverPose(cv_EssentialMatrix, 
+		kNormalizedCorrespondences_(cv::Rect(0, 0, 2, kPointNumber)),
+		kNormalizedCorrespondences_(cv::Rect(2, 0, 2, kPointNumber)),
+		cv::Mat::eye(3, 3, CV_64F),
+		cv_Rotation,
+		cv_Translation,
+		inlierMask);
+
+	cv::Mat cv_GroundTruthRotation(3, 3, CV_64F, kGroundTruthRotation_.data());
+	cv_GroundTruthRotation = cv_GroundTruthRotation.t();
+	cv::Mat cv_GroundTruthTranslation(1, 3, CV_64F, kGroundTruthTranslation_.data());
+	cv_GroundTruthTranslation = cv_GroundTruthTranslation.t();
+
+	poseError(
+		cv_Rotation,
+		cv_GroundTruthRotation,
+		cv_Translation,
+		cv_GroundTruthTranslation,
+		rotationError,
+		translationError);
+
 	// Print the statistics
 	printf("Elapsed time = %f secs\n", statistics.processing_time);
 	printf("Inlier number = %d\n", static_cast<int>(statistics.inliers.size()));
 	printf("Applied number of local optimizations = %d\n", static_cast<int>(statistics.local_optimization_number));
 	printf("Applied number of graph-cuts = %d\n", static_cast<int>(statistics.graph_cut_number));
-	printf("Number of iterations = %d\n\n", static_cast<int>(statistics.iteration_number));
+	printf("Number of iterations = %d\n", static_cast<int>(statistics.iteration_number));
+	printf("Rotation error = %f degrees\n", rotationError);
+	printf("Translation error = %f degrees\n\n", translationError);
+}
+
+void poseError(
+	const cv::Mat &R1_,
+	const cv::Mat &R2_,
+	const cv::Mat &t1_,
+	const cv::Mat &t2_,
+	double &rotationError_,
+	double &translationError_)
+{
+	// Calculate angle between provided rotations
+	cv::Mat R12 = R2_ * R1_.t();
+	cv::Mat rotationVector;
+	cv::Rodrigues(R12, rotationVector);
+
+	rotationError_ = cv::norm(rotationVector) * 180 / M_PI;
+	
+	// calculate angle between provided translations
+	double translationError1 = t2_.dot(t1_) / cv::norm(t2_) / cv::norm(t1_);
+	translationError1 = MAX(-1.0, MIN(1.0, translationError1));
+	translationError1 = acos(translationError1) * 180 / M_PI;
+	
+	double translationError2 = t2_.dot(-t1_) / cv::norm(t2_) / cv::norm(t1_);
+	translationError2 = MAX(-1.0, MIN(1.0, translationError2));
+	translationError2 = acos(translationError1) * 180 / M_PI;
+
+	translationError_ = MIN(translationError1, translationError2);
 }
 
 void detectFeatures(
