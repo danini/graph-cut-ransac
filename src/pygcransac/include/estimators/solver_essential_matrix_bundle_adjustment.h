@@ -65,6 +65,11 @@ namespace gcransac
 				{
 				}
 
+				static const char *getName()
+				{
+					return "E-BA";
+				}
+
 				pose_lib::BundleOptions& getMutableOptions()
 				{
 					return bundle_options;

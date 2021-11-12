@@ -60,6 +60,11 @@ namespace gcransac
 					return 5;
 				}
 
+				static const char *getName()
+				{
+					return "E-5PT";
+				}
+
 				// Determines if there is a chance of returning multiple models
 				// the function 'estimateModel' is applied.
 				static constexpr bool returnMultipleModels()

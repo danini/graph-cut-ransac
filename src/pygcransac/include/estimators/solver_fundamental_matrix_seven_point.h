@@ -67,6 +67,11 @@ namespace gcransac
 					return 3;
 				}
 
+				static const char *getName()
+				{
+					return "F-7PT";
+				}
+
 				// The minimum number of points required for the estimation
 				static constexpr size_t sampleSize()
 				{

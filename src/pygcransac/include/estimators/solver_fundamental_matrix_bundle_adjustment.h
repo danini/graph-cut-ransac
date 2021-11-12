@@ -75,6 +75,11 @@ namespace gcransac
 					return bundle_options;
 				}
 
+				static const char *getName()
+				{
+					return "F-BA";
+				}
+
 				// The minimum number of points required for the estimation
 				static constexpr size_t sampleSize()
 				{
