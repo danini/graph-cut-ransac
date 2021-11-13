@@ -62,6 +62,11 @@ namespace gcransac
 					return maximumSolutions() > 1;
 				}
 
+				static constexpr bool acceptsPriorModel() 
+				{
+					return false;
+				}
+
 				// The maximum number of returned solutions
 				static constexpr size_t maximumSolutions()
 				{

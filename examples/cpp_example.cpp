@@ -31,6 +31,8 @@
 #include "estimators/solver_dls_pnp.h"
 
 #include "estimators/solver_essential_matrix_one_focal_four_point.h"
+#include "estimators/solver_essential_matrix_one_focal_lin_six_points.h"
+#include "estimators/solver_essential_matrix_one_focal_6PC.h"
 
 #include <ctime>
 #include <sys/types.h>
@@ -58,6 +60,7 @@ void runTest(
 	gcransac::utils::RANSACStatistics &statistics_, 
 	double &rotationError_, 
 	double &translationError_,
+	double &focalLengthError_,
 	const double kInlierOutlierThreshold_,
 	const double kSpatialWeight_,
 	const double kConfidence_,
@@ -100,6 +103,7 @@ int main(int argc, const char* argv[])
 
 	std::string outputFile = "results.csv";
 	size_t coreNumber = 4;
+	size_t frameNumber = 1545;
 	bool removeOldResults = true;
 
 	if (removeOldResults)
@@ -111,14 +115,27 @@ int main(int argc, const char* argv[])
 	// The default estimator class
 	typedef estimator::EssentialMatrixEstimator<estimator::solver::EssentialOnefocal4PC, // The solver used for fitting a model to a minimal sample
 		estimator::solver::EssentialMatrixBundleAdjustmentSolver> // The solver used for fitting a model to a non-minimal sample
-		EstimatorClass;
+		Estimator4PCBA;
+		
+	typedef estimator::EssentialMatrixEstimator<estimator::solver::EssentialOnefocalLIN6PC, // The solver used for fitting a model to a minimal sample
+		estimator::solver::EssentialMatrixBundleAdjustmentSolver> // The solver used for fitting a model to a non-minimal sample
+		EstimatorLin6PCBA;
+
+	typedef estimator::EssentialMatrixEstimator<estimator::solver::EssentialMatrixOne6PC, // The solver used for fitting a model to a minimal sample
+		estimator::solver::EssentialMatrixBundleAdjustmentSolver> // The solver used for fitting a model to a non-minimal sample
+		Estimator6PCBA;
 
 	processVideo<gcransac::utils::DefaultFundamentalMatrixEstimator>(
-		"/home/danini/research/solver_e4f/graph-cut-ransac/examples/test_data/video_00/video_data/", 1545, 10, outputFile, coreNumber);	
-	processVideo<EstimatorClass>(
-		"/home/danini/research/solver_e4f/graph-cut-ransac/examples/test_data/video_00/video_data/", 1545, 10, outputFile, coreNumber);	
+		"/home/danini/research/solver_e4f/graph-cut-ransac/examples/test_data/video_00/video_data/", frameNumber, 10, outputFile, coreNumber);	
+	processVideo<Estimator4PCBA>(
+		"/home/danini/research/solver_e4f/graph-cut-ransac/examples/test_data/video_00/video_data/", frameNumber, 10, outputFile, coreNumber);	
+	processVideo<EstimatorLin6PCBA>(
+		"/home/danini/research/solver_e4f/graph-cut-ransac/examples/test_data/video_00/video_data/", frameNumber, 10, outputFile, coreNumber);	
+	processVideo<Estimator6PCBA>(
+		"/home/danini/research/solver_e4f/graph-cut-ransac/examples/test_data/video_00/video_data/", frameNumber, 10, outputFile, coreNumber);	
 	
-	processImage<EstimatorClass>("/home/danini/research/solver_e4f/graph-cut-ransac/examples/test_data/", "00001", "00011");		
+	processImage<Estimator4PCBA>("/home/danini/research/solver_e4f/graph-cut-ransac/examples/test_data/", "00001", "00011");		
+	processImage<Estimator6PCBA>("/home/danini/research/solver_e4f/graph-cut-ransac/examples/test_data/", "00001", "00011");		
 	processImage<gcransac::utils::DefaultFundamentalMatrixEstimator>("/home/danini/research/solver_e4f/graph-cut-ransac/examples/test_data/", "00001", "00011");
 	return 0;
 }
@@ -162,7 +179,9 @@ void processVideo(
 		for (size_t padding = 0; padding < 6 - std::to_string(kFrameDestination).size(); ++padding)
 			paddingDestination += "0";
 
-		printf("Processing frames %d and %d\n", kFrameSource, kFrameDestination);
+		printf("Processing frames %d and %d with solvers %s and %s\n", 
+			kFrameSource, kFrameDestination, 
+			estimator->getMinimalSolver()->getName(), estimator->getNonMinimalSolver()->getName());
 
 		// Read gravity
 		const std::string kSourceGravityPath = kPath_ + "frame_" + paddingSource + std::to_string(kFrameSource) + "_gravity.txt",
@@ -186,10 +205,8 @@ void processVideo(
 		Eigen::Vector3d translationSource = poseSource.block<1, 3>(3, 0),
 			translationDestination = poseDestination.block<1, 3>(3, 0);
 
-		Eigen::Matrix3d relativeRotation =
-		 	rotationDestination * rotationSource.transpose();
-		Eigen::Vector3d relativeTranslation =
-			translationDestination - rotationSource.transpose() * translationSource;
+		Eigen::Matrix3d relativeRotation = rotationSource;
+		Eigen::Vector3d relativeTranslation = translationSource;
 
 		// Read correspondences
 		const std::string kCorrespondencePath = 
@@ -215,7 +232,7 @@ void processVideo(
 				
 		// Run tests
 		utils::RANSACStatistics statistics;
-		double rotationError, translationError;
+		double rotationError, translationError, focalLengthError;
 
 		runTest<_EstimatorClass>(
 				correspondences, normalizedCorrespondences,
@@ -223,7 +240,7 @@ void processVideo(
 				cameraIntrinsics, cameraIntrinsics, 
 				sourceGravity, destinationGravity,
 				relativeRotation, relativeTranslation, kFocalLength,
-				statistics, rotationError, translationError,
+				statistics, rotationError, translationError, focalLengthError,
 				0.75, 0.0, 0.999, 10000, 20);
 
 		// Print the statistics
@@ -233,7 +250,8 @@ void processVideo(
 		printf("Applied number of graph-cuts = %d\n", static_cast<int>(statistics.graph_cut_number));
 		printf("Number of iterations = %d\n", static_cast<int>(statistics.iteration_number));
 		printf("Rotation error = %f degrees\n", rotationError);
-		printf("Translation error = %f degrees\n\n", translationError);
+		printf("Translation error = %f degrees\n", translationError);
+		printf("Focal length = %f%%\n\n", 100 * focalLengthError);
 
 		savingGuard.lock();
 		std::ofstream file(kOutputFile_, std::fstream::app);
@@ -245,7 +263,8 @@ void processVideo(
 			<< statistics.inliers.size() << ";"
 			<< statistics.iteration_number << ";"
 			<< rotationError << ";"
-			<< translationError << "\n";
+			<< translationError << ";"
+			<< focalLengthError << "\n";
 		file.close();
 		savingGuard.unlock();
 	}
@@ -333,7 +352,7 @@ void processImage(
 		
 	// Run tests
 	utils::RANSACStatistics statistics;
-	double rotationError, translationError;
+	double rotationError, translationError, focalLengthError;
 
 	runTest<_EstimatorClass>(
 			correspondences, normalizedCorrespondences,
@@ -341,7 +360,7 @@ void processImage(
 			intrinsicsSource, intrinsicsDestination, 
 			gravitySource, gravityDestination,
 			rotation, translation, kFocalLength,
-			statistics, rotationError, translationError,
+			statistics, rotationError, translationError, focalLengthError,
 			0.75, 0.0, 0.999, 10000, 20);
 }
 
@@ -361,6 +380,7 @@ void runTest(
 	utils::RANSACStatistics &statistics_, 
 	double &rotationError_, 
 	double &translationError_,
+	double &focalLengthError_,
 	const double kInlierOutlierThreshold_,
 	const double kSpatialWeight_,
 	const double kConfidence_,
@@ -376,12 +396,12 @@ void runTest(
 
 	// Setting the gravity if the solver needs it
 	if (estimator->getMinimalSolver()->needsGravity())
-		estimator->getMinimalSolver()->setGravity(
+		estimator->getMutableMinimalSolver()->setGravity(
 			kGravitySource_,
 			kGravityDestination_);
 			
 	if (estimator->getNonMinimalSolver()->needsGravity())
-		estimator->getNonMinimalSolver()->setGravity(
+		estimator->getMutableNonMinimalSolver()->setGravity(
 			kGravitySource_,
 			kGravityDestination_);
 
@@ -442,6 +462,8 @@ void runTest(
 	gcransac.settings.max_iteration_number = kMaximumIterations_; // The maximum number of iterations
 	gcransac.settings.min_iteration_number = kMinimumIterations_; // The minimum number of iterations
 	gcransac.settings.neighborhood_sphere_radius = 4; // The radius of the neighborhood ball
+	gcransac.settings.do_local_optimization = true;
+	gcransac.settings.do_final_iterated_least_squares = true;
 
 	// Start GC-RANSAC
 	gcransac.run(kNormalizedCorrespondences_,
@@ -451,6 +473,11 @@ void runTest(
 		&neighborhood,
 		model,
 		preemptiveVerification);
+
+	// Calculating the focal length error.
+	// Since the correspondences are normalized, the focal length should be 1.
+	const double &focalLength = gcransac.extraInfo(2);
+	focalLengthError_ = abs(1.0 - focalLength) / 1.0;
 
 	// Get the statistics of the results
 	const utils::RANSACStatistics& statistics = gcransac.getRansacStatistics();

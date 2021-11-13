@@ -74,6 +74,11 @@ namespace gcransac
 					return 3;
 				}
 
+				static constexpr bool acceptsPriorModel() 
+				{
+					return false;
+				}
+
 				// Estimate the model parameters from the given point sample
 				// using weighted fitting if possible.
 				OLGA_INLINE bool estimateModel(

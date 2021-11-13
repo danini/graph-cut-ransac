@@ -99,12 +99,25 @@ namespace gcransac
 			{}
 			~EssentialMatrixEstimator() {}
 
-			_MinimalSolverEngine *getMinimalSolver() {
+			const _MinimalSolverEngine *getMinimalSolver() {
 				return minimal_solver.get();
 			}
 
-			_NonMinimalSolverEngine *getNonMinimalSolver() {
+			const _NonMinimalSolverEngine *getNonMinimalSolver() {
 				return non_minimal_solver.get();
+			}
+
+			_MinimalSolverEngine *getMutableMinimalSolver() {
+				return minimal_solver.get();
+			}
+
+			_NonMinimalSolverEngine *getMutableNonMinimalSolver() {
+				return non_minimal_solver.get();
+			}
+
+			static constexpr bool acceptsPriorModel()
+			{
+				return _NonMinimalSolverEngine::acceptsPriorModel();
 			}
 
 			// The size of a non-minimal sample required for the estimation
@@ -304,7 +317,7 @@ namespace gcransac
 			{
 				if (sample_number_ < nonMinimalSampleSize())
 					return false;
-
+					
 				// Number of points used for selecting the best model out of the estimated ones.
 				// In case the solver return a single model, 0 points are not used for the estimation.
 				size_t points_not_used = 0; 

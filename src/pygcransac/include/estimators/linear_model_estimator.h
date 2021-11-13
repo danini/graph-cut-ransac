@@ -79,12 +79,25 @@ namespace gcransac
 
 			~LinearModelEstimator() {}
 
-			_MinimalSolverEngine *getMinimalSolver() {
+			const _MinimalSolverEngine *getMinimalSolver() {
 				return minimal_solver.get();
 			}
 
-			_NonMinimalSolverEngine *getNonMinimalSolver() {
+			const _NonMinimalSolverEngine *getNonMinimalSolver() {
 				return non_minimal_solver.get();
+			}
+
+			_MinimalSolverEngine *getMutableMinimalSolver() {
+				return minimal_solver.get();
+			}
+
+			_NonMinimalSolverEngine *getMutableNonMinimalSolver() {
+				return non_minimal_solver.get();
+			}
+
+			static constexpr bool acceptsPriorModel()
+			{
+				return _NonMinimalSolverEngine::acceptsPriorModel();
 			}
 
 			// The size of a minimal sample_ required for the estimation

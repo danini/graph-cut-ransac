@@ -177,7 +177,7 @@ namespace gcransac
 					pose_lib::CameraPoseVector poses;
 
 					motion_from_essential(
-						model.descriptor, // The essential matrix
+						model.descriptor.block<3, 3>(0, 0), // The essential matrix
 						pt1, pt2, // The point correspondence used for the cheirality check
 						&poses); // The decomposed poses
 

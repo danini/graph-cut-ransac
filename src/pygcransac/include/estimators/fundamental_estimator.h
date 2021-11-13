@@ -109,12 +109,25 @@ namespace gcransac
 
 			~FundamentalMatrixEstimator() {}
 
-			_MinimalSolverEngine *getMinimalSolver() {
+			const _MinimalSolverEngine *getMinimalSolver() {
 				return minimal_solver.get();
 			}
 
-			_NonMinimalSolverEngine *getNonMinimalSolver() {
+			const _NonMinimalSolverEngine *getNonMinimalSolver() {
 				return non_minimal_solver.get();
+			}
+
+			_MinimalSolverEngine *getMutableMinimalSolver() {
+				return minimal_solver.get();
+			}
+
+			_NonMinimalSolverEngine *getMutableNonMinimalSolver() {
+				return non_minimal_solver.get();
+			}
+
+			static constexpr bool acceptsPriorModel()
+			{
+				return _NonMinimalSolverEngine::acceptsPriorModel();
 			}
 
 			// The size of a minimal sample_ required for the estimation
@@ -521,7 +534,7 @@ namespace gcransac
 					// the plane-and-parallax algorithm using the determined homography.
 					estimator::FundamentalMatrixEstimator<estimator::solver::FundamentalMatrixPlaneParallaxSolver, // The solver used for fitting a model to a minimal sample
 						estimator::solver::FundamentalMatrixEightPointSolver> estimator(0.0, false);
-					estimator.getMinimalSolver()->setHomography(&nonminimal_homography);
+					estimator.getMutableMinimalSolver()->setHomography(&nonminimal_homography);
 
 					std::vector<int> inliers;
 					Model model;

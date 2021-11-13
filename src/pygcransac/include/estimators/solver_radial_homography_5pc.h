@@ -60,6 +60,11 @@ namespace gcransac
 					K2 = solver_.K2;
 				}
 
+				static constexpr bool acceptsPriorModel() 
+				{
+					return false;
+				}
+
 				~RadialHomography5PC()
 				{
 				}

@@ -59,10 +59,10 @@ namespace gcransac
 		{
 		protected:
 			// Minimal solver engine used for estimating a model from a minimal sample
-			const std::shared_ptr<const _MinimalSolverEngine> minimal_solver;
+			const std::shared_ptr<_MinimalSolverEngine> minimal_solver;
 
 			// Non-minimal solver engine used for estimating a model from a bigger than minimal sample
-			const std::shared_ptr<const _NonMinimalSolverEngine> non_minimal_solver;
+			const std::shared_ptr<_NonMinimalSolverEngine> non_minimal_solver;
 
 			// The lower bound of the inlier ratio which is required to pass the validity test.
 			// The validity test measures what proportion of the inlier (by Sampson distance) is inlier
@@ -72,9 +72,9 @@ namespace gcransac
 		public:
 			PerspectiveNPointEstimator(const double minimum_inlier_ratio_in_validity_check_ = 0.5) :
 				// Minimal solver engine used for estimating a model from a minimal sample
-				minimal_solver(std::make_shared<const _MinimalSolverEngine>()),
+				minimal_solver(std::make_shared<_MinimalSolverEngine>()),
 				// Non-minimal solver engine used for estimating a model from a bigger than minimal sample
-				non_minimal_solver(std::make_shared<const _NonMinimalSolverEngine>()),
+				non_minimal_solver(std::make_shared<_NonMinimalSolverEngine>()),
 				// The lower bound of the inlier ratio which is required to pass the validity test.
 				// It is clamped to be in interval [0, 1].
 				minimum_inlier_ratio_in_validity_check(std::clamp(minimum_inlier_ratio_in_validity_check_, 0.0, 1.0))
@@ -100,6 +100,27 @@ namespace gcransac
 			// A flag deciding if the points can be weighted when the non-minimal fitting is applied 
 			static constexpr bool isWeightingApplicable() {
 				return false;
+			}
+
+			const _MinimalSolverEngine *getMinimalSolver() {
+				return minimal_solver.get();
+			}
+
+			const _NonMinimalSolverEngine *getNonMinimalSolver() {
+				return non_minimal_solver.get();
+			}
+
+			_MinimalSolverEngine *getMutableMinimalSolver() {
+				return minimal_solver.get();
+			}
+
+			_NonMinimalSolverEngine *getMutableNonMinimalSolver() {
+				return non_minimal_solver.get();
+			}
+
+			static constexpr bool acceptsPriorModel()
+			{
+				return _NonMinimalSolverEngine::acceptsPriorModel();
 			}
 
 			// The size of a sample when doing inner RANSAC on a non-minimal sample

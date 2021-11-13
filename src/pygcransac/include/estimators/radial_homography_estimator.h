@@ -91,29 +91,30 @@ namespace gcransac
 				return true;
 			}
 
-			const _MinimalSolverEngine &getMinimalSolver() const
-			{
-				return *minimal_solver;
+			const _MinimalSolverEngine *getMinimalSolver() {
+				return minimal_solver.get();
 			}
 
-			const _NonMinimalSolverEngine &getNonMinimalSolver() const
-			{
-				return *non_minimal_solver;
+			const _NonMinimalSolverEngine *getNonMinimalSolver() {
+				return non_minimal_solver.get();
 			}
 
-			_MinimalSolverEngine &getMutableMinimalSolver()
-			{
-				return *minimal_solver;
+			_MinimalSolverEngine *getMutableMinimalSolver() {
+				return minimal_solver.get();
 			}
 
-			_NonMinimalSolverEngine &getMutableNonMinimalSolver()
-			{
-				return *minimal_solver;
+			_NonMinimalSolverEngine *getMutableNonMinimalSolver() {
+				return non_minimal_solver.get();
 			}
 
 			// The size of a minimal sample_ required for the estimation
 			static constexpr size_t maximumMinimalSolutions() {
 				return _MinimalSolverEngine::maximumSolutions();
+			}
+
+			static constexpr bool acceptsPriorModel()
+			{
+				return _NonMinimalSolverEngine::acceptsPriorModel();
 			}
 
 			// The size of a sample when doing inner RANSAC on a non-minimal sample

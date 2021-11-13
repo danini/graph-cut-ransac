@@ -55,6 +55,11 @@ namespace gcransac
 				{
 				}
 
+				static constexpr bool acceptsPriorModel() 
+				{
+					return false;
+				}
+
 
 				// Determines if there is a chance of returning multiple models
 				// the function 'estimateModel' is applied.

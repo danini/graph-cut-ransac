@@ -67,6 +67,11 @@ namespace gcransac
 					return 1;
 				}
 
+				static constexpr bool acceptsPriorModel() 
+				{
+					return false;
+				}
+
 				static const char *getName()
 				{
 					return "F-8PT";

@@ -59,17 +59,38 @@ namespace gcransac
 		{
 		protected:
 			// Minimal solver engine used for estimating a model from a minimal sample
-			const std::shared_ptr<const _MinimalSolverEngine> minimal_solver;
+			const std::shared_ptr<_MinimalSolverEngine> minimal_solver;
 
 			// Non-minimal solver engine used for estimating a model from a bigger than minimal sample
-			const std::shared_ptr<const _NonMinimalSolverEngine> non_minimal_solver;
+			const std::shared_ptr<_NonMinimalSolverEngine> non_minimal_solver;
 
 		public:
 			RigidTransformationEstimator() :
-				minimal_solver(std::make_shared<const _MinimalSolverEngine>()), // Minimal solver engine used for estimating a model from a minimal sample
-				non_minimal_solver(std::make_shared<const _NonMinimalSolverEngine>()) // Non-minimal solver engine used for estimating a model from a bigger than minimal sample
+				minimal_solver(std::make_shared<_MinimalSolverEngine>()), // Minimal solver engine used for estimating a model from a minimal sample
+				non_minimal_solver(std::make_shared<_NonMinimalSolverEngine>()) // Non-minimal solver engine used for estimating a model from a bigger than minimal sample
 			{}
 			~RigidTransformationEstimator() {}
+
+			const _MinimalSolverEngine *getMinimalSolver() {
+				return minimal_solver.get();
+			}
+
+			const _NonMinimalSolverEngine *getNonMinimalSolver() {
+				return non_minimal_solver.get();
+			}
+
+			_MinimalSolverEngine *getMutableMinimalSolver() {
+				return minimal_solver.get();
+			}
+
+			_NonMinimalSolverEngine *getMutableNonMinimalSolver() {
+				return non_minimal_solver.get();
+			}
+
+			static constexpr bool acceptsPriorModel()
+			{
+				return _NonMinimalSolverEngine::acceptsPriorModel();
+			}
 
 			// The size of a non-minimal sample required for the estimation
 			static constexpr size_t nonMinimalSampleSize() {

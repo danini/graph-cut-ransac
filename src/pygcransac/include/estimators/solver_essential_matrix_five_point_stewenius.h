@@ -78,6 +78,11 @@ namespace gcransac
 					return 10;
 				}
 
+				static constexpr bool acceptsPriorModel() 
+				{
+					return false;
+				}
+
 				static constexpr bool needsGravity()
 				{
 					return false;

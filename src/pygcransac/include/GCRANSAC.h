@@ -50,11 +50,13 @@ namespace gcransac
 		class GCRANSAC
 	{
 	public:
+		Eigen::Vector3d extraInfo;
 		utils::Settings settings;
 
 		GCRANSAC() :
 			time_limit(std::numeric_limits<double>::max()),
-			scoring_function(std::make_unique<_ScoringFunction>())
+			scoring_function(std::make_unique<_ScoringFunction>()),
+			extraInfo(Eigen::Vector3d::Zero())
 		{
 		}
 		~GCRANSAC() 
@@ -359,6 +361,9 @@ namespace gcransac
 							so_far_the_best_score, // The score of the current so-far-the-best model
 							true); // Flag to decide if the inliers are needed
 
+					if (model.descriptor.cols() > 3)
+						extraInfo = model.descriptor.rightCols<1>();
+
 					inlier_container_offset = (inlier_container_offset + 1) % 2;
 					so_far_the_best_model = model; // The new so-far-the-best model
 					so_far_the_best_score = score; // The new so-far-the-best model's score
@@ -485,7 +490,6 @@ namespace gcransac
 		
 		if (!iterative_refitting_applied) // Otherwise, do only one least-squares fitting on all of the inliers
 		{
-			// Estimate the final model using the full inlier set
 			models.clear();
 			estimator_.estimateModelNonminimal(points_,
 				&(temp_inner_inliers[inlier_container_offset])[0],

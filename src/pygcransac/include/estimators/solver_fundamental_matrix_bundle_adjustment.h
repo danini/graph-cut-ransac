@@ -80,6 +80,11 @@ namespace gcransac
 					return "F-BA";
 				}
 
+				static constexpr bool acceptsPriorModel() 
+				{
+					return false;
+				}
+
 				// The minimum number of points required for the estimation
 				static constexpr size_t sampleSize()
 				{
