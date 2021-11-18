@@ -30,8 +30,8 @@ int find6DPose_(
 	int neighborhood_id,
 	double neighborhood_size);
 
-int findFundamentalMatrix_(std::vector<double>& srcPts,
-                           std::vector<double>& dstPts,
+int findFundamentalMatrix_(
+						   std::vector<double>& correspondences,
                            std::vector<bool>& inliers,
                            std::vector<double>&F,
                            int h1, int w1, int h2, int w2,
@@ -60,11 +60,10 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
 				double neighborhood_size);
 
 
-int findEssentialMatrix_(std::vector<double>& srcPts_norm,
-                           std::vector<double>& dstPts_norm,
+int findEssentialMatrix_(std::vector<double>& correspondences,
                            std::vector<bool>& inliers,
                            std::vector<double>&E,
-                               std::vector<double>& src_K,
+                           std::vector<double>& src_K,
                            std::vector<double>& dst_K,
                            int h1, int w1, int h2, int w2,
 						   double spatial_coherence_weight,
@@ -78,8 +77,8 @@ int findEssentialMatrix_(std::vector<double>& srcPts_norm,
 						   double neighborhood_size);
 
 
-int findHomography_(std::vector<double>& srcPts,
-                    std::vector<double>& dstPts,
+int findHomography_(
+					std::vector<double>& correspondences,
                     std::vector<bool>& inliers,
                     std::vector<double>& H,
                     int h1, int w1, int h2, int w2,

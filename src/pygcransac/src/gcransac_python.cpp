@@ -572,8 +572,8 @@ int findRigidTransform_(std::vector<double>& points1,
 	return num_inliers;
 }
 
-int findFundamentalMatrix_(std::vector<double>& srcPts,
-	std::vector<double>& dstPts,
+int findFundamentalMatrix_(
+	std::vector<double>& correspondences,
 	std::vector<bool>& inliers,
 	std::vector<double>& F,
 	int h1, int w1, int h2, int w2,
@@ -587,15 +587,8 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
 	int neighborhood_id,
 	double neighborhood_size)
 {
-	int num_tents = srcPts.size() / 2;
-	cv::Mat points(num_tents, 4, CV_64F);
-	int iterations = 0;
-	for (int i = 0; i < num_tents; ++i) {
-		points.at<double>(i, 0) = srcPts[2 * i];
-		points.at<double>(i, 1) = srcPts[2 * i + 1];
-		points.at<double>(i, 2) = dstPts[2 * i];
-		points.at<double>(i, 3) = dstPts[2 * i + 1];
-	}
+	int num_tents = correspondences.size() / 4;
+	cv::Mat points(num_tents, 4, CV_64F, &correspondences[0]);
 
 	typedef neighborhood::NeighborhoodGraph<cv::Mat> AbstractNeighborhood;
 	std::unique_ptr<AbstractNeighborhood> neighborhood_graph;
@@ -779,8 +772,8 @@ int findFundamentalMatrix_(std::vector<double>& srcPts,
 	return num_inliers;
 }
 
-int findEssentialMatrix_(std::vector<double>& srcPts,
-	std::vector<double>& dstPts,
+int findEssentialMatrix_(
+	std::vector<double>& correspondences,
 	std::vector<bool>& inliers,
 	std::vector<double>&E,
 	std::vector<double>& src_K,
@@ -796,15 +789,8 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 	int neighborhood_id,
 	double neighborhood_size)
 {
-	int num_tents = srcPts.size() / 2;
-	cv::Mat points(num_tents, 4, CV_64F);
-	int iterations = 0;
-	for (int i = 0; i < num_tents; ++i) {
-		points.at<double>(i, 0) = srcPts[2 * i];
-		points.at<double>(i, 1) = srcPts[2 * i + 1];
-		points.at<double>(i, 2) = dstPts[2 * i];
-		points.at<double>(i, 3) = dstPts[2 * i + 1];
-	}
+	int num_tents = correspondences.size() / 4;
+	cv::Mat points(num_tents, 4, CV_64F, &correspondences[0]);
 
 	typedef neighborhood::NeighborhoodGraph<cv::Mat> AbstractNeighborhood;
 	std::unique_ptr<AbstractNeighborhood> neighborhood_graph;
@@ -841,20 +827,8 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 		return 0;
 	}
 
-	Eigen::Matrix3d intrinsics_src,
-		intrinsics_dst;
-
-	for (int i = 0; i < 3; i++) {
-		for (int j = 0; j < 3; j++) {
-			intrinsics_src(i, j) = src_K[i * 3 + j];
-		}
-	}
-
-	for (int i = 0; i < 3; i++) {
-		for (int j = 0; j < 3; j++) {
-			intrinsics_dst(i, j) = dst_K[i * 3 + j];
-		}
-	}
+	Eigen::Map<Eigen::Matrix<double, 3, 3, Eigen::RowMajor>> intrinsics_src(&src_K[0]);
+	Eigen::Map<Eigen::Matrix<double, 3, 3, Eigen::RowMajor>> intrinsics_dst(&dst_K[0]);
 
 	// Calculating the maximum image diagonal to be used for setting the threshold
 	// adaptively for each image pair. 
@@ -1015,8 +989,8 @@ int findEssentialMatrix_(std::vector<double>& srcPts,
 }
 
 
-int findHomography_(std::vector<double>& srcPts,
-	std::vector<double>& dstPts,
+int findHomography_(
+	std::vector<double>& correspondences,
 	std::vector<bool>& inliers,
 	std::vector<double>& H,
 	int h1, int w1, int h2, int w2,
@@ -1030,16 +1004,9 @@ int findHomography_(std::vector<double>& srcPts,
 	int neighborhood_id,
 	double neighborhood_size)
 {
-	int num_tents = srcPts.size() / 2;
-	cv::Mat points(num_tents, 4, CV_64F);
-	int iterations = 0;
-	for (int i = 0; i < num_tents; ++i) {
-		points.at<double>(i, 0) = srcPts[2 * i];
-		points.at<double>(i, 1) = srcPts[2 * i + 1];
-		points.at<double>(i, 2) = dstPts[2 * i];
-		points.at<double>(i, 3) = dstPts[2 * i + 1];
-	}
-
+	int num_tents = correspondences.size() / 4;
+	cv::Mat points(num_tents, 4, CV_64F, &correspondences[0]);
+	
 	typedef neighborhood::NeighborhoodGraph<cv::Mat> AbstractNeighborhood;
 	std::unique_ptr<AbstractNeighborhood> neighborhood_graph;
 
