@@ -475,7 +475,7 @@ PYBIND11_PLUGIN(pygcransac) {
 			py::arg("spatial_coherence_weight") = 0.975,
 			py::arg("use_sprt") = false,
 			py::arg("min_inlier_ratio_for_sprt") = 0.1,
-			py::arg("sampler") = 1,
+			py::arg("sampler") = 0,
 			py::arg("neighborhood") = 0,
 			py::arg("neighborhood_size") = 20.0);
 

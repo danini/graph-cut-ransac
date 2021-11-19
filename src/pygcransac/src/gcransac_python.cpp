@@ -42,17 +42,10 @@ using namespace gcransac;
 				double neighborhood_size)
 {
 	// The number of points provided
-	const size_t &num_points = input_points.size();
+	const size_t &num_points = input_points.size() / 2;
 
 	// The matrix containing the points that will be passed to GC-RANSAC
-	cv::Mat points(num_points, 2, CV_64F);
-
-	// Copying the point coordinates to the matrx
-	// TODO: do not do copying
-	for (int i = 0; i < num_points; ++i) {
-		points.at<double>(i, 0) = input_points[2 * i];
-		points.at<double>(i, 1) = input_points[2 * i + 1];
-	}
+	cv::Mat points(num_points, 2, CV_64F, &input_points[0]);
 
 	// Initializing the neighborhood structure based on the provided paramereters
 	typedef neighborhood::NeighborhoodGraph<cv::Mat> AbstractNeighborhood;
@@ -62,21 +55,33 @@ using namespace gcransac;
 	const size_t cell_number_in_neighborhood_graph_ = 
 		static_cast<size_t>(neighborhood_size);
 
-	// Initializing a grid-based neighborhood graph
-	if (neighborhood_id == 0)
-		neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
-			new neighborhood::GridNeighborhoodGraph<4>(&points, // The input points
-			{ w / static_cast<double>(cell_number_in_neighborhood_graph_), // The cell size along axis X
-				h / static_cast<double>(cell_number_in_neighborhood_graph_) }, // The cell size along axis Y
-			cell_number_in_neighborhood_graph_)); // The cell number along every axis
-	else if (neighborhood_id == 1) // Initializing the neighbhood graph by FLANN
-		neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
-			new neighborhood::FlannNeighborhoodGraph(&points, neighborhood_size));
-	else
+	// If the spatial weight is 0.0, the neighborhood graph should not be created 
+	if (spatial_coherence_weight <= std::numeric_limits<double>::epsilon())
 	{
-		fprintf(stderr, "Unknown neighborhood-graph identifier: %d. The accepted values are 0 (Grid-based), 1 (FLANN-based neighborhood)\n",
-			neighborhood_id);
-		return 0;
+		cv::Mat emptyPoints(0, 2, CV_64F);
+
+		neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
+			new neighborhood::GridNeighborhoodGraph<4>(&emptyPoints, // The input points
+			{ 0, // The cell size along axis X
+				0 }, // The cell size along axis Y
+			1)); // The cell number along every axis
+	} else // Initializing a grid-based neighborhood graph
+	{
+		if (neighborhood_id == 0)
+			neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
+				new neighborhood::GridNeighborhoodGraph<4>(&points, // The input points
+				{ w / static_cast<double>(cell_number_in_neighborhood_graph_), // The cell size along axis X
+					h / static_cast<double>(cell_number_in_neighborhood_graph_) }, // The cell size along axis Y
+				cell_number_in_neighborhood_graph_)); // The cell number along every axis
+		else if (neighborhood_id == 1) // Initializing the neighbhood graph by FLANN
+			neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
+				new neighborhood::FlannNeighborhoodGraph(&points, neighborhood_size));
+		else
+		{
+			fprintf(stderr, "Unknown neighborhood-graph identifier: %d. The accepted values are 0 (Grid-based), 1 (FLANN-based neighborhood)\n",
+				neighborhood_id);
+			return 0;
+		}
 	}
 
 	// Checking if the neighborhood graph is initialized successfully.
@@ -596,33 +601,46 @@ int findFundamentalMatrix_(
 	const size_t cell_number_in_neighborhood_graph_ = 
 		static_cast<size_t>(neighborhood_size);
 
-	// Initializing a grid-based neighborhood graph
-	if (neighborhood_id == 0)
-		neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
-			new neighborhood::GridNeighborhoodGraph<4>(&points,
-			{ w1 / static_cast<double>(cell_number_in_neighborhood_graph_),
-				h1 / static_cast<double>(cell_number_in_neighborhood_graph_),
-				w2 / static_cast<double>(cell_number_in_neighborhood_graph_),
-				h2 / static_cast<double>(cell_number_in_neighborhood_graph_) },
-			cell_number_in_neighborhood_graph_));
-	else if (neighborhood_id == 1) // Initializing the neighbhood graph by FLANN
-		neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
-			new neighborhood::FlannNeighborhoodGraph(&points, neighborhood_size));
-	else
+	// If the spatial weight is 0.0, the neighborhood graph should not be created 
+	if (spatial_coherence_weight <= std::numeric_limits<double>::epsilon())
 	{
-		fprintf(stderr, "Unknown neighborhood-graph identifier: %d. The accepted values are 0 (Grid-based), 1 (FLANN-based neighborhood)\n",
-			neighborhood_id);
-		return 0;
-	}
+		cv::Mat emptyPoints(0, 4, CV_64F);
 
-	// Checking if the neighborhood graph is initialized successfully.
-	if (!neighborhood_graph->isInitialized())
+		neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
+			new neighborhood::GridNeighborhoodGraph<4>(&emptyPoints, // The input points
+			{ 0, // The cell size along axis X
+				0 }, // The cell size along axis Y
+			1)); // The cell number along every axis
+	} else // Initializing a grid-based neighborhood graph
 	{
-		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
-		delete neighborhood_graph_ptr;
+		// Initializing a grid-based neighborhood graph
+		if (neighborhood_id == 0)
+			neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
+				new neighborhood::GridNeighborhoodGraph<4>(&points,
+				{ w1 / static_cast<double>(cell_number_in_neighborhood_graph_),
+					h1 / static_cast<double>(cell_number_in_neighborhood_graph_),
+					w2 / static_cast<double>(cell_number_in_neighborhood_graph_),
+					h2 / static_cast<double>(cell_number_in_neighborhood_graph_) },
+				cell_number_in_neighborhood_graph_));
+		else if (neighborhood_id == 1) // Initializing the neighbhood graph by FLANN
+			neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
+				new neighborhood::FlannNeighborhoodGraph(&points, neighborhood_size));
+		else
+		{
+			fprintf(stderr, "Unknown neighborhood-graph identifier: %d. The accepted values are 0 (Grid-based), 1 (FLANN-based neighborhood)\n",
+				neighborhood_id);
+			return 0;
+		}
 
-		fprintf(stderr, "The neighborhood graph is not initialized successfully.\n");
-		return 0;
+		// Checking if the neighborhood graph is initialized successfully.
+		if (!neighborhood_graph->isInitialized())
+		{
+			AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
+			delete neighborhood_graph_ptr;
+
+			fprintf(stderr, "The neighborhood graph is not initialized successfully.\n");
+			return 0;
+		}
 	}
 
 	// Calculating the maximum image diagonal to be used for setting the threshold
@@ -798,33 +816,46 @@ int findEssentialMatrix_(
 	const size_t cell_number_in_neighborhood_graph_ = 
 		static_cast<size_t>(neighborhood_size);
 
-	// Initializing a grid-based neighborhood graph
-	if (neighborhood_id == 0)
-		neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
-			new neighborhood::GridNeighborhoodGraph<4>(&points,
-			{ w1 / static_cast<double>(cell_number_in_neighborhood_graph_),
-				h1 / static_cast<double>(cell_number_in_neighborhood_graph_),
-				w2 / static_cast<double>(cell_number_in_neighborhood_graph_),
-				h2 / static_cast<double>(cell_number_in_neighborhood_graph_) },
-			cell_number_in_neighborhood_graph_));
-	else if (neighborhood_id == 1) // Initializing the neighbhood graph by FLANN
-		neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
-			new neighborhood::FlannNeighborhoodGraph(&points, neighborhood_size));
-	else
+	// If the spatial weight is 0.0, the neighborhood graph should not be created 
+	if (spatial_coherence_weight <= std::numeric_limits<double>::epsilon())
 	{
-		fprintf(stderr, "Unknown neighborhood-graph identifier: %d. The accepted values are 0 (Grid-based), 1 (FLANN-based neighborhood)\n",
-			neighborhood_id);
-		return 0;
-	}
-	
-	// Checking if the neighborhood graph is initialized successfully.
-	if (!neighborhood_graph->isInitialized())
-	{
-		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
-		delete neighborhood_graph_ptr;
+		cv::Mat emptyPoints(0, 4, CV_64F);
 
-		fprintf(stderr, "The neighborhood graph is not initialized successfully.\n");
-		return 0;
+		neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
+			new neighborhood::GridNeighborhoodGraph<4>(&emptyPoints, // The input points
+			{ 0, // The cell size along axis X
+				0 }, // The cell size along axis Y
+			1)); // The cell number along every axis
+	} else // Initializing a grid-based neighborhood graph
+	{
+		// Initializing a grid-based neighborhood graph
+		if (neighborhood_id == 0)
+			neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
+				new neighborhood::GridNeighborhoodGraph<4>(&points,
+				{ w1 / static_cast<double>(cell_number_in_neighborhood_graph_),
+					h1 / static_cast<double>(cell_number_in_neighborhood_graph_),
+					w2 / static_cast<double>(cell_number_in_neighborhood_graph_),
+					h2 / static_cast<double>(cell_number_in_neighborhood_graph_) },
+				cell_number_in_neighborhood_graph_));
+		else if (neighborhood_id == 1) // Initializing the neighbhood graph by FLANN
+			neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
+				new neighborhood::FlannNeighborhoodGraph(&points, neighborhood_size));
+		else
+		{
+			fprintf(stderr, "Unknown neighborhood-graph identifier: %d. The accepted values are 0 (Grid-based), 1 (FLANN-based neighborhood)\n",
+				neighborhood_id);
+			return 0;
+		}
+		
+		// Checking if the neighborhood graph is initialized successfully.
+		if (!neighborhood_graph->isInitialized())
+		{
+			AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
+			delete neighborhood_graph_ptr;
+
+			fprintf(stderr, "The neighborhood graph is not initialized successfully.\n");
+			return 0;
+		}
 	}
 
 	Eigen::Map<Eigen::Matrix<double, 3, 3, Eigen::RowMajor>> intrinsics_src(&src_K[0]);
@@ -1013,23 +1044,36 @@ int findHomography_(
 	const size_t cell_number_in_neighborhood_graph_ = 
 		static_cast<size_t>(neighborhood_size);
 
-	// Initializing a grid-based neighborhood graph
-	if (neighborhood_id == 0)
-		neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
-			new neighborhood::GridNeighborhoodGraph<4>(&points,
-			{ w1 / static_cast<double>(cell_number_in_neighborhood_graph_),
-				h1 / static_cast<double>(cell_number_in_neighborhood_graph_),
-				w2 / static_cast<double>(cell_number_in_neighborhood_graph_),
-				h2 / static_cast<double>(cell_number_in_neighborhood_graph_) },
-			cell_number_in_neighborhood_graph_));
-	else if (neighborhood_id == 1) // Initializing the neighbhood graph by FLANN
-		neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
-			new neighborhood::FlannNeighborhoodGraph(&points, neighborhood_size));
-	else
+	// If the spatial weight is 0.0, the neighborhood graph should not be created 
+	if (spatial_coherence_weight <= std::numeric_limits<double>::epsilon())
 	{
-		fprintf(stderr, "Unknown neighborhood-graph identifier: %d. The accepted values are 0 (Grid-based), 1 (FLANN-based neighborhood)\n",
-			neighborhood_id);
-		return 0;
+		cv::Mat emptyPoints(0, 4, CV_64F);
+
+		neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
+			new neighborhood::GridNeighborhoodGraph<4>(&emptyPoints, // The input points
+			{ 0, // The cell size along axis X
+				0 }, // The cell size along axis Y
+			1)); // The cell number along every axis
+	} else // Initializing a grid-based neighborhood graph
+	{
+		// Initializing a grid-based neighborhood graph
+		if (neighborhood_id == 0)
+			neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
+				new neighborhood::GridNeighborhoodGraph<4>(&points,
+				{ w1 / static_cast<double>(cell_number_in_neighborhood_graph_),
+					h1 / static_cast<double>(cell_number_in_neighborhood_graph_),
+					w2 / static_cast<double>(cell_number_in_neighborhood_graph_),
+					h2 / static_cast<double>(cell_number_in_neighborhood_graph_) },
+				cell_number_in_neighborhood_graph_));
+		else if (neighborhood_id == 1) // Initializing the neighbhood graph by FLANN
+			neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
+				new neighborhood::FlannNeighborhoodGraph(&points, neighborhood_size));
+		else
+		{
+			fprintf(stderr, "Unknown neighborhood-graph identifier: %d. The accepted values are 0 (Grid-based), 1 (FLANN-based neighborhood)\n",
+				neighborhood_id);
+			return 0;
+		}
 	}
 
 	// Checking if the neighborhood graph is initialized successfully.
