@@ -135,6 +135,7 @@ namespace gcransac
 				// Replace the indices reffering to neighbor to the ones that refer to points
 				for (size_t i = 1; i < sample_size_; ++i)
 					subset_[i] = neighbors[subset_[i]];
+				break;
 			}
 			// Return true only if the iteration was interrupted due to finding a good sample
 			return attempts < maximum_iterations;
