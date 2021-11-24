@@ -137,12 +137,12 @@ namespace gcransac
 
 			// The grid is stored in the HashMap where the key is defined
 			// via the cell coordinates.
-			std::unordered_map<GridCell<_DimensionNumber>, std::vector<size_t>> grid;
+			std::unordered_map<size_t, std::vector<size_t>> grid;
 
 			// The pointer to the cell (i.e., key in the grid) for each point.
 			// It is faster to store them than to recreate the cell structure
 			// whenever is needed.
-			std::vector<const GridCell<_DimensionNumber>*> cells_of_points;
+			std::vector<size_t> cells_of_points;
 
 		public:
 			GridNeighborhoodGraph() : NeighborhoodGraph() {}
@@ -209,7 +209,7 @@ namespace gcransac
 					cell_number_along_all_axes); // The number of cells along all axis in both images
 
 				// Add the current point's index to the grid.
-				grid[cell].push_back(row);
+				grid[cell.index].push_back(row);
 			}
 
 			// Iterate through all cells and store the corresponding
@@ -218,7 +218,7 @@ namespace gcransac
 			for (const auto &element : grid)
 			{
 				// Get the pointer of the cell.
-				const GridCell<_DimensionNumber>*cell = &element.first;
+				const size_t cell_index = element.first;
 
 				// Increase the edge number in the neighborhood graph.
 				// All possible pairs of points in each cell are neighbors,
@@ -229,7 +229,7 @@ namespace gcransac
 
 				// Iterate through all points in the cell.
 				for (const size_t &point_idx : element.second)
-					cells_of_points[point_idx] = cell; // Store the cell pointer for each contained point.
+					cells_of_points[point_idx] = cell_index; // Store the cell pointer for each contained point.
 			}
 
 			return neighbor_number > 0;
@@ -239,9 +239,9 @@ namespace gcransac
 		inline const std::vector<size_t> &GridNeighborhoodGraph<_DimensionNumber>::getNeighbors(size_t point_idx_) const
 		{
 			// Get the pointer of the cell in which the point is.
-			const GridCell<_DimensionNumber> *cell = cells_of_points[point_idx_];
+			const size_t cell_idx = cells_of_points[point_idx_];
 			// Return the vector containing all the points in the cell.
-			return grid.at(*cell);
+			return grid.at(cell_idx);
 		}
 	}
 }
