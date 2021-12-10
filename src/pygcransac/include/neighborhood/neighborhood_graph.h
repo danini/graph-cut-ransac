@@ -83,6 +83,18 @@ namespace gcransac
 
 			// Returns if the initialization was successfull.
 			bool isInitialized() const { return initialized; }
+
+			// A function returning the cell sizes
+			virtual const std::vector<double> &getCellSizes() const = 0;
+
+			// A function returning all cells in the graph
+			virtual const std::unordered_map<size_t, std::pair<std::vector<size_t>, std::vector<size_t>>>& getCells() const = 0;
+
+			// The number of divisions/cells along an axis
+			virtual size_t getDivisionNumber() const = 0;
+
+			// A function returning the number of cells filled
+			virtual size_t filledCellNumber() const = 0;
 		};
 	}
 }

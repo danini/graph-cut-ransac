@@ -36,7 +36,6 @@
 #include "model.h"
 #include <opencv2/core.hpp>
 #include <Eigen/Eigen>
-#include <iostream>
 #include <random>
 #include <algorithm>
 #include <iomanip>
@@ -213,7 +212,8 @@ namespace gcransac
 				const size_t *minimal_sample_,
 				const size_t sample_number_,
 				std::vector<size_t> &inliers_,
-				Score &score_)
+				Score &score_,
+				const std::vector<const std::vector<size_t>*> *index_sets_ = nullptr)
 			{
 				inliers_.clear();
 				const size_t &point_number = points_.rows;
@@ -227,43 +227,77 @@ namespace gcransac
 				score_ = Score();
 
 				bool valid_model = true;
-				for (tested_point = 0; tested_point < point_number; tested_point++)
+				if (index_sets_ == nullptr)
 				{
-					const size_t &point_idx = 
-						points_random_pool[random_pool_idx];
-					const double squared_residual = 
-						estimator_.squaredResidual(points_.row(point_idx), model_);
+					for (tested_point = 0; tested_point < point_number; tested_point++)
+					{
+						const size_t &point_idx = 
+							points_random_pool[random_pool_idx];
+						const double squared_residual = 
+							estimator_.squaredResidual(points_.row(point_idx), model_);
 
-					// Inliers 
-					if (squared_residual < squared_threshold) {
-						lambda_new = lambda * (delta / epsilon);
+						// Inliers 
+						if (squared_residual < squared_threshold) {
+							lambda_new = lambda * (delta / epsilon);
 
-						// Increase the inlier number
-						++(score_.inlier_number);
-						// Increase the score. The original truncated quadratic loss is as follows: 
-						// 1 - residual^2 / threshold^2. For RANSAC, -residual^2 is enough.
-						score_.value += 1.0 - squared_residual / squared_threshold; // Truncated quadratic cost
+							// Increase the inlier number
+							++(score_.inlier_number);
+							// Increase the score. The original truncated quadratic loss is as follows: 
+							// 1 - residual^2 / threshold^2. For RANSAC, -residual^2 is enough.
+							score_.value += 1.0 - squared_residual / squared_threshold; // Truncated quadratic cost
 
-						inliers_.emplace_back(point_idx);
+							inliers_.emplace_back(point_idx);
+						}
+						else {
+							lambda_new = lambda * ((1 - delta) / (1 - epsilon));
+						}
+
+						// Increase the pool pointer and reset if needed
+						if (++random_pool_idx >= point_number)
+							random_pool_idx = 0;
+
+						if (lambda_new > A * additional_model_probability) {
+							valid_model = false;
+							++tested_point;
+							break;
+						}
+
+						lambda = lambda_new;
 					}
-					else {
-						lambda_new = lambda * ((1 - delta) / (1 - epsilon));
-					}
+				} else
+				{
+					// Iterating through the index sets
+					for (const auto &current_set : *index_sets_)
+						// Iterating through the point indices in the current set
+						for (const auto point_idx : *current_set)
+						{
+							const double squared_residual = 
+								estimator_.squaredResidual(points_.row(point_idx), model_);
 
-					// Increase the pool pointer and reset if needed
-					if (++random_pool_idx >= point_number)
-						random_pool_idx = 0;
+							// Inliers 
+							if (squared_residual < squared_threshold) {
+								lambda_new = lambda * (delta / epsilon);
 
-					if (lambda_new > A * additional_model_probability) {
-						valid_model = false;
-						++tested_point;
-						break;
-					}
+								// Increase the inlier number
+								++(score_.inlier_number);
+								// Increase the score. The original truncated quadratic loss is as follows: 
+								// 1 - residual^2 / threshold^2. For RANSAC, -residual^2 is enough.
+								score_.value += 1.0 - squared_residual / squared_threshold; // Truncated quadratic cost
 
-					lambda = lambda_new;
+								inliers_.emplace_back(point_idx);
+							}
+							else {
+								lambda_new = lambda * ((1 - delta) / (1 - epsilon));
+							}
+
+							if (lambda_new > A * additional_model_probability) {
+								valid_model = false;
+								break;
+							}
+
+							lambda = lambda_new;
+						}
 				}
-
-				//printf("%d -> %d  (%f | %f | %f)\n", iteration_number_, tested_point, A, delta, epsilon);
 
 				if (valid_model)
 				{

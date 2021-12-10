@@ -90,4 +90,5 @@ int findHomography_(
 					double min_inlier_ratio_for_sprt,
 					int sampler_id,
 					int neighborhood_id,
-					double neighborhood_size);
+					double neighborhood_size,
+					bool use_space_partitioning);

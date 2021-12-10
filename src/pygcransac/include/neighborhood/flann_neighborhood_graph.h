@@ -81,6 +81,20 @@ namespace gcransac
 
 			bool initialize(const cv::Mat * const container_);
 			inline const std::vector<size_t> &getNeighbors(size_t point_idx_) const;
+
+			// A function returning the cell sizes
+			const std::vector<double> &getCellSizes() const { return std::vector<double>(); }
+
+			// A function returning all cells in the graph
+			const std::unordered_map<size_t, std::pair<std::vector<size_t>, std::vector<size_t>>>& getCells() const {
+				return std::unordered_map<size_t, std::pair<std::vector<size_t>, std::vector<size_t>>>();
+			}
+
+			// The number of divisions/cells along an axis
+			size_t getDivisionNumber() const { return 0; }
+
+			// A function returning the number of cells filled
+			size_t filledCellNumber() const { return neighbours.size(); }
 		};
 
 		bool FlannNeighborhoodGraph::initialize(const cv::Mat * const container_)

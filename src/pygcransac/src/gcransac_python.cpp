@@ -8,13 +8,19 @@
 #include "GCRANSAC.h"
 #include "neighborhood/flann_neighborhood_graph.h"
 #include "neighborhood/grid_neighborhood_graph.h"
+
 #include "samplers/uniform_sampler.h"
 #include "samplers/prosac_sampler.h"
 #include "samplers/progressive_napsac_sampler.h"
+
 #include "estimators/fundamental_estimator.h"
 #include "estimators/homography_estimator.h"
 #include "estimators/essential_estimator.h"
+
 #include "preemption/preemption_sprt.h"
+
+#include "inlier_selectors/empty_inlier_selector.h"
+#include "inlier_selectors/space_partitioning_ransac.h"
 
 #include "estimators/solver_fundamental_matrix_seven_point.h"
 #include "estimators/solver_fundamental_matrix_eight_point.h"
@@ -148,6 +154,10 @@ using namespace gcransac;
 	}
 
 	utils::RANSACStatistics statistics;
+	
+	// Initializing the fast inlier selector object
+	inlier_selector::EmptyInlierSelector<utils::Default2DLineEstimator, 
+		AbstractNeighborhood> inlier_selector(neighborhood_graph.get());
 
 	if (use_sprt)
 	{
@@ -175,7 +185,8 @@ using namespace gcransac;
 			&local_optimization_sampler,
 			neighborhood_graph.get(),
 			model,
-			preemptive_verification);
+			preemptive_verification,
+			inlier_selector);
 
 		statistics = gcransac.getRansacStatistics();
 	}
@@ -316,6 +327,10 @@ int find6DPose_(std::vector<double>& imagePoints,
 	}
 
 	utils::RANSACStatistics statistics;
+	
+	// Initializing the fast inlier selector object
+	inlier_selector::EmptyInlierSelector<utils::DefaultPnPEstimator, 
+		AbstractNeighborhood> inlier_selector(neighborhood_graph.get());
 
 	if (use_sprt)
 	{
@@ -344,7 +359,8 @@ int find6DPose_(std::vector<double>& imagePoints,
 			&local_optimization_sampler,
 			neighborhood_graph.get(),
 			model,
-			preemptive_verification);
+			preemptive_verification,
+			inlier_selector);
 
 		statistics = gcransac.getRansacStatistics();
 	}
@@ -489,6 +505,10 @@ int findRigidTransform_(std::vector<double>& points1,
 	}
 
 	utils::RANSACStatistics statistics;
+	
+	// Initializing the fast inlier selector object
+	inlier_selector::EmptyInlierSelector<utils::DefaultRigidTransformationEstimator, 
+		AbstractNeighborhood> inlier_selector(neighborhood_graph.get());
 
 	if (use_sprt)
 	{
@@ -517,7 +537,8 @@ int findRigidTransform_(std::vector<double>& points1,
 			&local_optimization_sampler,
 			neighborhood_graph.get(),
 			model,
-			preemptive_verification);
+			preemptive_verification,
+			inlier_selector);
 
 		statistics = gcransac.getRansacStatistics();
 	}
@@ -704,6 +725,10 @@ int findFundamentalMatrix_(
 
 
 	utils::RANSACStatistics statistics;
+	
+	// Initializing the fast inlier selector object
+	inlier_selector::EmptyInlierSelector<utils::DefaultFundamentalMatrixEstimator, 
+		AbstractNeighborhood> inlier_selector(neighborhood_graph.get());
 
 	if (use_sprt)
 	{
@@ -732,7 +757,8 @@ int findFundamentalMatrix_(
 			&local_optimization_sampler,
 			neighborhood_graph.get(),
 			model,
-			preemptive_verification);
+			preemptive_verification,
+			inlier_selector);
 
 		statistics = gcransac.getRansacStatistics();
 	}
@@ -930,6 +956,10 @@ int findEssentialMatrix_(
 	}
 	
 	utils::RANSACStatistics statistics;
+	
+	// Initializing the fast inlier selector object
+	inlier_selector::EmptyInlierSelector<utils::DefaultEssentialMatrixEstimator, 
+		AbstractNeighborhood> inlier_selector(neighborhood_graph.get());
 
 	if (use_sprt)
 	{
@@ -960,7 +990,8 @@ int findEssentialMatrix_(
 			&local_optimization_sampler,
 			neighborhood_graph.get(),
 			model,
-			preemptive_verification);
+			preemptive_verification,
+			inlier_selector);
 
 		statistics = gcransac.getRansacStatistics();
 	}
@@ -1033,7 +1064,8 @@ int findHomography_(
 	double min_inlier_ratio_for_sprt,
 	int sampler_id,
 	int neighborhood_id,
-	double neighborhood_size)
+	double neighborhood_size,
+	bool use_space_partitioning)
 {
 	int num_tents = correspondences.size() / 4;
 	cv::Mat points(num_tents, 4, CV_64F, &correspondences[0]);
@@ -1044,36 +1076,30 @@ int findHomography_(
 	const size_t cell_number_in_neighborhood_graph_ = 
 		static_cast<size_t>(neighborhood_size);
 
-	// If the spatial weight is 0.0, the neighborhood graph should not be created 
-	if (spatial_coherence_weight <= std::numeric_limits<double>::epsilon())
+	if (use_space_partitioning && neighborhood_id != 0)
 	{
-		cv::Mat emptyPoints(0, 4, CV_64F);
+		fprintf(stderr, "Space Partitioning only works with Grid neighorbood yet. Thus, setting neighborhood_id = 0.\n");
+		neighborhood_id = 0;
+	}
 
+	// If the spatial weight is 0.0, the neighborhood graph should not be created 
+	// Initializing a grid-based neighborhood graph
+	if (neighborhood_id == 0)
 		neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
-			new neighborhood::GridNeighborhoodGraph<4>(&emptyPoints, // The input points
-			{ 0, // The cell size along axis X
-				0 }, // The cell size along axis Y
-			1)); // The cell number along every axis
-	} else // Initializing a grid-based neighborhood graph
+			new neighborhood::GridNeighborhoodGraph<4>(&points,
+			{ (w1 + std::numeric_limits<double>::epsilon()) / static_cast<double>(cell_number_in_neighborhood_graph_),
+				(h1 + std::numeric_limits<double>::epsilon()) / static_cast<double>(cell_number_in_neighborhood_graph_),
+				(w2 + std::numeric_limits<double>::epsilon()) / static_cast<double>(cell_number_in_neighborhood_graph_),
+				(h2 + std::numeric_limits<double>::epsilon()) / static_cast<double>(cell_number_in_neighborhood_graph_) },
+			cell_number_in_neighborhood_graph_));
+	else if (neighborhood_id == 1) // Initializing the neighbhood graph by FLANN
+		neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
+			new neighborhood::FlannNeighborhoodGraph(&points, neighborhood_size));
+	else
 	{
-		// Initializing a grid-based neighborhood graph
-		if (neighborhood_id == 0)
-			neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
-				new neighborhood::GridNeighborhoodGraph<4>(&points,
-				{ w1 / static_cast<double>(cell_number_in_neighborhood_graph_),
-					h1 / static_cast<double>(cell_number_in_neighborhood_graph_),
-					w2 / static_cast<double>(cell_number_in_neighborhood_graph_),
-					h2 / static_cast<double>(cell_number_in_neighborhood_graph_) },
-				cell_number_in_neighborhood_graph_));
-		else if (neighborhood_id == 1) // Initializing the neighbhood graph by FLANN
-			neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
-				new neighborhood::FlannNeighborhoodGraph(&points, neighborhood_size));
-		else
-		{
-			fprintf(stderr, "Unknown neighborhood-graph identifier: %d. The accepted values are 0 (Grid-based), 1 (FLANN-based neighborhood)\n",
-				neighborhood_id);
-			return 0;
-		}
+		fprintf(stderr, "Unknown neighborhood-graph identifier: %d. The accepted values are 0 (Grid-based), 1 (FLANN-based neighborhood)\n",
+			neighborhood_id);
+		return 0;
 	}
 
 	// Checking if the neighborhood graph is initialized successfully.
@@ -1150,49 +1176,126 @@ int findHomography_(
 			points,
 			estimator);
 
-		GCRANSAC<utils::DefaultHomographyEstimator,
-			AbstractNeighborhood,
-			MSACScoringFunction<utils::DefaultHomographyEstimator>,
-			preemption::SPRTPreemptiveVerfication<utils::DefaultHomographyEstimator>> gcransac;
-		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
-		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
-		gcransac.settings.confidence = conf; // The required confidence in the results
-		gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
-		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
-		gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
-		gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
+		if (use_space_partitioning)
+		{			
+			inlier_selector::SpacePartitioningRANSAC<utils::DefaultHomographyEstimator, AbstractNeighborhood> inlier_selector(neighborhood_graph.get());
 
-		// Start GC-RANSAC
-		gcransac.run(points,
-			estimator,
-			main_sampler.get(),
-			&local_optimization_sampler,
-			neighborhood_graph.get(),
-			model,
-			preemptive_verification);
+			GCRANSAC<utils::DefaultHomographyEstimator,
+				AbstractNeighborhood,
+				MSACScoringFunction<utils::DefaultHomographyEstimator>,
+				preemption::SPRTPreemptiveVerfication<utils::DefaultHomographyEstimator>,
+				inlier_selector::SpacePartitioningRANSAC<utils::DefaultHomographyEstimator, AbstractNeighborhood>> gcransac;
+			gcransac.settings.threshold = threshold; // The inlier-outlier threshold
+			gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
+			gcransac.settings.confidence = conf; // The required confidence in the results
+			gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
+			gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
+			gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
+			gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
 
-		statistics = gcransac.getRansacStatistics();
+			// Start GC-RANSAC
+			gcransac.run(points,
+				estimator,
+				main_sampler.get(),
+				&local_optimization_sampler,
+				neighborhood_graph.get(),
+				model,
+				preemptive_verification,
+				inlier_selector);
+
+			statistics = gcransac.getRansacStatistics();
+		} else
+		{
+			inlier_selector::EmptyInlierSelector<utils::DefaultHomographyEstimator, AbstractNeighborhood> inlier_selector(neighborhood_graph.get());
+
+			GCRANSAC<utils::DefaultHomographyEstimator,
+				AbstractNeighborhood,
+				MSACScoringFunction<utils::DefaultHomographyEstimator>,
+				preemption::SPRTPreemptiveVerfication<utils::DefaultHomographyEstimator>,
+				inlier_selector::EmptyInlierSelector<utils::DefaultHomographyEstimator, AbstractNeighborhood>> gcransac;
+			gcransac.settings.threshold = threshold; // The inlier-outlier threshold
+			gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
+			gcransac.settings.confidence = conf; // The required confidence in the results
+			gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
+			gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
+			gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
+			gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
+
+			// Start GC-RANSAC
+			gcransac.run(points,
+				estimator,
+				main_sampler.get(),
+				&local_optimization_sampler,
+				neighborhood_graph.get(),
+				model,
+				preemptive_verification,
+				inlier_selector);
+
+			statistics = gcransac.getRansacStatistics();
+		}
 	}
 	else
 	{
-		GCRANSAC<utils::DefaultHomographyEstimator, AbstractNeighborhood> gcransac;
-		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
-		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
-		gcransac.settings.confidence = conf; // The required confidence in the results
-		gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
-		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
-		gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
-		gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
+		// Initializing an empty preemption
+		preemption::EmptyPreemptiveVerfication<utils::DefaultHomographyEstimator> preemptive_verification;
 
-		// Start GC-RANSAC
-		gcransac.run(points,
-			estimator,
-			main_sampler.get(),
-			&local_optimization_sampler,
-			neighborhood_graph.get(),
-			model);
+		if (use_space_partitioning)
+		{			
+			inlier_selector::SpacePartitioningRANSAC<utils::DefaultHomographyEstimator, AbstractNeighborhood> inlier_selector(neighborhood_graph.get());
 
-		statistics = gcransac.getRansacStatistics();
+			GCRANSAC<utils::DefaultHomographyEstimator,
+				AbstractNeighborhood,
+				MSACScoringFunction<utils::DefaultHomographyEstimator>,
+				preemption::EmptyPreemptiveVerfication<utils::DefaultHomographyEstimator>,
+				inlier_selector::SpacePartitioningRANSAC<utils::DefaultHomographyEstimator, AbstractNeighborhood>> gcransac;
+			gcransac.settings.threshold = threshold; // The inlier-outlier threshold
+			gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
+			gcransac.settings.confidence = conf; // The required confidence in the results
+			gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
+			gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
+			gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
+			gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
+
+			// Start GC-RANSAC
+			gcransac.run(points,
+				estimator,
+				main_sampler.get(),
+				&local_optimization_sampler,
+				neighborhood_graph.get(),
+				model,
+				preemptive_verification,
+				inlier_selector);
+
+			statistics = gcransac.getRansacStatistics();
+		} else
+		{
+			inlier_selector::EmptyInlierSelector<utils::DefaultHomographyEstimator, AbstractNeighborhood> inlier_selector(neighborhood_graph.get());
+
+			GCRANSAC<utils::DefaultHomographyEstimator,
+				AbstractNeighborhood,
+				MSACScoringFunction<utils::DefaultHomographyEstimator>,
+				preemption::EmptyPreemptiveVerfication<utils::DefaultHomographyEstimator>,
+				inlier_selector::EmptyInlierSelector<utils::DefaultHomographyEstimator, AbstractNeighborhood>> gcransac;
+			gcransac.settings.threshold = threshold; // The inlier-outlier threshold
+			gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
+			gcransac.settings.confidence = conf; // The required confidence in the results
+			gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
+			gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
+			gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
+			gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
+
+			// Start GC-RANSAC
+			gcransac.run(points,
+				estimator,
+				main_sampler.get(),
+				&local_optimization_sampler,
+				neighborhood_graph.get(),
+				model,
+				preemptive_verification,
+				inlier_selector);
+
+			statistics = gcransac.getRansacStatistics();
+		}
 	}
 
 	H.resize(9);

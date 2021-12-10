@@ -1,4 +1,4 @@
-// Copyright (C) 2019 Czech Technical University.
+// Copyright (C) 2021 ETH Zurich.
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -13,7 +13,7 @@
 //       disclaimer in the documentation and/or other materials provided
 //       with the distribution.
 //
-//     * Neither the name of Czech Technical University nor the
+//     * Neither the name of 2021 ETH Zurich nor the
 //       names of its contributors may be used to endorse or promote products
 //       derived from this software without specific prior written permission.
 //
@@ -31,38 +31,35 @@
 //
 // Please contact the author of this library if you have any questions.
 // Author: Daniel Barath (barath.daniel@sztaki.mta.hu)
-#pragma once
-
-#include "model.h"
-#include <opencv2/core.hpp>
-#include <Eigen/Eigen>
+#pragma once 
 
 namespace gcransac
 {
-	namespace preemption
+	namespace inlier_selector
 	{
-		template <typename _ModelEstimator>
-		class EmptyPreemptiveVerfication
-		{
-		public:
-			static constexpr bool providesScore() { return false; }
-			static constexpr const char *getName() { return "empty"; }
+        template <
+            typename _Estimator,
+            typename _NeighborhoodStructure>
+        class AbstractInlierSelector
+        {
+        public:
+            explicit AbstractInlierSelector(const _NeighborhoodStructure *kNeighborhoodGraph_)
+            {
 
-			bool verifyModel(
-				const gcransac::Model &model_, // The current model
-				const _ModelEstimator &estimator_, // The model estimator
-				const double &threshold_, // The truncated threshold
-				const size_t &iteration_number_, // The current iteration number
-				const Score &best_score_, // The current best score
-				const cv::Mat &points_, // The data points
-				const size_t *minimal_sample_, // The current minimal sample
-				const size_t sample_number_, // The number of samples used
-				std::vector<size_t> &inliers_,// The current inlier set
-				Score &score_, // The score of the model
-				const std::vector<const std::vector<size_t>*> *index_sets_ = nullptr) // Sets of pre-selected point indices
-			{
-				return true;
-			}
-		};
-	}
+            }
+
+			virtual ~AbstractInlierSelector() {}
+
+            static constexpr bool doesSomething() { return false; }
+
+            // The function that runs the model-based inlier selector
+            virtual void run(
+                const cv::Mat& kCorrespondences_, // All point correspondences
+                const gcransac::Model& kModel_, // The model parameters
+                const _NeighborhoodStructure& kNeighborhood_, // The neighborhood structure. This probably will be a GridNeighborhood currently.
+                const double& inlierOutlierThreshold_,
+                std::vector<const std::vector<size_t>*>& selectedCells_, // The indices of the points selected
+                size_t& pointNumber_) = 0; 
+        };
+    }
 }

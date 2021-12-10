@@ -91,7 +91,8 @@ namespace gcransac
 			const double threshold_, // The inlier-outlier threshold
 			std::vector<size_t> &inliers_, // The selected inliers
 			const Score &best_score_ = Score(), // The score of the current so-far-the-best model
-			const bool store_inliers_ = true) const = 0;
+			const bool store_inliers_ = true, // A flag to decide if the inliers should be stored
+			const std::vector<const std::vector<size_t>*> *index_sets = nullptr) const = 0; // Index sets to be verified
 
 		virtual void initialize(const double threshold_,
 			const size_t point_number_) = 0;
@@ -139,45 +140,83 @@ namespace gcransac
 			const double threshold_, // The inlier-outlier threshold
 			std::vector<size_t>& inliers_, // The selected inliers
 			const Score& best_score_ = Score(), // The score of the current so-far-the-best model
-			const bool store_inliers_ = true) const
+			const bool store_inliers_ = true, // A flag to decide if the inliers should be stored
+			const std::vector<const std::vector<size_t>*> *index_sets = nullptr) const // Index sets to be verified
 		{
 			Score score; // The current score
 			if (store_inliers_) // If the inlier should be stored, clear the variables
 				inliers_.clear();
 			double squared_residual; // The point-to-model residual
 
-			// Iterate through all points, calculate the squared_residuals and store the points as inliers if needed.
-			for (int point_idx = 0; point_idx < point_number; point_idx += verify_every_kth_point)
-			{
-				// Calculate the point-to-model residual
-				squared_residual =
-					estimator_.squaredResidual(points_.row(point_idx),
-						model_.descriptor);
-
-				// If the residual is smaller than the threshold, store it as an inlier and
-				// increase the score.
-				if (squared_residual < squared_truncated_threshold)
+			// If the points are not prefiltered into index sets, iterate through all of them.
+			if (index_sets == nullptr)
+				// Iterate through all points, calculate the squared_residuals and store the points as inliers if needed.
+				for (int point_idx = 0; point_idx < point_number; point_idx += verify_every_kth_point)
 				{
-					if (store_inliers_) // Store the point as an inlier if needed.
-						inliers_.emplace_back(point_idx);
+					// Calculate the point-to-model residual
+					squared_residual =
+						estimator_.squaredResidual(points_.row(point_idx),
+							model_.descriptor);
 
-					// Increase the inlier number
-					++(score.inlier_number);
-					// Increase the score. The original truncated quadratic loss is as follows: 
-					// 1 - residual^2 / threshold^2. For RANSAC, -residual^2 is enough.
-					// It has been re-arranged as
-					// score = 1 - residual^2 / threshold^2				->
-					// score threshold^2 = threshold^2 - residual^2		->
-					// score threshold^2 - threshold^2 = - residual^2.
-					// This is faster to calculate and it is normalized back afterwards.
-					score.value -= squared_residual; // Truncated quadratic cost
-					//score.value += 1.0 - squared_residual / squared_truncated_threshold; // Truncated quadratic cost
+					// If the residual is smaller than the threshold, store it as an inlier and
+					// increase the score.
+					if (squared_residual < squared_truncated_threshold)
+					{
+						if (store_inliers_) // Store the point as an inlier if needed.
+							inliers_.emplace_back(point_idx);
+
+						// Increase the inlier number
+						++(score.inlier_number);
+						// Increase the score. The original truncated quadratic loss is as follows: 
+						// 1 - residual^2 / threshold^2. For RANSAC, -residual^2 is enough.
+						// It has been re-arranged as
+						// score = 1 - residual^2 / threshold^2				->
+						// score threshold^2 = threshold^2 - residual^2		->
+						// score threshold^2 - threshold^2 = - residual^2.
+						// This is faster to calculate and it is normalized back afterwards.
+						score.value -= squared_residual; // Truncated quadratic cost
+						//score.value += 1.0 - squared_residual / squared_truncated_threshold; // Truncated quadratic cost
+					}
+
+					// Interrupt if there is no chance of being better than the best model
+					if (point_number - point_idx - score.value < -best_score_.value)
+						return Score();
 				}
+			else
+				// Iterating through the index sets
+				for (const auto &current_set : *index_sets)
+					// Iterating through the point indices in the current set
+					for (const auto point_idx : *current_set)
+					{
+						// Calculate the point-to-model residual
+						squared_residual =
+							estimator_.squaredResidual(points_.row(point_idx),
+								model_.descriptor);
 
-				// Interrupt if there is no chance of being better than the best model
-				if (point_number - point_idx - score.value < -best_score_.value)
-					return Score();
-			}
+						// If the residual is smaller than the threshold, store it as an inlier and
+						// increase the score.
+						if (squared_residual < squared_truncated_threshold)
+						{
+							if (store_inliers_) // Store the point as an inlier if needed.
+								inliers_.emplace_back(point_idx);
+
+							// Increase the inlier number
+							++(score.inlier_number);
+							// Increase the score. The original truncated quadratic loss is as follows: 
+							// 1 - residual^2 / threshold^2. For RANSAC, -residual^2 is enough.
+							// It has been re-arranged as
+							// score = 1 - residual^2 / threshold^2				->
+							// score threshold^2 = threshold^2 - residual^2		->
+							// score threshold^2 - threshold^2 = - residual^2.
+							// This is faster to calculate and it is normalized back afterwards.
+							score.value -= squared_residual; // Truncated quadratic cost
+							//score.value += 1.0 - squared_residual / squared_truncated_threshold; // Truncated quadratic cost
+						}
+
+						// Interrupt if there is no chance of being better than the best model
+						if (point_number - point_idx - score.value < -best_score_.value)
+							return Score();
+					}
 
 			if (score.inlier_number == 0)
 				return Score();
@@ -210,7 +249,8 @@ namespace gcransac
 			const double threshold_, // The inlier-outlier threshold
 			std::vector<size_t>& inliers_, // The selected inliers
 			const Score& best_score_ = Score(), // The score of the current so-far-the-best model
-			const bool store_inliers_ = true) const
+			const bool store_inliers_ = true, // A flag to decide if the inliers should be stored
+			const std::vector<const std::vector<size_t>*> *index_sets = nullptr) const // Index sets to be verified
 		{
 			constexpr size_t _DimensionNumber = 4;
 
