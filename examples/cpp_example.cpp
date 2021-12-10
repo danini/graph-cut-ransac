@@ -12,6 +12,7 @@
 
 #include "samplers/uniform_sampler.h"
 #include "samplers/prosac_sampler.h"
+#include "samplers/napsac_sampler.h"
 #include "samplers/progressive_napsac_sampler.h"
 
 #include "estimators/fundamental_estimator.h"
@@ -20,6 +21,9 @@
 #include "estimators/rigid_transformation_estimator.h"
 
 #include "preemption/preemption_sprt.h"
+
+#include "inlier_selectors/empty_inlier_selector.h"
+#include "inlier_selectors/space_partitioning_ransac.h"
 
 #include "estimators/solver_fundamental_matrix_seven_point.h"
 #include "estimators/solver_fundamental_matrix_eight_point.h"
@@ -183,7 +187,7 @@ int main(int argc, const char* argv[])
 	const double inlier_outlier_threshold_homography = 2.00; // The used inlier-outlier threshold in GC-RANSAC for homography estimation.
 	const double inlier_outlier_threshold_pnp = 5.50; // The used inlier-outlier threshold in GC-RANSAC for homography estimation.
 	const double spatial_coherence_weight = 0.975; // The weigd_t of the spatial coherence term in the graph-cut energy minimization.
-	const size_t cell_number_in_neighborhood_graph = 8; // The number of cells along each axis in the neighborhood graph.
+	const size_t cell_number_in_neighborhood_graph = 4; // The number of cells along each axis in the neighborhood graph.
 
 	printf("------------------------------------------------------------\n2D line fitting\n------------------------------------------------------------\n");
 	for (const std::string& scene : getAvailableTestScenes(Problem::LineFitting))
@@ -786,6 +790,10 @@ void test2DLineFitting(
 		estimator, // The line estimator object
 		minimum_inlier_ratio_for_sprt_); // The minimum acceptable inlier ratio. Models with fewer inliers will not be accepted.
 
+	// Initializing the fast inlier selector object
+	inlier_selector::EmptyInlierSelector<utils::Default2DLineEstimator, 
+		neighborhood::GridNeighborhoodGraph<2>> inlier_selector(&neighborhood);
+
 	GCRANSAC<utils::Default2DLineEstimator,
 		neighborhood::GridNeighborhoodGraph<2>,
 		MSACScoringFunction<utils::Default2DLineEstimator>,
@@ -803,7 +811,8 @@ void test2DLineFitting(
 		&local_optimization_sampler, // The sampler used for selecting a minimal sample when doing the local optimization
 		&neighborhood, // The neighborhood-graph
 		model, // The obtained model parameters
-		preemptive_verification);
+		preemptive_verification,
+		inlier_selector);
 
 	// Get the statistics of the results
 	const utils::RANSACStatistics& statistics = gcransac.getRansacStatistics();
@@ -920,6 +929,10 @@ void testRigidTransformFitting(
 		estimator,
 		minimum_inlier_ratio_for_sprt_);
 
+	// Initializing the fast inlier selector object
+	inlier_selector::EmptyInlierSelector<utils::DefaultRigidTransformationEstimator, 
+		neighborhood::FlannNeighborhoodGraph> inlier_selector(&neighborhood);
+
 	GCRANSAC<utils::DefaultRigidTransformationEstimator,
 		neighborhood::FlannNeighborhoodGraph,
 		MSACScoringFunction<utils::DefaultRigidTransformationEstimator>,
@@ -938,7 +951,8 @@ void testRigidTransformFitting(
 		&local_optimization_sampler, // The sampler used for selecting a minimal sample when doing the local optimization
 		&neighborhood, // The neighborhood-graph
 		model, // The obtained model parameters
-		preemptive_verification);
+		preemptive_verification,
+		inlier_selector);
 
 	// Get the statistics of the results
 	const utils::RANSACStatistics& statistics = gcransac.getRansacStatistics();
@@ -1043,15 +1057,21 @@ void testHomographyFitting(
 	Model model;
 
 	// Initializing SPRT test
-	preemption::SPRTPreemptiveVerfication<utils::DefaultHomographyEstimator> preemptive_verification(
+	/*preemption::SPRTPreemptiveVerfication<utils::DefaultHomographyEstimator> preemptive_verification(
 		points,
 		estimator,
-		minimum_inlier_ratio_for_sprt_);
+		minimum_inlier_ratio_for_sprt_);*/
+	preemption::EmptyPreemptiveVerfication<utils::DefaultHomographyEstimator> preemptive_verification;
+
+	// Initializing the fast inlier selector object
+	inlier_selector::SpacePartitioningRANSAC<utils::DefaultHomographyEstimator, 
+		neighborhood::GridNeighborhoodGraph<4>> inlier_selector(&neighborhood);
 
 	GCRANSAC<utils::DefaultHomographyEstimator,
 		neighborhood::GridNeighborhoodGraph<4>,
 		MSACScoringFunction<utils::DefaultHomographyEstimator>,
-		preemption::SPRTPreemptiveVerfication<utils::DefaultHomographyEstimator>> gcransac;
+		preemption::EmptyPreemptiveVerfication<utils::DefaultHomographyEstimator>,
+		inlier_selector::SpacePartitioningRANSAC<utils::DefaultHomographyEstimator, neighborhood::GridNeighborhoodGraph<4>>> gcransac;
 	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
 	gcransac.settings.threshold = inlier_outlier_threshold_; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
@@ -1091,7 +1111,8 @@ void testHomographyFitting(
 		&local_optimization_sampler,
 		&neighborhood,
 		model,
-		preemptive_verification);
+		preemptive_verification,
+		inlier_selector);
 
 	// Get the statistics of the results
 	const utils::RANSACStatistics& statistics = gcransac.getRansacStatistics();
@@ -1201,6 +1222,10 @@ void testFundamentalMatrixFitting(
 		points,
 		estimator,
 		minimum_inlier_ratio_for_sprt_);
+	
+	// Initializing the fast inlier selector object
+	inlier_selector::EmptyInlierSelector<utils::DefaultFundamentalMatrixEstimator, 
+		neighborhood::GridNeighborhoodGraph<4>> inlier_selector(&neighborhood);
 
 	// Initialize the samplers
 	// The main sampler is used inside the local optimization
@@ -1245,7 +1270,8 @@ void testFundamentalMatrixFitting(
 		&local_optimization_sampler,
 		&neighborhood,
 		model,
-		preemptive_verification);
+		preemptive_verification,
+		inlier_selector);
 
 	// Get the statistics of the results
 	const utils::RANSACStatistics& statistics = gcransac.getRansacStatistics();
@@ -1380,6 +1406,10 @@ void test6DPoseFitting(
 		points,
 		estimator,
 		minimum_inlier_ratio_for_sprt_);
+	
+	// Initializing the fast inlier selector object
+	inlier_selector::EmptyInlierSelector<utils::DefaultPnPEstimator, 
+		neighborhood::FlannNeighborhoodGraph> inlier_selector(&neighborhood);
 
 	GCRANSAC<utils::DefaultPnPEstimator,
 		neighborhood::FlannNeighborhoodGraph,
@@ -1401,7 +1431,8 @@ void test6DPoseFitting(
 		&local_optimization_sampler, // The sampler used for selecting a minimal sample when doing the local optimization
 		&neighborhood, // The neighborhood-graph
 		model, // The obtained model parameters
-		preemptive_verification);
+		preemptive_verification,
+		inlier_selector);
 
 	// Get the statistics of the results
 	const utils::RANSACStatistics& statistics = gcransac.getRansacStatistics();
@@ -1596,6 +1627,10 @@ void testEssentialMatrixFitting(
 		estimator,
 		minimum_inlier_ratio_for_sprt_);
 
+	// Initializing the fast inlier selector object
+	inlier_selector::EmptyInlierSelector<utils::DefaultEssentialMatrixEstimator, 
+		neighborhood::GridNeighborhoodGraph<4>> inlier_selector(&neighborhood);
+
 	// Initialize the samplers
 	// The main sampler is used inside the local optimization
 	sampler::ProgressiveNapsacSampler<4> main_sampler(&points,
@@ -1637,7 +1672,8 @@ void testEssentialMatrixFitting(
 		&local_optimization_sampler,
 		&neighborhood,
 		model,
-		preemptive_verification);
+		preemptive_verification,
+		inlier_selector);
 
 	// Get the statistics of the results
 	const utils::RANSACStatistics& statistics = gcransac.getRansacStatistics();
