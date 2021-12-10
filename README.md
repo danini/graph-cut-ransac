@@ -116,4 +116,16 @@ If you use it together with Progressive NAPSAC sampling or DEGENSAC, please cite
 
 ```
 
+If you use with Space Partitioning turned on, please cite
+
+```
+@inproceedings{spaceransac2021,
+	author = {Barath, Daniel and Valasek, Gabor},
+	title = {Space-Partitioning {RANSAC}},
+	journal={arXiv preprint arXiv:2111.12385},
+	year = {2021}
+}
+
+```
+
 The Python wrapper part is based on the great [Benjamin Jack `python_cpp_example`](https://github.com/benjaminjack/python_cpp_example).
