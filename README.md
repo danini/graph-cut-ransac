@@ -74,6 +74,8 @@ The example for fundamental matrix fitting is available at: [notebook](examples/
 The example for essential matrix fitting is available at: [notebook](examples/example_essential_matrix.ipynb).
  
 The example for 6D pose fitting is available at: [notebook](examples/example_absolute_pose.ipynb).
+ 
+An example comparing different samplers on fundamental matrix fitting: [notebook](examples/example_samplers.ipynb).
 
 # Requirements
 
