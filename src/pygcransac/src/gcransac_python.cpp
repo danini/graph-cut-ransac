@@ -12,6 +12,8 @@
 #include "samplers/uniform_sampler.h"
 #include "samplers/prosac_sampler.h"
 #include "samplers/progressive_napsac_sampler.h"
+#include "samplers/importance_sampler.h"
+#include "samplers/adaptive_reordering_sampler.h"
 
 #include "estimators/fundamental_estimator.h"
 #include "estimators/homography_estimator.h"
@@ -34,6 +36,7 @@
 using namespace gcransac;
 
  int findLine2D_(std::vector<double>& input_points,
+    			std::vector<double> &point_probabilities,
 				std::vector<bool>& inliers,
 				std::vector<double>& estimated_line,
 				int w, int h,
@@ -244,6 +247,7 @@ using namespace gcransac;
 
 int find6DPose_(std::vector<double>& imagePoints,
 	std::vector<double>& worldPoints,
+	std::vector<double> &point_probabilities,
 	std::vector<bool>& inliers,
 	std::vector<double> &pose,
 	double spatial_coherence_weight,
@@ -421,6 +425,7 @@ int find6DPose_(std::vector<double>& imagePoints,
 
 int findRigidTransform_(std::vector<double>& points1,
 	std::vector<double>& points2,
+	std::vector<double> &point_probabilities,
 	std::vector<bool>& inliers,
 	std::vector<double> &pose,
 	double spatial_coherence_weight,
@@ -600,6 +605,7 @@ int findRigidTransform_(std::vector<double>& points1,
 
 int findFundamentalMatrix_(
 	std::vector<double>& correspondences,
+	std::vector<double> &point_probabilities,
 	std::vector<bool>& inliers,
 	std::vector<double>& F,
 	int h1, int w1, int h2, int w2,
@@ -674,8 +680,6 @@ int findFundamentalMatrix_(
 	FundamentalMatrix model;
 
 	// Initialize the samplers
-	// The main sampler is used inside the local optimization
-	// Initialize the samplers
 	// The main sampler is used for sampling in the main RANSAC loop
 	typedef sampler::Sampler<cv::Mat, size_t> AbstractSampler;
 	std::unique_ptr<AbstractSampler> main_sampler;
@@ -693,13 +697,30 @@ int findFundamentalMatrix_(
 				static_cast<double>(w2), // The width of the destination image
 				static_cast<double>(h2) },  // The height of the destination image
 			0.5)); // The length (i.e., 0.5 * <point number> iterations) of fully blending to global sampling 
+	else if (sampler_id == 3)
+		main_sampler = std::unique_ptr<AbstractSampler>(new gcransac::sampler::ImportanceSampler(&points, 
+            point_probabilities,
+            estimator.sampleSize()));
+	else if (sampler_id == 4)
+    {
+		double variance = 0.1;
+        double max_prob = 0;
+        for (const auto &prob : point_probabilities)
+            max_prob = MAX(max_prob, prob);
+        for (auto &prob : point_probabilities)
+            prob /= max_prob;
+		main_sampler = std::unique_ptr<AbstractSampler>(new gcransac::sampler::AdaptiveReorderingSampler(&points, 
+            point_probabilities,
+            estimator.sampleSize(),
+            variance));
+	}
 	else
 	{
-		fprintf(stderr, "Unknown sampler identifier: %d. The accepted samplers are 0 (uniform sampling), 1 (PROSAC sampling), 2 (P-NAPSAC sampling)\n",
-			sampler_id);
-
 		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
 		delete neighborhood_graph_ptr;
+
+		fprintf(stderr, "Unknown sampler identifier: %d. The accepted samplers are 0 (uniform sampling), 1 (PROSAC sampling), 2 (P-NAPSAC sampling)\n",
+			sampler_id);
 		return 0;
 	}
 
@@ -818,6 +839,7 @@ int findFundamentalMatrix_(
 
 int findEssentialMatrix_(
 	std::vector<double>& correspondences,
+	std::vector<double> &point_probabilities,
 	std::vector<bool>& inliers,
 	std::vector<double>&E,
 	std::vector<double>& src_K,
@@ -921,17 +943,30 @@ int findEssentialMatrix_(
 				static_cast<double>(w2), // The width of the destination image
 				static_cast<double>(h2) },  // The height of the destination image
 			0.5)); // The length (i.e., 0.5 * <point number> iterations) of fully blending to global sampling 
+	else if (sampler_id == 3)
+		main_sampler = std::unique_ptr<AbstractSampler>(new gcransac::sampler::ImportanceSampler(&points, 
+            point_probabilities,
+            estimator.sampleSize()));
+	else if (sampler_id == 4)
+    {
+		double variance = 0.1;
+        double max_prob = 0;
+        for (const auto &prob : point_probabilities)
+            max_prob = MAX(max_prob, prob);
+        for (auto &prob : point_probabilities)
+            prob /= max_prob;
+		main_sampler = std::unique_ptr<AbstractSampler>(new gcransac::sampler::AdaptiveReorderingSampler(&points, 
+            point_probabilities,
+            estimator.sampleSize(),
+            variance));
+	}
 	else
 	{
-		fprintf(stderr, "Unknown sampler identifier: %d. The accepted samplers are 0 (uniform sampling), 1 (PROSAC sampling), 2 (P-NAPSAC sampling)\n",
-			sampler_id);
-
-		// It is ugly: the unique_ptr does not check for virtual descructors in the base class.
-		// Therefore, the derived class's objects are not deleted automatically. 
-		// This causes a memory leaking. I hate C++.
 		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
 		delete neighborhood_graph_ptr;
 
+		fprintf(stderr, "Unknown sampler identifier: %d. The accepted samplers are 0 (uniform sampling), 1 (PROSAC sampling), 2 (P-NAPSAC sampling)\n",
+			sampler_id);
 		return 0;
 	}
 	
@@ -1053,6 +1088,7 @@ int findEssentialMatrix_(
 
 int findHomography_(
 	std::vector<double>& correspondences,
+	std::vector<double> &point_probabilities,
 	std::vector<bool>& inliers,
 	std::vector<double>& H,
 	int h1, int w1, int h2, int w2,
@@ -1138,6 +1174,23 @@ int findHomography_(
 				static_cast<double>(w2), // The width of the destination image
 				static_cast<double>(h2) },  // The height of the destination image
 			0.5)); // The length (i.e., 0.5 * <point number> iterations) of fully blending to global sampling 
+	else if (sampler_id == 3)
+		main_sampler = std::unique_ptr<AbstractSampler>(new gcransac::sampler::ImportanceSampler(&points, 
+            point_probabilities,
+            estimator.sampleSize()));
+	else if (sampler_id == 4)
+    {
+		double variance = 0.1;
+        double max_prob = 0;
+        for (const auto &prob : point_probabilities)
+            max_prob = MAX(max_prob, prob);
+        for (auto &prob : point_probabilities)
+            prob /= max_prob;
+		main_sampler = std::unique_ptr<AbstractSampler>(new gcransac::sampler::AdaptiveReorderingSampler(&points, 
+            point_probabilities,
+            estimator.sampleSize(),
+            variance));
+	}
 	else
 	{
 		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();

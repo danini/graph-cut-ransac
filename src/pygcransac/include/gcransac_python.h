@@ -3,6 +3,7 @@
 
 int findRigidTransform_(std::vector<double>& points1,
 	std::vector<double>& points2,
+	std::vector<double> &point_probabilities,
 	std::vector<bool>& inliers,
 	std::vector<double> &pose,
 	double spatial_coherence_weight,
@@ -18,6 +19,7 @@ int findRigidTransform_(std::vector<double>& points1,
 int find6DPose_(
 	std::vector<double>& imagePoints,
 	std::vector<double>& worldPoints,
+	std::vector<double> &point_probabilities,
 	std::vector<bool>& inliers,
 	std::vector<double> &pose,
 	double spatial_coherence_weight,
@@ -32,6 +34,7 @@ int find6DPose_(
 
 int findFundamentalMatrix_(
 						   std::vector<double>& correspondences,
+						   std::vector<double> &point_probabilities,
                            std::vector<bool>& inliers,
                            std::vector<double>&F,
                            int h1, int w1, int h2, int w2,
@@ -46,6 +49,7 @@ int findFundamentalMatrix_(
 						   double neighborhood_size);
 
  int findLine2D_(std::vector<double>& srcPts,
+				std::vector<double> &point_probabilities,
 				std::vector<bool>& inliers,
 				std::vector<double>&abc,
 				int w1, int h1,
@@ -61,6 +65,7 @@ int findFundamentalMatrix_(
 
 
 int findEssentialMatrix_(std::vector<double>& correspondences,
+						   std::vector<double> &point_probabilities,
                            std::vector<bool>& inliers,
                            std::vector<double>&E,
                            std::vector<double>& src_K,
@@ -79,6 +84,7 @@ int findEssentialMatrix_(std::vector<double>& correspondences,
 
 int findHomography_(
 					std::vector<double>& correspondences,
+					std::vector<double> &point_probabilities,
                     std::vector<bool>& inliers,
                     std::vector<double>& H,
                     int h1, int w1, int h2, int w2,

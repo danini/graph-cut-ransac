@@ -11,6 +11,7 @@ namespace py = pybind11;
 py::tuple findRigidTransform(
 	py::array_t<double>  x1y1z1_,
 	py::array_t<double>  x2y2z2_,
+	py::array_t<double>  probabilities_,
 	double threshold,
 	double conf,
 	double spatial_coherence_weight,
@@ -50,12 +51,21 @@ py::tuple findRigidTransform(
 	std::vector<double> x2y2z2;
 	x2y2z2.assign(ptr1a, ptr1a + buf1a.size);
 
+    std::vector<double> probabilities;
+    if (sampler == 3 || sampler == 4)
+    {
+        py::buffer_info buf_prob = probabilities_.request();
+        double* ptr_prob = (double*)buf_prob.ptr;
+        probabilities.assign(ptr_prob, ptr_prob + buf_prob.size);        
+    }
+
 	std::vector<double> pose(16);
 	std::vector<bool> inliers(NUM_TENTS);
 
 	int num_inl = findRigidTransform_(
 		x1y1z1,
 		x2y2z2,
+		probabilities,
 		inliers,
 		pose,
 		spatial_coherence_weight,
@@ -88,6 +98,7 @@ py::tuple findRigidTransform(
 py::tuple find6DPose(
 	py::array_t<double>  x1y1_,
 	py::array_t<double>  x2y2z2_,
+	py::array_t<double>  probabilities_,
 	double threshold,
 	double conf,
 	double spatial_coherence_weight,
@@ -126,12 +137,22 @@ py::tuple find6DPose(
 	double *ptr1a = (double *)buf1a.ptr;
 	std::vector<double> x2y2z2;
 	x2y2z2.assign(ptr1a, ptr1a + buf1a.size);
+
+    std::vector<double> probabilities;
+    if (sampler == 3 || sampler == 4)
+    {
+        py::buffer_info buf_prob = probabilities_.request();
+        double* ptr_prob = (double*)buf_prob.ptr;
+        probabilities.assign(ptr_prob, ptr_prob + buf_prob.size);        
+    }
+
 	std::vector<double> pose(12);
 	std::vector<bool> inliers(NUM_TENTS);
 
 	int num_inl = find6DPose_(
 		x1y1,
 		x2y2z2,
+		probabilities,
 		inliers,
 		pose,
 		spatial_coherence_weight,
@@ -163,6 +184,7 @@ py::tuple find6DPose(
 py::tuple findFundamentalMatrix(
 	py::array_t<double>  correspondences_,
 	int h1, int w1, int h2, int w2,
+	py::array_t<double>  probabilities_,
 	double threshold,
 	double conf,
 	double spatial_coherence_weight,
@@ -188,11 +210,20 @@ py::tuple findFundamentalMatrix(
 	std::vector<double> correspondences;
 	correspondences.assign(ptr1, ptr1 + buf1.size);
 
+    std::vector<double> probabilities;
+    if (sampler == 3 || sampler == 4)
+    {
+        py::buffer_info buf_prob = probabilities_.request();
+        double* ptr_prob = (double*)buf_prob.ptr;
+        probabilities.assign(ptr_prob, ptr_prob + buf_prob.size);        
+    }
+
 	std::vector<double> F(9);
 	std::vector<bool> inliers(NUM_TENTS);
 
 	int num_inl = findFundamentalMatrix_(
 		correspondences,
+		probabilities,
 		inliers,
 		F,
 		h1, w1, h2, w2,
@@ -225,6 +256,7 @@ py::tuple findFundamentalMatrix(
 
 py::tuple findLine2D(py::array_t<double>  x1y1_,
 	int w1, int h1,
+	py::array_t<double>  probabilities_,
 	double threshold,
 	double conf,
 	int max_iters,
@@ -250,10 +282,19 @@ py::tuple findLine2D(py::array_t<double>  x1y1_,
 	std::vector<double> x1y1;
 	x1y1.assign(ptr1, ptr1 + buf1.size);
 
+    std::vector<double> probabilities;
+    if (sampler == 3 || sampler == 4)
+    {
+        py::buffer_info buf_prob = probabilities_.request();
+        double* ptr_prob = (double*)buf_prob.ptr;
+        probabilities.assign(ptr_prob, ptr_prob + buf_prob.size);        
+    }
+
 	std::vector<double> linemodel(3);
 	std::vector<bool> inliers(NUM_TENTS);
 
 	int num_inl = findLine2D_(x1y1,
+		probabilities,
 		inliers,
 		linemodel,
 		w1, h1,
@@ -288,6 +329,7 @@ py::tuple findEssentialMatrix(py::array_t<double>  correspondences_,
                                 py::array_t<double>  K1_,
                                 py::array_t<double>  K2_,
                                 int h1, int w1, int h2, int w2,
+    					 		py::array_t<double>  probabilities_,
 								double threshold,
 								double conf,
 								double spatial_coherence_weight,
@@ -335,11 +377,20 @@ py::tuple findEssentialMatrix(py::array_t<double>  correspondences_,
     std::vector<double> K2;
     K2.assign(ptr2_k, ptr2_k + K2_buf.size);
 
+    std::vector<double> probabilities;
+    if (sampler == 3 || sampler == 4)
+    {
+        py::buffer_info buf_prob = probabilities_.request();
+        double* ptr_prob = (double*)buf_prob.ptr;
+        probabilities.assign(ptr_prob, ptr_prob + buf_prob.size);        
+    }
+
     std::vector<double> F(9);
     std::vector<bool> inliers(NUM_TENTS);
 
     int num_inl = findEssentialMatrix_(
 							corrs,
+							probabilities,
                            	inliers,
                            	F, K1, K2,
                            	h1, w1, h2, w2,
@@ -371,6 +422,7 @@ py::tuple findEssentialMatrix(py::array_t<double>  correspondences_,
 
 py::tuple findHomography(py::array_t<double>  correspondences_,
                          int h1, int w1, int h2, int w2,
+    					 py::array_t<double>  probabilities_,
                          double threshold,
                          double conf,
 							double spatial_coherence_weight,
@@ -396,12 +448,21 @@ py::tuple findHomography(py::array_t<double>  correspondences_,
     double *ptr1 = (double *) buf1.ptr;
     std::vector<double> corrs;
     corrs.assign(ptr1, ptr1 + buf1.size);
+
+    std::vector<double> probabilities;
+    if (sampler == 3 || sampler == 4)
+    {
+        py::buffer_info buf_prob = probabilities_.request();
+        double* ptr_prob = (double*)buf_prob.ptr;
+        probabilities.assign(ptr_prob, ptr_prob + buf_prob.size);        
+    }
 	
     std::vector<double> H(9);
     std::vector<bool> inliers(NUM_TENTS);
 
     int num_inl = findHomography_(
 					corrs,
+					probabilities,
                     inliers,
                     H,
                     h1, w1,h2,w2,
@@ -457,6 +518,7 @@ PYBIND11_PLUGIN(pygcransac) {
 		py::arg("w1"),
 		py::arg("h2"),
 		py::arg("w2"),
+        py::arg("probabilities"),
 		py::arg("threshold") = 1.0,
 		py::arg("conf") = 0.99,
 		py::arg("spatial_coherence_weight") = 0.975,
@@ -471,6 +533,7 @@ PYBIND11_PLUGIN(pygcransac) {
 			py::arg("x1y1"),
 			py::arg("w1"),
 			py::arg("h1"),
+        	py::arg("probabilities"),
 			py::arg("threshold") = 1.0,
 			py::arg("conf") = 0.99,
 			py::arg("max_iters") = 10000,
@@ -485,6 +548,7 @@ PYBIND11_PLUGIN(pygcransac) {
 	m.def("findRigidTransform", &findRigidTransform, R"doc(some doc)doc",
 		py::arg("x1y1z1"),
 		py::arg("x2y2z2"),
+        py::arg("probabilities"),
 		py::arg("threshold") = 1.0,
 		py::arg("conf") = 0.99,
 		py::arg("spatial_coherence_weight") = 0.975,
@@ -498,6 +562,7 @@ PYBIND11_PLUGIN(pygcransac) {
 	m.def("find6DPose", &find6DPose, R"doc(some doc)doc",
 		py::arg("x1y1"),
 		py::arg("x2y2z2"),
+        py::arg("probabilities"),
 		py::arg("threshold") = 0.001,
 		py::arg("conf") = 0.99,
 		py::arg("spatial_coherence_weight") = 0.975,
@@ -516,6 +581,7 @@ PYBIND11_PLUGIN(pygcransac) {
         py::arg("w1"),
         py::arg("h2"),
         py::arg("w2"),
+        py::arg("probabilities"),
         py::arg("threshold") = 1.0,
         py::arg("conf") = 0.99,
 		py::arg("spatial_coherence_weight") = 0.975,
@@ -532,6 +598,7 @@ PYBIND11_PLUGIN(pygcransac) {
         py::arg("w1"),
         py::arg("h2"),
         py::arg("w2"),
+        py::arg("probabilities"),
         py::arg("threshold") = 1.0,
 		py::arg("conf") = 0.99,
         py::arg("spatial_coherence_weight") = 0.975,
