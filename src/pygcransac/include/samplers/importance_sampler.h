@@ -69,8 +69,12 @@ namespace gcransac
 				const size_t sample_size_) :
 				sample_size(sample_size_),
 				point_number(container_->rows),
+				initialized(false),
 				Sampler(container_)
 			{
+				if (probabilities_.size() != container_->rows)
+					return;
+
 				// Initialize the distribution from the point probabilities
 				multinomial_distribution = std::discrete_distribution<int>(
 					std::begin(probabilities_), 

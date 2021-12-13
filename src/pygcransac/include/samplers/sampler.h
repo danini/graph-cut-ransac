@@ -74,7 +74,7 @@ namespace gcransac
 				_IndexType * const subset_,
 				size_t sample_size_) = 0;
 
-			bool isInitialized()
+			bool isInitialized() const
 			{
 				return initialized;
 			}

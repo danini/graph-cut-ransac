@@ -66,7 +66,8 @@ namespace gcransac
 					randomness(randomness_),
 					randomness_2(randomness_ / 2.0),
 					randomness_rand_max(randomness_ / static_cast<double>(RAND_MAX)),
-					estimator_variance(estimator_variance_)
+					estimator_variance(estimator_variance_),
+					initialized(false)
 			{
 				if (inlier_probabilities_.size() != container_->rows)
 				{
