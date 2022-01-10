@@ -64,6 +64,12 @@ namespace gcransac
 
 			virtual void reset() = 0;
 
+			virtual void update(
+				const size_t* const subset_,
+				const size_t& sample_size_,
+				const size_t& iteration_number_,
+				const double& inlier_ratio_) = 0;
+
 			// Initializes any non-trivial variables and sets up sampler if
 			// necessary. Must be called before sample is called.
 			virtual bool initialize(const _DataContainer * const container_) = 0;

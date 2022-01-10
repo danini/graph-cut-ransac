@@ -106,6 +106,15 @@ namespace gcransac
 			bool initialize(const cv::Mat *container_);
 
 			void reset();
+			
+			void update(
+				const size_t* const subset_,
+				const size_t& sample_size_,
+				const size_t& iteration_number_,
+				const double& inlier_ratio_) 
+			{
+				
+			}
 
 			const std::string getName() const { return "Progressive NAPSAC Sampler"; }
 

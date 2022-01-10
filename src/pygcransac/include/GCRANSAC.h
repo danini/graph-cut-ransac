@@ -299,19 +299,39 @@ namespace gcransac
 				if (!sample<0>(pool, // The current pool from which the points are chosen
 					sample_number, // Number of points to select
 					current_sample.get())) // The current sample
+				{
+					main_sampler->update(
+						current_sample.get(),
+						sample_number,
+						statistics.iteration_number,
+						0.0);
 					continue;
+				}
 
 				// Check if the selected sample is valid before estimating the model
 				// parameters which usually takes more time. 
 				if (!estimator_.isValidSample(points_, // All points
 					current_sample.get())) // The current sample
+				{
+					main_sampler->update(
+						current_sample.get(),
+						sample_number,
+						statistics.iteration_number,
+						0.0);
 					continue;
+				}
 
 				// Estimate the model parameters using the current sample
 				if (estimator_.estimateModel(points_,  // All points
 					current_sample.get(), // The current sample
 					&models)) // The estimated model parameters
 					break;
+
+				main_sampler->update(
+					current_sample.get(),
+					sample_number,
+					statistics.iteration_number,
+					0.0);
 			}
 
 			// Increase the iteration number by the number of unsuccessful model generations as well.
@@ -453,6 +473,12 @@ namespace gcransac
 				}
 			}
 
+			main_sampler->update(
+				current_sample.get(),
+				sample_number,
+				statistics.iteration_number,
+				0.0);
+
 			// Apply local optimziation
 			if (settings.do_local_optimization && // Input flag to decide if local optimization is needed
 				do_local_optimization) // A flag to decide if all the criteria meet to apply local optimization
@@ -487,7 +513,7 @@ namespace gcransac
 				{
 					settings.min_iteration_number = 0;
 					max_iteration = 0;
-					//break;
+					break;
 				}
 			}
 		}
