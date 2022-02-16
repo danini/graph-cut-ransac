@@ -72,6 +72,12 @@ The example for homography fitting is available at: [notebook](examples/example_
 The example for fundamental matrix fitting is available at: [notebook](examples/example_fundamental_matrix.ipynb).
 
 The example for essential matrix fitting is available at: [notebook](examples/example_essential_matrix.ipynb).
+
+The example for essential matrix fitting with planar motion assumption is available at: [notebook](examples/example_planar_essential_matrix.ipynb).
+
+The example for essential matrix fitting with known gravity is available at: [notebook](examples/example_gravity_essential_matrix.ipynb).
+
+The example for essential matrix fitting is available at: [notebook](examples/example_essential_matrix.ipynb).
  
 The example for 6D pose fitting is available at: [notebook](examples/example_absolute_pose.ipynb).
  
