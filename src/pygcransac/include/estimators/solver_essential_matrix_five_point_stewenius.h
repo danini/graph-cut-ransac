@@ -54,6 +54,13 @@ namespace gcransac
 				{
 				}
 
+				// It returns true/false depending on if the solver needs the gravity direction
+				// for the model estimation.
+				static constexpr bool needsGravity()
+				{
+					return false;
+				}
+
 				// The minimum number of points required for the estimation
 				static constexpr size_t sampleSize()
 				{

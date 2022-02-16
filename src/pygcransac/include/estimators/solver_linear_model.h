@@ -74,6 +74,13 @@ namespace gcransac
 					return _DimensionNumber;
 				}
 
+				// It returns true/false depending on if the solver needs the gravity direction
+				// for the model estimation. 
+				static constexpr bool needsGravity()
+				{
+					return false;
+				}
+
 				OLGA_INLINE bool estimateModel(
 					const cv::Mat& data_, // The set of data points
 					const size_t *sample_, // The sample used for the estimation

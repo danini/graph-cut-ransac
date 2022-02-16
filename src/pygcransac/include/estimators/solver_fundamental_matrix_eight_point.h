@@ -73,6 +73,13 @@ namespace gcransac
 					return 8;
 				}
 
+				// It returns true/false depending on if the solver needs the gravity direction
+				// for the model estimation.
+				static constexpr bool needsGravity()
+				{
+					return false;
+				}
+
 				// Estimate the model parameters from the given point sample
 				// using weighted fitting if possible.
 				OLGA_INLINE bool estimateModel(
