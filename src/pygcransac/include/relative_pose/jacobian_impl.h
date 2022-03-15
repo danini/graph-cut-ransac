@@ -5,6 +5,127 @@
 
 namespace pose_lib {
 
+// Non-linear refinement of transfer error |x2 - pi(H*x1)|^2, parameterized by fixing H(2,2) = 1
+// I did some preliminary experiments comparing different error functions (e.g. symmetric and transfer)
+// as well as other parameterizations (different affine patches, SVD as in Bartoli/Sturm, etc)
+// but it does not seem to have a big impact (and is sometimes even worse)
+// Implementations of these can be found at https://github.com/vlarsson/homopt
+template <typename LossFunction>
+class HomographyJacobianAccumulator {
+  public:
+    HomographyJacobianAccumulator(
+        const cv::Mat& correspondences_,
+        const size_t* sample_,
+        const size_t& sample_size_,
+        const LossFunction &l,
+        const double *w = nullptr) : 
+            correspondences(&correspondences_), 
+            sample(sample_),
+            sample_size(sample_size_),
+            loss_fn(l),
+            weights(w) {}
+
+    double residual(const Eigen::Matrix3d &H) const 
+    {
+        double cost = 0.0;
+
+        const double H0_0 = H(0, 0), H0_1 = H(0, 1), H0_2 = H(0, 2);
+        const double H1_0 = H(1, 0), H1_1 = H(1, 1), H1_2 = H(1, 2);
+        const double H2_0 = H(2, 0), H2_1 = H(2, 1), H2_2 = H(2, 2);
+
+        Eigen::Vector2d pt1, pt2;
+        for (size_t k = 0; k < sample_size; ++k) 
+        {
+            const size_t& point_idx = 
+                sample == nullptr ? k : sample[k];
+
+            const double &x1_0 = correspondences->at<double>(point_idx, 0), 
+                &x1_1 = correspondences->at<double>(point_idx, 1);
+            const double x2_0 = correspondences->at<double>(point_idx, 2), 
+                &x2_1 =correspondences->at<double>(point_idx, 3);
+
+            const double Hx1_0 = H0_0 * x1_0 + H0_1 * x1_1 + H0_2;
+            const double Hx1_1 = H1_0 * x1_0 + H1_1 * x1_1 + H1_2;
+            const double inv_Hx1_2 = 1.0 / (H2_0 * x1_0 + H2_1 * x1_1 + H2_2);
+
+            const double r0 = Hx1_0 * inv_Hx1_2 - x2_0;
+            const double r1 = Hx1_1 * inv_Hx1_2 - x2_1;
+            const double r2 = r0 * r0 + r1 * r1;
+
+            if (weights == nullptr)
+                cost += loss_fn.loss(r2);
+            else
+                cost += weights[k] * loss_fn.loss(r2);
+        }
+        return cost;
+    }
+
+    void accumulate(const Eigen::Matrix3d &H, Eigen::Matrix<double, 8, 8> &JtJ, Eigen::Matrix<double, 8, 1> &Jtr) const {
+        Eigen::Matrix<double, 2, 8> dH;
+        const double H0_0 = H(0, 0), H0_1 = H(0, 1), H0_2 = H(0, 2);
+        const double H1_0 = H(1, 0), H1_1 = H(1, 1), H1_2 = H(1, 2);
+        const double H2_0 = H(2, 0), H2_1 = H(2, 1), H2_2 = H(2, 2);
+
+        for (size_t k = 0; k < sample_size; ++k) 
+        {
+            const size_t& point_idx = 
+                sample == nullptr ? k : sample[k];
+
+            const double &x1_0 = correspondences->at<double>(point_idx, 0), 
+                &x1_1 = correspondences->at<double>(point_idx, 1);
+            const double x2_0 = correspondences->at<double>(point_idx, 2), 
+                &x2_1 =correspondences->at<double>(point_idx, 3);
+
+            const double Hx1_0 = H0_0 * x1_0 + H0_1 * x1_1 + H0_2;
+            const double Hx1_1 = H1_0 * x1_0 + H1_1 * x1_1 + H1_2;
+            const double inv_Hx1_2 = 1.0 / (H2_0 * x1_0 + H2_1 * x1_1 + H2_2);
+
+            const double z0 = Hx1_0 * inv_Hx1_2;
+            const double z1 = Hx1_1 * inv_Hx1_2;
+
+            const double r0 = z0 - x2_0;
+            const double r1 = z1 - x2_1;
+            const double r2 = r0 * r0 + r1 * r1;
+
+            // Compute weight from robust loss function (used in the IRLS)
+            double weight = loss_fn.weight(r2) / sample_size;
+            if (weights != nullptr)
+                weight = weights[k] * weight;
+
+            if(weight == 0.0)
+                continue;
+
+            dH << x1_0, 0.0, -x1_0 * z0, x1_1, 0.0, -x1_1 * z0, 1.0, 0.0, // -z0,
+                0.0, x1_0, -x1_0 * z1, 0.0, x1_1, -x1_1 * z1, 0.0, 1.0;   // -z1,
+            dH = dH * inv_Hx1_2;
+
+            // accumulate into JtJ and Jtr
+            Jtr += dH.transpose() * (weight * Eigen::Vector2d(r0, r1));
+            for (size_t i = 0; i < 8; ++i) {
+                for (size_t j = 0; j <= i; ++j) {
+                    JtJ(i, j) += weight * dH.col(i).dot(dH.col(j));
+                }
+            }
+        }
+    }
+
+    Eigen::Matrix3d step(Eigen::Matrix<double, 8, 1> dp, const Eigen::Matrix3d &H) const {
+        Eigen::Matrix3d H_new = H;
+        Eigen::Map<Eigen::Matrix<double, 8, 1>>(H_new.data()) += dp;
+        return H_new;
+    }
+    typedef Eigen::Matrix3d param_t;
+    static constexpr size_t num_params = 8;
+
+    private:
+        const cv::Mat* correspondences;
+        const size_t* sample;
+        const size_t sample_size;
+
+        const LossFunction &loss_fn;
+        const double *weights;
+};
+
 template <typename CameraModel, typename LossFunction>
 class CameraJacobianAccumulator {
   public:

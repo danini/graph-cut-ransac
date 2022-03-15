@@ -62,6 +62,14 @@ int refine_fundamental(const cv::Mat &correspondences_,
                        const BundleOptions &opt = BundleOptions(),
                        const double *weights = nullptr);
 
+// Homography matrix refinement.
+int refine_homography(const cv::Mat &correspondences_,
+                      const size_t *sample_,
+                      const size_t &sample_size_, 
+                      Eigen::Matrix3d *H,
+                      const BundleOptions &opt = BundleOptions(),
+                      const double *weights = nullptr);
+
 } // namespace pose_lib
 
 #endif

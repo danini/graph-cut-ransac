@@ -257,6 +257,77 @@ int lm_F_impl(const JacobianAccumulator &accum, Eigen::Matrix3d *fundamental_mat
     return iter;
 }
 
+template <typename JacobianAccumulator>
+int lm_H_impl(const JacobianAccumulator &accum, Eigen::Matrix3d *homography, const BundleOptions &opt) 
+{
+    Eigen::Matrix<double, 8, 8> JtJ;
+    Eigen::Matrix<double, 8, 1> Jtr;
+    double lambda = opt.initial_lambda;
+    Eigen::Matrix3d sw1, sw2;
+    sw1.setZero();
+    sw2.setZero();
+
+    // compute factorization which is used for the optimization
+    Eigen::Matrix3d H = *homography;
+
+    // Compute initial cost
+    double cost = accum.residual(H);
+    bool recompute_jac = true;
+    int iter;
+    for (iter = 0; iter < opt.max_iterations; ++iter) {
+        // We only recompute jacobian and residual vector if last step was successful
+        if (recompute_jac) {
+            JtJ.setZero();
+            Jtr.setZero();
+            accum.accumulate(H, JtJ, Jtr);
+            if (Jtr.norm() < opt.gradient_tol) {
+                break;
+            }
+        }
+
+        // Add dampening
+        for (size_t k = 0; k < 8; ++k) {
+            JtJ(k, k) += lambda;
+        }
+
+        Eigen::Matrix<double, 8, 1> sol = -JtJ.selfadjointView<Eigen::Lower>().llt().solve(Jtr);
+        if (sol.norm() < opt.step_tol) {
+            break;
+        }
+
+        Eigen::Matrix3d H_new;
+        H_new(0, 0) = sol(0);
+        H_new(0, 1) = sol(1);
+        H_new(0, 2) = sol(2);
+        H_new(1, 0) = sol(3);
+        H_new(1, 1) = sol(4);
+        H_new(1, 2) = sol(5);
+        H_new(2, 0) = sol(6);
+        H_new(2, 1) = sol(7);
+        H_new(2, 2) = 1;
+
+        double cost_new = accum.residual(H_new);
+
+        if (cost_new < cost) {
+            H = H_new;
+            lambda /= 10;
+            cost = cost_new;
+            recompute_jac = true;
+        } else {
+            // Remove dampening
+            for (size_t k = 0; k < 8; ++k) {
+                JtJ(k, k) -= lambda;
+            }
+            lambda *= 10;
+            recompute_jac = false;
+        }
+    }
+
+    *homography = H;
+
+    return iter;
+}
+
 int bundle_adjust(const std::vector<Eigen::Vector2d> &x, const std::vector<Eigen::Vector3d> &X, CameraPose *pose, const BundleOptions &opt) {
     pose_lib::Camera camera;
     camera.model_id = -1;
@@ -379,6 +450,56 @@ int refine_fundamental(const cv::Mat &correspondences_,
             LossFunction loss_fn(opt.loss_scale);                                \
             FundamentalJacobianAccumulator<LossFunction> accum(correspondences_, sample_, sample_size_, loss_fn); \
             return lm_F_impl<decltype(accum)>(accum, pose, opt);                 \
+        }
+
+            SWITCH_LOSS_FUNCTIONS
+
+#undef SWITCH_LOSS_FUNCTION_CASE
+
+        default:
+            return -1;
+        };
+    }
+
+    return 0;
+}
+
+int refine_homography(    
+    const cv::Mat &correspondences_,
+    const size_t *sample_,
+    const size_t &sample_size_, 
+    Eigen::Matrix3d *H,
+    const BundleOptions &opt,
+    const double *weights)
+{
+    if (weights != nullptr) 
+    {
+        // We have per-residual weights
+
+        switch (opt.loss_type) {
+#define SWITCH_LOSS_FUNCTION_CASE(LossFunction)                                                            \
+    {                                                                                                      \
+        LossFunction loss_fn(opt.loss_scale);                                                              \
+        HomographyJacobianAccumulator<LossFunction> accum(correspondences_, sample_, sample_size_, loss_fn, weights); \
+        return lm_H_impl<decltype(accum)>(accum, H, opt);                                               \
+    }
+
+            SWITCH_LOSS_FUNCTIONS
+
+#undef SWITCH_LOSS_FUNCTION_CASE
+
+        default:
+            return -1;
+        };
+    } else {
+
+        // Uniformly weighted residuals
+        switch (opt.loss_type) {
+#define SWITCH_LOSS_FUNCTION_CASE(LossFunction)                              \
+        {                                                                        \
+            LossFunction loss_fn(opt.loss_scale);                                \
+            HomographyJacobianAccumulator<LossFunction> accum(correspondences_, sample_, sample_size_, loss_fn); \
+            return lm_H_impl<decltype(accum)>(accum, H, opt);                 \
         }
 
             SWITCH_LOSS_FUNCTIONS

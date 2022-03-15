@@ -1088,7 +1088,7 @@ int findEssentialMatrix_(
 
 int findHomography_(
 	std::vector<double>& correspondences,
-	std::vector<double> &point_probabilities,
+	std::vector<double>& point_probabilities,
 	std::vector<bool>& inliers,
 	std::vector<double>& H,
 	int h1, int w1, int h2, int w2,
@@ -1101,7 +1101,8 @@ int findHomography_(
 	int sampler_id,
 	int neighborhood_id,
 	double neighborhood_size,
-	bool use_space_partitioning)
+	bool use_space_partitioning,
+	double sampler_variance)
 {
 	int num_tents = correspondences.size() / 4;
 	cv::Mat points(num_tents, 4, CV_64F, &correspondences[0]);
@@ -1180,7 +1181,6 @@ int findHomography_(
             estimator.sampleSize()));
 	else if (sampler_id == 4)
     {
-		double variance = 0.1;
         double max_prob = 0;
         for (const auto &prob : point_probabilities)
             max_prob = MAX(max_prob, prob);
@@ -1189,7 +1189,7 @@ int findHomography_(
 		main_sampler = std::unique_ptr<AbstractSampler>(new gcransac::sampler::AdaptiveReorderingSampler(&points, 
             point_probabilities,
             estimator.sampleSize(),
-            variance));
+            sampler_variance));
 	}
 	else
 	{

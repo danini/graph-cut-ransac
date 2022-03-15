@@ -432,7 +432,8 @@ py::tuple findHomography(py::array_t<double>  correspondences_,
 							int sampler,
 							int neighborhood,
 							double neighborhood_size,
-							bool use_space_partitioning)
+							bool use_space_partitioning,
+							double sampler_variance)
 {
     py::buffer_info buf1 = correspondences_.request();
     size_t NUM_TENTS = buf1.shape[0];
@@ -475,7 +476,8 @@ py::tuple findHomography(py::array_t<double>  correspondences_,
 					sampler,
 					neighborhood,
 					neighborhood_size,
-					use_space_partitioning);
+					use_space_partitioning,
+					sampler_variance);
 
     py::array_t<bool> inliers_ = py::array_t<bool>(NUM_TENTS);
     py::buffer_info buf3 = inliers_.request();
@@ -608,7 +610,8 @@ PYBIND11_PLUGIN(pygcransac) {
 		py::arg("sampler") = 1,
 		py::arg("neighborhood") = 0,
 		py::arg("neighborhood_size") = 4.0,
-		py::arg("use_space_partitioning") = true);
+		py::arg("use_space_partitioning") = true,
+		py::arg("sampler_variance") = 0.1);
 
   return m.ptr();
 }

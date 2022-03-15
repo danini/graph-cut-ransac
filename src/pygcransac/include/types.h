@@ -55,6 +55,7 @@
 #include "estimators/solver_rigid_transformation_svd.h"
 #include "estimators/solver_linear_model.h"
 #include "estimators/solver_homography_four_point.h"
+#include "estimators/solver_homography_bundle_adjustment.h"
 #include "estimators/solver_radial_homography_5pc.h"
 #include "estimators/solver_radial_homography_6pc.h"
 

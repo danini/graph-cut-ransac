@@ -97,4 +97,5 @@ int findHomography_(
 					int sampler_id,
 					int neighborhood_id,
 					double neighborhood_size,
-					bool use_space_partitioning);
+					bool use_space_partitioning,
+					double sampler_variance);
