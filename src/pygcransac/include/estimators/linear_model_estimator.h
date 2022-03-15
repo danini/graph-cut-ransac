@@ -79,11 +79,27 @@ namespace gcransac
 
 			~LinearModelEstimator() {}
 
-			_MinimalSolverEngine *getMinimalSolver() {
+			// Return the minimal solver
+			const _MinimalSolverEngine *getMinimalSolver() const
+			{
 				return minimal_solver.get();
 			}
 
-			_NonMinimalSolverEngine *getNonMinimalSolver() {
+			// Return a mutable minimal solver
+			_MinimalSolverEngine *getMutableMinimalSolver()
+			{
+				return minimal_solver.get();
+			}
+
+			// Return the minimal solver
+			const _NonMinimalSolverEngine *getNonMinimalSolver() const
+			{
+				return non_minimal_solver.get();
+			}
+
+			// Return a mutable minimal solver
+			_NonMinimalSolverEngine *getMutableNonMinimalSolver()
+			{
 				return non_minimal_solver.get();
 			}
 

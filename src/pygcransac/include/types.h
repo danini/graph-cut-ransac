@@ -52,6 +52,8 @@
 #include "estimators/solver_dls_pnp.h"
 #include "estimators/solver_essential_matrix_five_point_stewenius.h"
 #include "estimators/solver_essential_matrix_bundle_adjustment.h"
+#include "estimators/solver_essential_matrix_two_points_planar.h"
+#include "estimators/solver_essential_matrix_three_points_gravity.h"
 #include "estimators/solver_rigid_transformation_svd.h"
 #include "estimators/solver_linear_model.h"
 #include "estimators/solver_homography_four_point.h"
@@ -77,6 +79,19 @@ namespace gcransac
 		typedef estimator::EssentialMatrixEstimator<estimator::solver::EssentialMatrixFivePointSteweniusSolver, // The solver used for fitting a model to a minimal sample
 			estimator::solver::EssentialMatrixBundleAdjustmentSolver> // The solver used for fitting a model to a non-minimal sample
 			DefaultEssentialMatrixEstimator;
+
+		// The default estimator for essential matrix fitting if the camera
+		// is attached to a moving vehicle. The non-minimal solver does bundle a on the 
+		// general pose error.  
+		typedef estimator::EssentialMatrixEstimator<estimator::solver::EssentialMatrixTwoPointsPlanar, // The solver used for fitting a model to a minimal sample
+			estimator::solver::EssentialMatrixBundleAdjustmentSolver> // The solver used for fitting a model to a non-minimal sample
+			DefaultPlanarEssentialMatrixEstimator;
+
+		// The default estimator for essential matrix fitting if we are given the gravity direction of the cameras.
+		// The non-minimal solver does bundle a on the general pose error.  
+		typedef estimator::EssentialMatrixEstimator<estimator::solver::EssentialMatrixThreePointsGravity, // The solver used for fitting a model to a minimal sample
+			estimator::solver::EssentialMatrixBundleAdjustmentSolver> // The solver used for fitting a model to a non-minimal sample
+			DefaultGravityEssentialMatrixEstimator;
 
 		// The default estimator for PnP fitting
 		typedef estimator::PerspectiveNPointEstimator<estimator::solver::P3PSolver, // The solver used for fitting a model to a minimal sample

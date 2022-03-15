@@ -58,10 +58,10 @@ namespace gcransac
 		{
 		protected:
 			// Minimal solver engine used for estimating a model_ from a minimal sample
-			const std::shared_ptr<const _MinimalSolverEngine> minimal_solver;
+			const std::shared_ptr<_MinimalSolverEngine> minimal_solver;
 
 			// Non-minimal solver engine used for estimating a model_ from a bigger than minimal sample
-			const std::shared_ptr<const _NonMinimalSolverEngine> non_minimal_solver;
+			const std::shared_ptr<_NonMinimalSolverEngine> non_minimal_solver;
 
 			const Eigen::Matrix3d intrinsics_src, // The intrinsic parameters of the source camera
 				intrinsics_dst; // The intrinsic parameters of the destination camera
@@ -86,9 +86,9 @@ namespace gcransac
 				// The intrinsic parameters of the destination camera
 				intrinsics_dst(intrinsics_dst_),
 				// Minimal solver engine used for estimating a model from a minimal sample
-				minimal_solver(std::make_shared<const _MinimalSolverEngine>()),
+				minimal_solver(std::make_shared<_MinimalSolverEngine>()),
 				// Non-minimal solver engine used for estimating a model from a bigger than minimal sample
-				non_minimal_solver(std::make_shared<const _NonMinimalSolverEngine>()),
+				non_minimal_solver(std::make_shared<_NonMinimalSolverEngine>()),
 				// The lower bound of the inlier ratio which is required to pass the validity test.
 				// It is clamped to be in interval [0, 1].
 				minimum_inlier_ratio_in_validity_check(std::clamp(minimum_inlier_ratio_in_validity_check_, 0.0, 1.0)),
@@ -122,6 +122,30 @@ namespace gcransac
 			// The size of a sample_ when doing inner RANSAC on a non-minimal sample
 			OLGA_INLINE size_t inlierLimit() const {
 				return 7 * sampleSize();
+			}
+
+			// Return the minimal solver
+			const _MinimalSolverEngine *getMinimalSolver() const
+			{
+				return minimal_solver.get();
+			}
+
+			// Return a mutable minimal solver
+			_MinimalSolverEngine *getMutableMinimalSolver()
+			{
+				return minimal_solver.get();
+			}
+
+			// Return the minimal solver
+			const _NonMinimalSolverEngine *getNonMinimalSolver() const
+			{
+				return non_minimal_solver.get();
+			}
+
+			// Return a mutable minimal solver
+			_NonMinimalSolverEngine *getMutableNonMinimalSolver()
+			{
+				return non_minimal_solver.get();
 			}
 
 			// Estimating the essential matrix from a minimal sample

@@ -91,24 +91,28 @@ namespace gcransac
 				return true;
 			}
 
-			const _MinimalSolverEngine &getMinimalSolver() const
+			// Return the minimal solver
+			const _MinimalSolverEngine *getMinimalSolver() const
 			{
-				return *minimal_solver;
+				return minimal_solver.get();
 			}
 
-			const _NonMinimalSolverEngine &getNonMinimalSolver() const
+			// Return a mutable minimal solver
+			_MinimalSolverEngine *getMutableMinimalSolver()
 			{
-				return *non_minimal_solver;
+				return minimal_solver.get();
 			}
 
-			_MinimalSolverEngine &getMutableMinimalSolver()
+			// Return the minimal solver
+			const _NonMinimalSolverEngine *getNonMinimalSolver() const
 			{
-				return *minimal_solver;
+				return non_minimal_solver.get();
 			}
 
-			_NonMinimalSolverEngine &getMutableNonMinimalSolver()
+			// Return a mutable minimal solver
+			_NonMinimalSolverEngine *getMutableNonMinimalSolver()
 			{
-				return *minimal_solver;
+				return non_minimal_solver.get();
 			}
 
 			// The size of a minimal sample_ required for the estimation

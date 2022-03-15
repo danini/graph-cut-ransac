@@ -59,17 +59,41 @@ namespace gcransac
 		{
 		protected:
 			// Minimal solver engine used for estimating a model from a minimal sample
-			const std::shared_ptr<const _MinimalSolverEngine> minimal_solver;
+			const std::shared_ptr<_MinimalSolverEngine> minimal_solver;
 
 			// Non-minimal solver engine used for estimating a model from a bigger than minimal sample
-			const std::shared_ptr<const _NonMinimalSolverEngine> non_minimal_solver;
+			const std::shared_ptr<_NonMinimalSolverEngine> non_minimal_solver;
 
 		public:
 			RobustHomographyEstimator() :
-				minimal_solver(std::make_shared<const _MinimalSolverEngine>()), // Minimal solver engine used for estimating a model from a minimal sample
-				non_minimal_solver(std::make_shared<const _NonMinimalSolverEngine>()) // Non-minimal solver engine used for estimating a model from a bigger than minimal sample
+				minimal_solver(std::make_shared<_MinimalSolverEngine>()), // Minimal solver engine used for estimating a model from a minimal sample
+				non_minimal_solver(std::make_shared<_NonMinimalSolverEngine>()) // Non-minimal solver engine used for estimating a model from a bigger than minimal sample
 			{}
 			~RobustHomographyEstimator() {}
+
+			// Return the minimal solver
+			const _MinimalSolverEngine *getMinimalSolver() const
+			{
+				return minimal_solver.get();
+			}
+
+			// Return a mutable minimal solver
+			_MinimalSolverEngine *getMutableMinimalSolver()
+			{
+				return minimal_solver.get();
+			}
+
+			// Return the minimal solver
+			const _NonMinimalSolverEngine *getNonMinimalSolver() const
+			{
+				return non_minimal_solver.get();
+			}
+
+			// Return a mutable minimal solver
+			_NonMinimalSolverEngine *getMutableNonMinimalSolver()
+			{
+				return non_minimal_solver.get();
+			}
 
 			// The size of a non-minimal sample required for the estimation
 			static constexpr size_t nonMinimalSampleSize() {
