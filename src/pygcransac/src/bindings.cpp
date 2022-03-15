@@ -7,7 +7,6 @@
 
 namespace py = pybind11;
 
-
 py::tuple findRigidTransform(
 	py::array_t<double>  x1y1z1_,
 	py::array_t<double>  x2y2z2_,
@@ -189,11 +188,13 @@ py::tuple findFundamentalMatrix(
 	double conf,
 	double spatial_coherence_weight,
 	int max_iters,
+	int min_iters,
 	bool use_sprt,
 	double min_inlier_ratio_for_sprt,
 	int sampler,
 	int neighborhood,
-	double neighborhood_size)
+	double neighborhood_size,
+	double sampler_variance)
 {
 	py::buffer_info buf1 = correspondences_.request();
 	size_t NUM_TENTS = buf1.shape[0];
@@ -231,11 +232,13 @@ py::tuple findFundamentalMatrix(
 		threshold,
 		conf,
 		max_iters,
+		min_iters,
 		use_sprt,
 		min_inlier_ratio_for_sprt,
 		sampler,
 		neighborhood,
-		neighborhood_size);
+		neighborhood_size,
+		sampler_variance);
 
 	py::array_t<bool> inliers_ = py::array_t<bool>(NUM_TENTS);
 	py::buffer_info buf3 = inliers_.request();
@@ -558,11 +561,13 @@ py::tuple findEssentialMatrix(py::array_t<double>  correspondences_,
 								double conf,
 								double spatial_coherence_weight,
 								int max_iters,
+								int min_iters,
 								bool use_sprt,
 								double min_inlier_ratio_for_sprt,
 								int sampler,
 								int neighborhood,
-								double neighborhood_size)
+								double neighborhood_size,
+								double sampler_variance)
 {
     py::buffer_info buf1 = correspondences_.request();
     size_t NUM_TENTS = buf1.shape[0];
@@ -622,11 +627,13 @@ py::tuple findEssentialMatrix(py::array_t<double>  correspondences_,
                            	threshold,
 						   	conf,
 						   	max_iters,
+							min_iters,
 						   	use_sprt,
 							min_inlier_ratio_for_sprt,
 							sampler,
 							neighborhood,
-							neighborhood_size);
+							neighborhood_size,
+							sampler_variance);
 
     py::array_t<bool> inliers_ = py::array_t<bool>(NUM_TENTS);
     py::buffer_info buf3 = inliers_.request();
@@ -749,27 +756,28 @@ PYBIND11_PLUGIN(pygcransac) {
 		py::arg("conf") = 0.99,
 		py::arg("spatial_coherence_weight") = 0.975,
 		py::arg("max_iters") = 10000,
+		py::arg("min_iters") = 50,
 		py::arg("use_sprt") = true,
 		py::arg("min_inlier_ratio_for_sprt") = 0.1,
 		py::arg("sampler") = 1,
 		py::arg("neighborhood") = 0,
+		py::arg("neighborhood_size") = 20.0,
+		py::arg("sampler_variance") = 0.1);
+
+	m.def("findLine2D", &findLine2D, R"doc(some doc)doc",
+		py::arg("x1y1"),
+		py::arg("w1"),
+		py::arg("h1"),
+		py::arg("probabilities"),
+		py::arg("threshold") = 1.0,
+		py::arg("conf") = 0.99,
+		py::arg("max_iters") = 10000,
+		py::arg("spatial_coherence_weight") = 0.975,
+		py::arg("use_sprt") = false,
+		py::arg("min_inlier_ratio_for_sprt") = 0.1,
+		py::arg("sampler") = 0,
+		py::arg("neighborhood") = 0,
 		py::arg("neighborhood_size") = 20.0);
-
-		m.def("findLine2D", &findLine2D, R"doc(some doc)doc",
-			py::arg("x1y1"),
-			py::arg("w1"),
-			py::arg("h1"),
-        	py::arg("probabilities"),
-			py::arg("threshold") = 1.0,
-			py::arg("conf") = 0.99,
-			py::arg("max_iters") = 10000,
-			py::arg("spatial_coherence_weight") = 0.975,
-			py::arg("use_sprt") = false,
-			py::arg("min_inlier_ratio_for_sprt") = 0.1,
-			py::arg("sampler") = 0,
-			py::arg("neighborhood") = 0,
-			py::arg("neighborhood_size") = 20.0);
-
 
 	m.def("findRigidTransform", &findRigidTransform, R"doc(some doc)doc",
 		py::arg("x1y1z1"),
@@ -810,13 +818,15 @@ PYBIND11_PLUGIN(pygcransac) {
         py::arg("probabilities"),
         py::arg("threshold") = 1.0,
         py::arg("conf") = 0.99,
-		py::arg("spatial_coherence_weight") = 0.975,
+		py::arg("spatial_coherence_weight") = 0.1,
         py::arg("max_iters") = 10000,
+        py::arg("min_iters") = 50,
 		py::arg("use_sprt") = true,
-		py::arg("min_inlier_ratio_for_sprt") = 0.1,
+		py::arg("min_inlier_ratio_for_sprt") = 0.01,
 		py::arg("sampler") = 1,
 		py::arg("neighborhood") = 0,
-		py::arg("neighborhood_size") = 8.0);
+		py::arg("neighborhood_size") = 8.0,
+		py::arg("sampler_variance") = 0.1);
 
     m.def("findPlanarEssentialMatrix", &findPlanarEssentialMatrix, R"doc(some doc)doc",
         py::arg("correspondences"),

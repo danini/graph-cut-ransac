@@ -140,7 +140,7 @@ namespace gcransac
 
 			SPRTPreemptiveVerfication(const cv::Mat &points_,
 				const _ModelEstimator &estimator_,
-				const double &minimum_inlier_ratio_ = 0.1)
+				const double &minimum_inlier_ratio_ = 0.01)
 			{
 				if (points_.rows < _ModelEstimator::sampleSize())
 				{
@@ -174,7 +174,7 @@ namespace gcransac
 				sprt_histories = std::vector<SPRTHistory>();
 				sprt_histories.emplace_back(SPRTHistory());
 
-				sprt_histories.back().delta = 0.01;
+				sprt_histories.back().delta = minimum_inlier_ratio_ / 10.0;
 				sprt_histories.back().epsilon = minimum_inlier_ratio_;
 
 				current_sprt_idx = 0;

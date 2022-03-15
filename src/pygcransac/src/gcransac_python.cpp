@@ -696,6 +696,8 @@ int findFundamentalMatrix_(
 	double conf, 
 	// Maximum iteration number. I do not suggest setting it to lower than 1000.
 	int max_iters, 
+	// Minimum iteration number.
+	int min_iters, 
 	// A flag to decide if SPRT should be used to speed up the model verification. 
 	// It is not suggested if the inlier ratio is expected to be very low - it will fail in that case.
 	// Otherwise, it leads to a significant speed-up. 
@@ -717,7 +719,9 @@ int findFundamentalMatrix_(
 	// The size of the neighborhood.
 	// If (0) FLANN is used, the size if the Euclidean distance in the correspondence space
 	// If (1) Grid is used, the size is the division number, e.g., 2 if we want to divide the image to 2 in along each axes (2*2 = 4 cells in total)
-	double neighborhood_size)
+	double neighborhood_size,
+	// The variance parameter of the AR-Sampler. It is only used if that particular sampler is selected.
+	double sampler_variance)
 {
 	int num_tents = correspondences.size() / 4;
 	cv::Mat points(num_tents, 4, CV_64F, &correspondences[0]);
@@ -803,7 +807,6 @@ int findFundamentalMatrix_(
             estimator.sampleSize()));
 	else if (sampler_id == 4)
     {
-		double variance = 0.1;
         double max_prob = 0;
         for (const auto &prob : point_probabilities)
             max_prob = MAX(max_prob, prob);
@@ -812,7 +815,7 @@ int findFundamentalMatrix_(
 		main_sampler = std::unique_ptr<AbstractSampler>(new gcransac::sampler::AdaptiveReorderingSampler(&points, 
             point_probabilities,
             estimator.sampleSize(),
-            variance));
+            sampler_variance));
 	}
 	else
 	{
@@ -844,7 +847,6 @@ int findFundamentalMatrix_(
 		return 0;
 	}
 
-
 	utils::RANSACStatistics statistics;
 	
 	// Initializing the fast inlier selector object
@@ -868,7 +870,7 @@ int findFundamentalMatrix_(
 		gcransac.settings.confidence = conf; // The required confidence in the results
 		gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
 		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
-		gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
+		gcransac.settings.min_iteration_number = min_iters; // The minimum number of iterations
 		gcransac.settings.neighborhood_sphere_radius = 8; // The radius of the neighborhood ball
 
 		// Start GC-RANSAC
@@ -891,7 +893,7 @@ int findFundamentalMatrix_(
 		gcransac.settings.confidence = conf; // The required confidence in the results
 		gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
 		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
-		gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
+		gcransac.settings.min_iteration_number = min_iters; // The minimum number of iterations
 		gcransac.settings.neighborhood_sphere_radius = 8; // The radius of the neighborhood ball
 
 		// Start GC-RANSAC
@@ -961,6 +963,8 @@ int findEssentialMatrix_(
 	double conf, 
 	// Maximum iteration number. I do not suggest setting it to lower than 1000.
 	int max_iters, 
+	// Minimum iteration number.
+	int min_iters, 
 	// A flag to decide if SPRT should be used to speed up the model verification. 
 	// It is not suggested if the inlier ratio is expected to be very low - it will fail in that case.
 	// Otherwise, it leads to a significant speed-up. 
@@ -982,7 +986,9 @@ int findEssentialMatrix_(
 	// The size of the neighborhood.
 	// If (0) FLANN is used, the size if the Euclidean distance in the correspondence space
 	// If (1) Grid is used, the size is the division number, e.g., 2 if we want to divide the image to 2 in along each axes (2*2 = 4 cells in total)
-	double neighborhood_size)
+	double neighborhood_size,
+	// The variance parameter of the AR-Sampler. It is only used if that particular sampler is selected.
+	double sampler_variance)
 {
 	int num_tents = correspondences.size() / 4;
 	cv::Mat points(num_tents, 4, CV_64F, &correspondences[0]);
@@ -1078,7 +1084,6 @@ int findEssentialMatrix_(
             estimator.sampleSize()));
 	else if (sampler_id == 4)
     {
-		double variance = 0.1;
         double max_prob = 0;
         for (const auto &prob : point_probabilities)
             max_prob = MAX(max_prob, prob);
@@ -1087,7 +1092,7 @@ int findEssentialMatrix_(
 		main_sampler = std::unique_ptr<AbstractSampler>(new gcransac::sampler::AdaptiveReorderingSampler(&points, 
             point_probabilities,
             estimator.sampleSize(),
-            variance));
+            sampler_variance));
 	}
 	else
 	{
@@ -1140,12 +1145,10 @@ int findEssentialMatrix_(
 		gcransac.settings.threshold = threshold / threshold_normalizer; // The inlier-outlier threshold
 		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
 		gcransac.settings.confidence = conf; // The required confidence in the results
-		gcransac.settings.max_local_optimization_number = 100; // The maximum number of local optimizations
+		gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
 		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
-		gcransac.settings.min_iteration_number = 1000; // The minimum number of iterations
+		gcransac.settings.min_iteration_number = min_iters; // The minimum number of iterations
 		gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
-		gcransac.settings.do_final_iterated_least_squares = false;
-		gcransac.settings.max_graph_cut_number = 100;
 
 		// Start GC-RANSAC
 		gcransac.run(normalized_points,
@@ -1168,7 +1171,7 @@ int findEssentialMatrix_(
 		gcransac.settings.confidence = conf; // The required confidence in the results
 		gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
 		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
-		gcransac.settings.min_iteration_number = 1000; // The minimum number of iterations
+		gcransac.settings.min_iteration_number = min_iters; // The minimum number of iterations
 		gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
 
 		// Start GC-RANSAC

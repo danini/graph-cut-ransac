@@ -138,6 +138,8 @@ int findFundamentalMatrix_(
 	double conf, 
 	// Maximum iteration number. I do not suggest setting it to lower than 1000.
 	int max_iters, 
+	// Minimum iteration number.
+	int min_iters, 
 	// A flag to decide if SPRT should be used to speed up the model verification. 
 	// It is not suggested if the inlier ratio is expected to be very low - it will fail in that case.
 	// Otherwise, it leads to a significant speed-up. 
@@ -159,7 +161,9 @@ int findFundamentalMatrix_(
 	// The size of the neighborhood.
 	// If (0) FLANN is used, the size if the Euclidean distance in the correspondence space
 	// If (1) Grid is used, the size is the division number, e.g., 2 if we want to divide the image to 2 in along each axes (2*2 = 4 cells in total)
-	double neighborhood_size);
+	double neighborhood_size,
+	// The variance parameter of the AR-Sampler. It is only used if that particular sampler is selected.
+	double sampler_variance);
 
 // A method for estimating an essential matrix given 2D-2D correspondences
 int findEssentialMatrix_(
@@ -185,6 +189,8 @@ int findEssentialMatrix_(
 	double conf, 
 	// Maximum iteration number. I do not suggest setting it to lower than 1000.
 	int max_iters, 
+	// Minimum iteration number.
+	int min_iters, 
 	// A flag to decide if SPRT should be used to speed up the model verification. 
 	// It is not suggested if the inlier ratio is expected to be very low - it will fail in that case.
 	// Otherwise, it leads to a significant speed-up. 
@@ -206,7 +212,9 @@ int findEssentialMatrix_(
 	// The size of the neighborhood.
 	// If (0) FLANN is used, the size if the Euclidean distance in the correspondence space
 	// If (1) Grid is used, the size is the division number, e.g., 2 if we want to divide the image to 2 in along each axes (2*2 = 4 cells in total)
-	double neighborhood_size);
+	double neighborhood_size,
+	// The variance parameter of the AR-Sampler. It is only used if that particular sampler is selected.
+	double sampler_variance);
 
 // A method for estimating an essential matrix given 2D-2D correspondences
 int findGravityEssentialMatrix_(

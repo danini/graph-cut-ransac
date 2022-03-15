@@ -51,6 +51,7 @@
 #include "estimators/solver_epnp_lm.h"
 #include "estimators/solver_dls_pnp.h"
 #include "estimators/solver_essential_matrix_five_point_stewenius.h"
+#include "estimators/solver_essential_matrix_five_point_nister.h"
 #include "estimators/solver_essential_matrix_bundle_adjustment.h"
 #include "estimators/solver_essential_matrix_two_points_planar.h"
 #include "estimators/solver_essential_matrix_three_points_gravity.h"
@@ -76,7 +77,7 @@ namespace gcransac
 			DefaultHomographyEstimator;
 
 		// The default estimator for essential matrix fitting
-		typedef estimator::EssentialMatrixEstimator<estimator::solver::EssentialMatrixFivePointSteweniusSolver, // The solver used for fitting a model to a minimal sample
+		typedef estimator::EssentialMatrixEstimator<estimator::solver::EssentialMatrixFivePointNisterSolver, // The solver used for fitting a model to a minimal sample
 			estimator::solver::EssentialMatrixBundleAdjustmentSolver> // The solver used for fitting a model to a non-minimal sample
 			DefaultEssentialMatrixEstimator;
 
