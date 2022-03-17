@@ -273,10 +273,8 @@ int findLine2D_(
 
 // A method for estimating a the absolute pose given 2D-3D correspondences
 int find6DPose_(
-	// The 2D points in the image
-	std::vector<double>& imagePoints,
-	// The corresponding 3D points
-	std::vector<double>& worldPoints,
+	// The 2D-3D correspondences
+	std::vector<double>& correspondences,
 	// The probabilities for each 3D-3D point correspondence if available
 	std::vector<double> &point_probabilities,
 	// Output: the found inliers 
@@ -291,6 +289,8 @@ int find6DPose_(
 	double conf, 
 	// Maximum iteration number. I do not suggest setting it to lower than 1000.
 	int max_iters, 
+	// Minimum iteration number.
+	int min_iters, 
 	// A flag to decide if SPRT should be used to speed up the model verification. 
 	// It is not suggested if the inlier ratio is expected to be very low - it will fail in that case.
 	// Otherwise, it leads to a significant speed-up. 
@@ -307,18 +307,12 @@ int find6DPose_(
 	int neighborhood_id,
 	// The size of the neighborhood.
 	// If (0) FLANN is used, the size if the Euclidean distance in the correspondence space
-	double neighborhood_size)
+	double neighborhood_size,
+	// The variance parameter of the AR-Sampler. It is only used if that particular sampler is selected.
+	double sampler_variance)
 {
-	size_t num_tents = imagePoints.size() / 2;
-	cv::Mat points(num_tents, 5, CV_64F);
-	size_t iterations = 0;
-	for (size_t i = 0; i < num_tents; ++i) {
-		points.at<double>(i, 0) = imagePoints[2 * i];
-		points.at<double>(i, 1) = imagePoints[2 * i + 1];
-		points.at<double>(i, 2) = worldPoints[3 * i];
-		points.at<double>(i, 3) = worldPoints[3 * i + 1];
-		points.at<double>(i, 4) = worldPoints[3 * i + 2];
-	}
+	size_t num_tents = correspondences.size() / 5;
+	cv::Mat points(num_tents, 5, CV_64F, &correspondences[0]);
 
 	typedef neighborhood::NeighborhoodGraph<cv::Mat> AbstractNeighborhood;
 	std::unique_ptr<AbstractNeighborhood> neighborhood_graph;
@@ -326,15 +320,27 @@ int find6DPose_(
 	const size_t cell_number_in_neighborhood_graph_ = 
 		static_cast<size_t>(neighborhood_size);
 
-	// Initializing a grid-based neighborhood graph
-	if (neighborhood_id == 0) // Initializing the neighbhood graph by FLANN
-		neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
-			new neighborhood::FlannNeighborhoodGraph(&points, neighborhood_size));
-	else
+	// Initializing the neighborhood graph if needed
+	if (spatial_coherence_weight <= std::numeric_limits<double>::epsilon())
 	{
-		fprintf(stderr, "Unknown neighborhood-graph identifier: %d. The accepted values are 0 (FLANN-based neighborhood)\n",
-			neighborhood_id);
-		return 0;
+		cv::Mat emptyPoints(0, 4, CV_64F);
+
+		neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
+			new neighborhood::GridNeighborhoodGraph<4>(&emptyPoints, // The input points
+			{ 0, // The cell size along axis X
+				0 }, // The cell size along axis Y
+			1)); // The cell number along every axis
+	} else
+	{
+		if (neighborhood_id == 0) // Initializing the neighbhood graph by FLANN
+			neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
+				new neighborhood::FlannNeighborhoodGraph(&points, neighborhood_size));
+		else
+		{
+			fprintf(stderr, "Unknown neighborhood-graph identifier: %d. The accepted values are 0 (FLANN-based neighborhood)\n",
+				neighborhood_id);
+			return 0;
+		}
 	}
 
 	// Apply Graph-cut RANSAC
@@ -345,16 +351,41 @@ int find6DPose_(
 	// The main sampler is used for sampling in the main RANSAC loop
 	typedef sampler::Sampler<cv::Mat, size_t> AbstractSampler;
 	std::unique_ptr<AbstractSampler> main_sampler;
-	if (sampler_id == 0) // Initializing a RANSAC-like uniform sampler
+	if (sampler_id == 0) // Initializing a RANSAC-like uniformly random sampler
 		main_sampler = std::unique_ptr<AbstractSampler>(new sampler::UniformSampler(&points));
-	else if (sampler_id == 1) // Initializing a PROSAC sampler. This requires the points to be ordered according to the quality.
+	else if (sampler_id == 1)  // Initializing a PROSAC sampler. This requires the points to be ordered according to the quality.
 		main_sampler = std::unique_ptr<AbstractSampler>(new sampler::ProsacSampler(&points, estimator.sampleSize()));
+	else if (sampler_id == 2) // Initializing a Progressive NAPSAC sampler
+	{
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
+		delete neighborhood_graph_ptr;
+
+		fprintf(stderr, "Progressive NAPSAC is not usable for the absolute pose problem.\n",
+			sampler_id);
+		return 0;
+	}
+	else if (sampler_id == 3)
+		main_sampler = std::unique_ptr<AbstractSampler>(new gcransac::sampler::ImportanceSampler(&points, 
+            point_probabilities,
+            estimator.sampleSize()));
+	else if (sampler_id == 4)
+    {
+        double max_prob = 0;
+        for (const auto &prob : point_probabilities)
+            max_prob = MAX(max_prob, prob);
+        for (auto &prob : point_probabilities)
+            prob /= max_prob;
+		main_sampler = std::unique_ptr<AbstractSampler>(new gcransac::sampler::AdaptiveReorderingSampler(&points, 
+            point_probabilities,
+            estimator.sampleSize(),
+            sampler_variance));
+	}
 	else
 	{
 		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
 		delete neighborhood_graph_ptr;
 
-		fprintf(stderr, "Unknown sampler identifier: %d. The accepted samplers are 0 (uniform sampling), 1 (PROSAC sampling)\n",
+		fprintf(stderr, "Unknown sampler identifier: %d. The accepted samplers are 0 (uniform sampling), 1 (PROSAC sampling), 2 (P-NAPSAC sampling)\n",
 			sampler_id);
 		return 0;
 	}
@@ -400,9 +431,9 @@ int find6DPose_(
 		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
 		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
 		gcransac.settings.confidence = conf; // The required confidence in the results
-		gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
+		gcransac.settings.max_local_optimization_number = 20; // The maximum number of local optimizations
 		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
-		gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
+		gcransac.settings.min_iteration_number = min_iters; // The minimum number of iterations
 		gcransac.settings.neighborhood_sphere_radius = 8; // The radius of the neighborhood ball
 
 		// Start GC-RANSAC
@@ -424,9 +455,9 @@ int find6DPose_(
 		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
 		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
 		gcransac.settings.confidence = conf; // The required confidence in the results
-		gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
+		gcransac.settings.max_local_optimization_number = 20; // The maximum number of local optimizations
 		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
-		gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
+		gcransac.settings.min_iteration_number = min_iters; // The minimum number of iterations
 		gcransac.settings.neighborhood_sphere_radius = 8; // The radius of the neighborhood ball
 
 		// Start GC-RANSAC

@@ -35,13 +35,13 @@ void essential_from_motion(const CameraPose &pose, Eigen::Matrix3d *E) {
     *E << 0.0, -pose.t(2), pose.t(1),
         pose.t(2), 0.0, -pose.t(0),
         -pose.t(1), pose.t(0), 0.0;
-    *E = (*E) * pose.R;
+    *E = (*E) * pose.R();
 }
 
 
 bool check_cheirality(const CameraPose& pose, const Eigen::Vector3d& x1, const Eigen::Vector3d& x2, double min_depth) {
     // This code assumes that x1 and x2 are unit vectors
-    const Eigen::Vector3d Rx1 = pose.R * x1;
+    const Eigen::Vector3d Rx1 = pose.R() * x1;
 
     // [1 a; a 1] * [lambda1; lambda2] = [b1; b2]
     // [lambda1; lambda2] = [1 -a; -a 1] * [b1; b2] / (1 - a*a)
@@ -107,7 +107,7 @@ void motion_from_essential(const Eigen::Matrix3d& E, const Eigen::Vector3d& x1, 
     Vt.row(2) = Vt.row(0).cross(Vt.row(1));
 
     pose_lib::CameraPose pose;
-    pose.R = UW * Vt;
+    pose.q = pose.rotmat_to_quat(UW * Vt);
     pose.t = UW.col(2);
     if (check_cheirality(pose, x1, x2)) {
         relative_poses->emplace_back(pose);
@@ -119,7 +119,7 @@ void motion_from_essential(const Eigen::Matrix3d& E, const Eigen::Vector3d& x1, 
 
     // U * W.transpose()
     UW.block<3, 2>(0, 0) = -UW.block<3, 2>(0, 0);
-    pose.R = UW * Vt;
+    pose.q = pose.rotmat_to_quat(UW * Vt);
     if (check_cheirality(pose, x1, x2)) {
         relative_poses->emplace_back(pose);
     }
@@ -137,8 +137,13 @@ void motion_from_essential_planar(double e01, double e21, double e10, double e12
     z << -e01 * e10 - e21 * e12, -e21 * e10 + e01 * e12;
     z.normalize();
 
+    Eigen::Matrix3d R;
+    R << z(0), 0.0, -z(1), 
+        0.0, 1.0, 0.0, 
+        z(1), 0.0, z(0);;
+
     CameraPose pose;
-    pose.R << z(0), 0.0, -z(1), 0.0, 1.0, 0.0, z(1), 0.0, z(0);
+    pose.q << pose.rotmat_to_quat(R);
     pose.t << e21, 0.0, -e01;
     pose.t.normalize();
 
@@ -190,25 +195,28 @@ void motion_from_essential_svd(const Eigen::Matrix3d &E, const Eigen::Vector3d& 
     const std::array<Eigen::Vector3d, 2> t{{U.col(2), -U.col(2)}};
     if (relative_poses) {
         pose_lib::CameraPose pose;
-        pose.R = R[0];
+        Eigen::Vector4d q1 = pose.rotmat_to_quat(R[0]),
+            q2 = pose.rotmat_to_quat(R[1]);
+
+        pose.q = q1;
         pose.t = t[0];
         if (check_cheirality(pose, x1, x2)) {
             relative_poses->emplace_back(pose);
         }
 
-        pose.R = R[1];
+        pose.q = q2;
         pose.t = t[1];
         if (check_cheirality(pose, x1, x2)) {
             relative_poses->emplace_back(pose);
         }
 
-        pose.R = R[0];
+        pose.q = q1;
         pose.t = t[1];
         if (check_cheirality(pose, x1, x2)) {
             relative_poses->emplace_back(pose);
         }
 
-        pose.R = R[1];
+        pose.q = q2;
         pose.t = t[0];
         if (check_cheirality(pose, x1, x2)) {
             relative_poses->emplace_back(pose);

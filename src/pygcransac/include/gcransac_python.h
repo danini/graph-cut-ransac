@@ -41,10 +41,8 @@ int findRigidTransform_(
 
 // A method for estimating a the absolute pose given 2D-3D correspondences
 int find6DPose_(
-	// The 2D points in the image
-	std::vector<double>& imagePoints,
-	// The corresponding 3D points
-	std::vector<double>& worldPoints,
+	// The 2D-3D correspondences
+	std::vector<double>& correspondences,
 	// The probabilities for each 3D-3D point correspondence if available
 	std::vector<double> &point_probabilities,
 	// Output: the found inliers 
@@ -59,6 +57,8 @@ int find6DPose_(
 	double conf, 
 	// Maximum iteration number. I do not suggest setting it to lower than 1000.
 	int max_iters, 
+	// Minimum iteration number.
+	int min_iters, 
 	// A flag to decide if SPRT should be used to speed up the model verification. 
 	// It is not suggested if the inlier ratio is expected to be very low - it will fail in that case.
 	// Otherwise, it leads to a significant speed-up. 
@@ -75,7 +75,9 @@ int find6DPose_(
 	int neighborhood_id,
 	// The size of the neighborhood.
 	// If (0) FLANN is used, the size if the Euclidean distance in the correspondence space
-	double neighborhood_size);
+	double neighborhood_size,
+	// The variance parameter of the AR-Sampler. It is only used if that particular sampler is selected.
+	double sampler_variance);
 
 // A method for estimating a 2D line from a set of 2D points
  int findLine2D_(

@@ -196,7 +196,7 @@ namespace gcransac
 					}
 				}
 
-				return models_.size() > 0;
+				return models_.size();
 			}
 
 		}

@@ -1415,14 +1415,12 @@ void test6DPoseFitting(
 		neighborhood::FlannNeighborhoodGraph,
 		MSACScoringFunction<utils::DefaultPnPEstimator>,
 		preemption::SPRTPreemptiveVerfication<utils::DefaultPnPEstimator>> gcransac;
-	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
 	gcransac.settings.threshold = normalized_threshold; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
 	gcransac.settings.confidence = confidence_; // The required confidence in the results
 	gcransac.settings.max_iteration_number = 5000; // The maximum number of iterations
 	gcransac.settings.min_iteration_number = 20; // The minimum number of iterations
 	gcransac.settings.neighborhood_sphere_radius = sphere_radius_; // The radius of the neighborhood ball
-	gcransac.settings.core_number = std::thread::hardware_concurrency(); // The number of parallel processes
 
 	// Start GC-RANSAC
 	gcransac.run(normalized_points, // The normalized points

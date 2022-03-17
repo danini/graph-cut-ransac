@@ -95,47 +95,34 @@ py::tuple findRigidTransform(
 
 
 py::tuple find6DPose(
-	py::array_t<double>  x1y1_,
-	py::array_t<double>  x2y2z2_,
+	py::array_t<double>  x1y1x2y2z2_,
 	py::array_t<double>  probabilities_,
 	double threshold,
 	double conf,
 	double spatial_coherence_weight,
 	int max_iters,
+	int min_iters,
 	bool use_sprt,
 	double min_inlier_ratio_for_sprt,
 	int sampler,
 	int neighborhood,
-	double neighborhood_size)
+	double neighborhood_size,
+	double sampler_variance)
 {
-	py::buffer_info buf1 = x1y1_.request();
+	py::buffer_info buf1 = x1y1x2y2z2_.request();
 	size_t NUM_TENTS = buf1.shape[0];
 	size_t DIM = buf1.shape[1];
 
-	if (DIM != 2) {
-		throw std::invalid_argument("x1y1 should be an array with dims [n,2], n>=7");
+	if (DIM != 5) {
+		throw std::invalid_argument("x1y1x2y2z2 should be an array with dims [n,5], n>=4");
 	}
-	if (NUM_TENTS < 7) {
-		throw std::invalid_argument("x1y1 should be an array with dims [n,2], n>=7");
-	}
-	py::buffer_info buf1a = x2y2z2_.request();
-	size_t NUM_TENTSa = buf1a.shape[0];
-	size_t DIMa = buf1a.shape[1];
-
-	if (DIMa != 3) {
-		throw std::invalid_argument("x2y2z2 should be an array with dims [n,3], n>=3");
-	}
-	if (NUM_TENTSa != NUM_TENTS) {
-		throw std::invalid_argument("x1y1 and x2y2z2 should be the same size");
+	if (NUM_TENTS < 4) {
+		throw std::invalid_argument("x1y1x2y2z2 should be an array with dims [n,5], n>=4");
 	}
 
 	double *ptr1 = (double *)buf1.ptr;
-	std::vector<double> x1y1;
-	x1y1.assign(ptr1, ptr1 + buf1.size);
-
-	double *ptr1a = (double *)buf1a.ptr;
-	std::vector<double> x2y2z2;
-	x2y2z2.assign(ptr1a, ptr1a + buf1a.size);
+	std::vector<double> x1y1x2y2z2;
+	x1y1x2y2z2.assign(ptr1, ptr1 + buf1.size);
 
     std::vector<double> probabilities;
     if (sampler == 3 || sampler == 4)
@@ -149,8 +136,7 @@ py::tuple find6DPose(
 	std::vector<bool> inliers(NUM_TENTS);
 
 	int num_inl = find6DPose_(
-		x1y1,
-		x2y2z2,
+		x1y1x2y2z2,
 		probabilities,
 		inliers,
 		pose,
@@ -158,11 +144,13 @@ py::tuple find6DPose(
 		threshold,
 		conf,
 		max_iters,
+		min_iters,
 		use_sprt,
 		min_inlier_ratio_for_sprt,
 		sampler,
 		neighborhood,
-		neighborhood_size);
+		neighborhood_size,
+		sampler_variance);
 
 	py::array_t<bool> inliers_ = py::array_t<bool>(NUM_TENTS);
 	py::buffer_info buf3 = inliers_.request();
@@ -794,18 +782,19 @@ PYBIND11_PLUGIN(pygcransac) {
 		py::arg("neighborhood_size") = 20.0);
 
 	m.def("find6DPose", &find6DPose, R"doc(some doc)doc",
-		py::arg("x1y1"),
-		py::arg("x2y2z2"),
+        py::arg("correspondences"),
         py::arg("probabilities"),
 		py::arg("threshold") = 0.001,
 		py::arg("conf") = 0.99,
 		py::arg("spatial_coherence_weight") = 0.975,
 		py::arg("max_iters") = 10000,
+		py::arg("min_iters") = 50,
 		py::arg("use_sprt") = true,
 		py::arg("min_inlier_ratio_for_sprt") = 0.1,
 		py::arg("sampler") = 1,
 		py::arg("neighborhood") = 0,
-		py::arg("neighborhood_size") = 8.0);
+		py::arg("neighborhood_size") = 8.0,
+		py::arg("sampler_variance") = 0.1);
 
     m.def("findEssentialMatrix", &findEssentialMatrix, R"doc(some doc)doc",
         py::arg("correspondences"),
