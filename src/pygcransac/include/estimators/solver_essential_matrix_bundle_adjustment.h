@@ -130,26 +130,12 @@ namespace gcransac
 				std::vector<Model> temp_models;
 				if (models_.size() == 0)
 				{
-					// If we are given enough points use the eight-point solver since that is fast and accurate enough for initializing the BA.
-					if (sample_number_ >= 8)
-					{
-						estimator::solver::FundamentalMatrixEightPointSolver eight_point_solver;
-						eight_point_solver.estimateModel(data_, // All point correspondences
-							sample_, // The sample, i.e., indices of points to be used
-							sample_number_, // The size of the sample
-							temp_models, // The estimated model parameters
-							weights_); // The weights used for the estimation
-					}
-					// Otherwise, use the five-point solver.
-					else
-					{
-						estimator::solver::EssentialMatrixFivePointSteweniusSolver five_point_solver;
-						five_point_solver.estimateModel(data_, // All point correspondences
-							sample_, // The sample, i.e., indices of points to be used
-							sample_number_, // The size of the sample
-							temp_models, // The estimated model parameters
-							weights_); // The weights used for the estimation
-					}
+					estimator::solver::EssentialMatrixFivePointSteweniusSolver five_point_solver;
+					five_point_solver.estimateModel(data_, // All point correspondences
+						sample_, // The sample, i.e., indices of points to be used
+						sample_number_, // The size of the sample
+						temp_models, // The estimated model parameters
+						weights_); // The weights used for the estimation
 				}
 				else
 					temp_models = models_;
@@ -159,6 +145,8 @@ namespace gcransac
 				Eigen::Vector3d pt1, pt2;
 				pt1 << data_.at<double>(point_idx, 0), data_.at<double>(point_idx, 1), 1;
 				pt2 << data_.at<double>(point_idx, 2), data_.at<double>(point_idx, 3), 1;
+				pt1.normalize();
+				pt2.normalize();
 
 				// Iterating through the possible models.
 				// This is 1 if the eight-point solver is used.
