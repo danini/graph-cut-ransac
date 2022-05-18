@@ -20,7 +20,9 @@ int findRigidTransform_(
 	// The RANSAC confidence. Typical values are 0.95, 0.99.
 	double conf, 
 	// Maximum iteration number. I do not suggest setting it to lower than 1000.
-	int max_iters, 
+	int max_iters,
+	// Minimum iteration number. I do not suggest setting it to lower than 50.
+	int min_iters,
 	// A flag to decide if SPRT should be used to speed up the model verification. 
 	// It is not suggested if the inlier ratio is expected to be very low - it will fail in that case.
 	// Otherwise, it leads to a significant speed-up. 
@@ -98,7 +100,9 @@ int find6DPose_(
 	// The RANSAC confidence. Typical values are 0.95, 0.99.
 	double conf, 
 	// Maximum iteration number. I do not suggest setting it to lower than 1000.
-	int max_iters, 
+	int max_iters,
+	// Minimum iteration number. I do not suggest setting it to lower than 50.
+	int min_iters,
 	// A flag to decide if SPRT should be used to speed up the model verification. 
 	// It is not suggested if the inlier ratio is expected to be very low - it will fail in that case.
 	// Otherwise, it leads to a significant speed-up. 
@@ -245,7 +249,9 @@ int findGravityEssentialMatrix_(
 	// The RANSAC confidence. Typical values are 0.95, 0.99.
 	double conf, 
 	// Maximum iteration number. I do not suggest setting it to lower than 1000.
-	int max_iters, 
+	int max_iters,
+	// Minimum iteration number. I do not suggest setting it to lower than 50.
+	int min_iters,
 	// A flag to decide if SPRT should be used to speed up the model verification. 
 	// It is not suggested if the inlier ratio is expected to be very low - it will fail in that case.
 	// Otherwise, it leads to a significant speed-up. 
@@ -292,7 +298,9 @@ int findPlanarEssentialMatrix_(
 	// The RANSAC confidence. Typical values are 0.95, 0.99.
 	double conf, 
 	// Maximum iteration number. I do not suggest setting it to lower than 1000.
-	int max_iters, 
+	int max_iters,
+	// Minimum iteration number. I do not suggest setting it to lower than 50.
+	int min_iters,
 	// A flag to decide if SPRT should be used to speed up the model verification. 
 	// It is not suggested if the inlier ratio is expected to be very low - it will fail in that case.
 	// Otherwise, it leads to a significant speed-up. 
@@ -335,7 +343,9 @@ int findHomography_(
 	// The RANSAC confidence. Typical values are 0.95, 0.99.
 	double conf, 
 	// Maximum iteration number. I do not suggest setting it to lower than 1000.
-	int max_iters, 
+	int max_iters,
+	// Minimum iteration number. I do not suggest setting it to lower than 50.
+	int min_iters,
 	// A flag to decide if SPRT should be used to speed up the model verification. 
 	// It is not suggested if the inlier ratio is expected to be very low - it will fail in that case.
 	// Otherwise, it leads to a significant speed-up. 

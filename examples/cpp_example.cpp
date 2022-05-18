@@ -66,7 +66,7 @@ void testEssentialMatrixFitting(
 	const double spatial_coherence_weight_, // The weight of the spatial coherence term in the graph-cut energy minimization.
 	const size_t cell_number_in_neighborhood_graph_, // The radius of the neighborhood ball for determining the neighborhoods.
 	const int fps_, // The required FPS limit. If it is set to -1, the algorithm will not be interrupted before finishing.
-	const double minimum_inlier_ratio_for_sprt_ = 0.1); // An assumption about the minimum inlier ratio used for the SPRT test
+	const double minimum_inlier_ratio_for_sprt_ = 0.00001); // An assumption about the minimum inlier ratio used for the SPRT test
 
 // An example function showing how to fit fundamental matrix by Graph-Cut RANSAC
 void testFundamentalMatrixFitting(
@@ -80,7 +80,7 @@ void testFundamentalMatrixFitting(
 	const double spatial_coherence_weight_, // The weight of the spatial coherence term in the graph-cut energy minimization.
 	const size_t cell_number_in_neighborhood_graph_, // The radius of the neighborhood ball for determining the neighborhoods.
 	const int fps_, // The required FPS limit. If it is set to -1, the algorithm will not be interrupted before finishing.
-	const double minimum_inlier_ratio_for_sprt_ = 0.1); // An assumption about the minimum inlier ratio used for the SPRT test
+	const double minimum_inlier_ratio_for_sprt_ = 0.00001); // An assumption about the minimum inlier ratio used for the SPRT test
 
 // An example function showing how to fit homography by Graph-Cut RANSAC
 void testHomographyFitting(
@@ -94,7 +94,7 @@ void testHomographyFitting(
 	const double spatial_coherence_weight_, // The weight of the spatial coherence term in the graph-cut energy minimization.
 	const size_t cell_number_in_neighborhood_graph_, // The radius of the neighborhood ball for determining the neighborhoods.
 	const int fps_, // The required FPS limit. If it is set to -1, the algorithm will not be interrupted before finishing.
-	const double minimum_inlier_ratio_for_sprt_ = 0.1); // An assumption about the minimum inlier ratio used for the SPRT test
+	const double minimum_inlier_ratio_for_sprt_ = 0.00001); // An assumption about the minimum inlier ratio used for the SPRT test
 
 // An example function showing how to fit 6D pose to 2D-3D correspondences by Graph-Cut RANSAC
 void test6DPoseFitting(
@@ -108,7 +108,7 @@ void test6DPoseFitting(
 	const double sphere_radius_, // The radius of the sphere used for determining the neighborhood-graph
 	const int fps_, // The required FPS limit. If it is set to -1, the algorithm will not be interrupted before finishing.
 	const bool numerical_optimization_ = true, // A flag to decide if numerical optimization should be applied as a post-processing step
-	const double minimum_inlier_ratio_for_sprt_ = 0.1); // An assumption about the minimum inlier ratio used for the SPRT test
+	const double minimum_inlier_ratio_for_sprt_ = 0.00001); // An assumption about the minimum inlier ratio used for the SPRT test
 
 // An example function showing how to fit calculate a rigid transformation from a set of 3D-3D correspondences by Graph-Cut RANSAC
 void testRigidTransformFitting(
@@ -119,7 +119,7 @@ void testRigidTransformFitting(
 	const double inlier_outlier_threshold_, // The used inlier-outlier threshold in GC-RANSAC.
 	const double spatial_coherence_weight_, // The weight of the spatial coherence term in the graph-cut energy minimization.
 	const double sphere_radius_,  // The radius of the sphere used for determining the neighborhood-graph
-	const double minimum_inlier_ratio_for_sprt_ = 0.1); // An assumption about the minimum inlier ratio used for the SPRT test
+	const double minimum_inlier_ratio_for_sprt_ = 0.00001); // An assumption about the minimum inlier ratio used for the SPRT test
 
 // An example function showing how to fit calculate a 2D line to a set of 2D points by Graph-Cut RANSAC
 void test2DLineFitting(
@@ -128,7 +128,7 @@ void test2DLineFitting(
 	const double inlier_outlier_threshold_, // The used inlier-outlier threshold in GC-RANSAC.
 	const double spatial_coherence_weight_, // The weight of the spatial coherence term in the graph-cut energy minimization.
 	const double sphere_radius_,  // The radius of the sphere used for determining the neighborhood-graph
-	const double minimum_inlier_ratio_for_sprt_ = 0.1); // An assumption about the minimum inlier ratio used for the SPRT test
+	const double minimum_inlier_ratio_for_sprt_ = 0.00001); // An assumption about the minimum inlier ratio used for the SPRT test
 
 std::vector<std::string> getAvailableTestScenes(Problem problem_);
 
