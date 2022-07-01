@@ -55,7 +55,7 @@ namespace gcransac
 		// This is the estimator class for estimating a homography matrix between two images. A model estimation method and error calculation method are implemented
 		template<class _MinimalSolverEngine,  // The solver used for estimating the model from a minimal sample
 			class _NonMinimalSolverEngine> // The solver used for estimating the model from a non-minimal sample
-			class RobustHomographyEstimator : public Estimator < cv::Mat, Model >
+			class RobustHomographyAffineCorrespondenceEstimator : public Estimator < cv::Mat, Model >
 		{
 		protected:
 			// Minimal solver engine used for estimating a model from a minimal sample
@@ -65,11 +65,11 @@ namespace gcransac
 			const std::shared_ptr<_NonMinimalSolverEngine> non_minimal_solver;
 
 		public:
-			RobustHomographyEstimator() :
+			RobustHomographyAffineCorrespondenceEstimator() :
 				minimal_solver(std::make_shared<_MinimalSolverEngine>()), // Minimal solver engine used for estimating a model from a minimal sample
 				non_minimal_solver(std::make_shared<_NonMinimalSolverEngine>()) // Non-minimal solver engine used for estimating a model from a bigger than minimal sample
 			{}
-			~RobustHomographyEstimator() {}
+			~RobustHomographyAffineCorrespondenceEstimator() {}
 
 			// Return the minimal solver
 			const _MinimalSolverEngine *getMinimalSolver() const
@@ -347,19 +347,40 @@ namespace gcransac
 				const cv::Mat& data_, // All data points
 				const size_t *sample_) const // The indices of the selected points
 			{
-				if constexpr (sampleSize() < 4)
-					return true;
-
 				// The size of a minimal sample
-				constexpr size_t sample_size = sampleSize();
+				constexpr size_t kSampleSize = sampleSize();
+				double *a, *b;
+
+				a = reinterpret_cast<double *>(data_.row(sample_[0]).data);
+				b = reinterpret_cast<double *>(data_.row(sample_[1]).data);
+
+				// Transform imagined points by the affine matrix
+				double c[4];
+				double d[4];
+
+				Eigen::Vector2d pt11, pt12, pt21, pt22;
+				pt11 << 1, 0;
+				pt21 << 0, 1;
+
+				Eigen::Matrix2d A;
+				A << a[4], a[5],
+					a[6], a[7];
+
+				pt12 = A * pt11;
+				pt22 = A * pt21;
+
+				c[0] = 1;
+				c[1] = 0;
+				c[2] = pt12(0);
+				c[3] = pt12(1);
+
+				d[0] = 1;
+				d[1] = 0;
+				d[2] = pt22(0);
+				d[3] = pt22(1);
 
 				// Check oriented constraints
 				Eigen::Vector3d p, q;
-
-				const double *a = reinterpret_cast<const double *>(data_.row(sample_[0]).data),
-					*b = reinterpret_cast<const double *>(data_.row(sample_[1]).data),
-					*c = reinterpret_cast<const double *>(data_.row(sample_[2]).data),
-					*d = reinterpret_cast<const double *>(data_.row(sample_[3]).data);
 
 				cross_product(p, a, b, 1);
 				cross_product(q, a + 2, b + 2, 1);
@@ -376,7 +397,6 @@ namespace gcransac
 					return false;
 				if ((p[0] * b[0] + p[1] * b[1] + p[2])*(q[0] * b[2] + q[1] * b[3] + q[2]) < 0)
 					return false;
-
 				return true;
 			}
 		};

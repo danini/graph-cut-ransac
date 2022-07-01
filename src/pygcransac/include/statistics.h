@@ -52,7 +52,8 @@ namespace gcransac
 			std::string main_sampler_name,
 				local_optimizer_sampler_name;
 
-			double processing_time;
+			double processing_time,
+				score;
 
 			std::vector<size_t> inliers;
 

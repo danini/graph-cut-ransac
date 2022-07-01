@@ -444,6 +444,9 @@ namespace gcransac
 				*(normalized_points_ptr++) = normalized_point_src(1);
 				*(normalized_points_ptr++) = normalized_point_dst(0);
 				*(normalized_points_ptr++) = normalized_point_dst(1);
+
+				for (size_t col = 4; col < points_.cols; ++col)
+					*(normalized_points_ptr++) = *(points_ptr++);
 			}
 		}
 

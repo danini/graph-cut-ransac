@@ -602,6 +602,7 @@ namespace gcransac
 
 		// Return the inlier set and the estimated model parameters
 		statistics.inliers.swap(temp_inner_inliers[inlier_container_offset]);
+		statistics.score = so_far_the_best_score.value;
 		obtained_model_ = so_far_the_best_model;
 
 		end = std::chrono::system_clock::now(); // The current time

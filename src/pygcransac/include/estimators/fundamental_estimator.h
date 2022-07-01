@@ -329,13 +329,14 @@ namespace gcransac
 					return false;
 
 				// Validate the model by checking if the scene is dominated by a single plane.
-				if (use_degensac)
-					return applyDegensac(model_,
-						data_,
-						inliers_,
-						minimal_sample_,
-						threshold_,
-						model_updated_);
+				if constexpr (sampleSize() >= 7)
+					if (use_degensac)
+						return applyDegensac(model_,
+							data_,
+							inliers_,
+							minimal_sample_,
+							threshold_,
+							model_updated_);
 
 				// If DEGENSAC is not applied and the model passed the previous tests,
 				// assume that it is a valid model.
