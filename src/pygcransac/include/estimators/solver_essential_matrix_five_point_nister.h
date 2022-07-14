@@ -329,47 +329,19 @@ namespace gcransac
 					nullSpace = lu.kernel().transpose();
 				}
 				else {
+					// A*(f11 f12 ... f33)' = 0 is singular (7 equations for 9 variables), so
+					// the solution is linear subspace of dimensionality 2.
+					// => use the last two singular std::vectors as a basis of the space
+					// (according to SVD properties)
+					Eigen::JacobiSVD<Eigen::MatrixXd> svd(
+						// Theoretically, it would be faster to apply SVD only to matrix coefficients, but
+						// multiplication is faster than SVD in the Eigen library. Therefore, it is faster
+						// to apply SVD to a smaller matrix.
+						coefficients,
+						Eigen::ComputeFullV);
 
-					const Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigensolver(
-						coefficients.transpose() * coefficients);
-					const Eigen::ArrayXd &singularVals = eigensolver.eigenvalues().real();
-
-					double smallestValues[3];
-					smallestValues[0] = 
-						smallestValues[1] = 
-						smallestValues[2] = 
-						1e10;
-					size_t smallestIndices[3];
-
-					for (size_t rowIdx = 0; rowIdx < singularVals.size(); ++rowIdx)
-					{
-						if (singularVals[rowIdx] < smallestValues[0])
-						{
-							smallestValues[2] = smallestValues[1];
-							smallestValues[1] = smallestValues[0];
-							smallestValues[0] = singularVals[rowIdx];
-							
-							smallestIndices[2] = smallestIndices[1];
-							smallestIndices[1] = smallestIndices[0];
-							smallestIndices[0] = rowIdx;
-						} else if (singularVals[rowIdx] < smallestValues[1])
-						{
-							smallestValues[2] = smallestValues[1];
-							smallestValues[1] = singularVals[rowIdx];
-							
-							smallestIndices[2] = smallestIndices[1];
-							smallestIndices[1] = rowIdx;
-						} else if (singularVals[rowIdx] < smallestValues[2])
-						{
-							smallestValues[2] = singularVals[rowIdx];							
-							smallestIndices[2] = rowIdx;
-						}
-					}
-
-					nullSpace << 
-						eigensolver.eigenvectors().col(smallestIndices[0]).transpose(),
-						eigensolver.eigenvectors().col(smallestIndices[1]).transpose(),
-						eigensolver.eigenvectors().col(smallestIndices[2]).transpose();
+					// The null-space of the problem
+					nullSpace =	svd.matrixV().rightCols<4>().transpose();
 				}
 
 				// Compute equation coefficients for the trace constraints + determinant
