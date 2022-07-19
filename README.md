@@ -86,12 +86,18 @@ An example comparing different samplers on fundamental matrix fitting: [notebook
 # Jupyter Notebook example (Affine and SIFT correspondence-based solvers)
 
 The example for homography fitting to SIFT correspondences is available at: [notebook](examples/example_homography_sift_correspondence.ipynb).
+
 The example for essential matrix fitting to SIFT correspondences is available at: [notebook](examples/example_essential_matrix_sift_correspondence.ipynb).
+
 The example for fundamental matrix fitting to SIFT correspondences is available at: [notebook](examples/example_fundamental_matrix_sift_correspondence.ipynb).
 
+
 The example for homography fitting to affine correspondences is available at: [notebook](examples/example_homography_affine_correspondence.ipynb).
+
 The example for essential matrix fitting to affine correspondences is available at: [notebook](examples/example_essential_matrix_affine_correspondence.ipynb).
+
 The example for fundamental matrix fitting to affine correspondences is available at: [notebook](examples/example_fundamental_matrix_affine_correspondence.ipynb).
+
 
 
 # Requirements
