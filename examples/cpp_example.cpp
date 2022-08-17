@@ -1,9 +1,14 @@
 #include <vector>	
+#include <map>
 #include <thread>
-#include "utils.h"
+#include <queue>
 #include <opencv2/core.hpp>
+#include <opencv2/hdf.hpp>
 #include <opencv2/calib3d.hpp>
 #include <Eigen/Eigen>
+#include "utils.h"
+#include "pose_utils.h"
+#include "data_utils.h"
 
 #include "GCRANSAC.h"
 
@@ -11,6 +16,7 @@
 #include "neighborhood/grid_neighborhood_graph.h"
 
 #include "samplers/uniform_sampler.h"
+#include "samplers/single_point_sampler.h"
 #include "samplers/prosac_sampler.h"
 #include "samplers/napsac_sampler.h"
 #include "samplers/progressive_napsac_sampler.h"
@@ -31,7 +37,10 @@
 #include "estimators/solver_homography_four_point.h"
 #include "estimators/solver_essential_matrix_five_point_stewenius.h"
 #include "estimators/solver_p3p.h"
+#include "estimators/solver_acp1p.h"
+#include "estimators/solver_acp1p_cayley.h"
 #include "estimators/solver_dls_pnp.h"
+#include "estimators/solver_epnp_lm.h"
 
 #include <ctime>
 #include <sys/types.h>
@@ -41,1360 +50,566 @@
 #include <direct.h>
 #endif 
 
-struct stat info;
+void loadOrientedPoints(
+	const std::string &kPath_,
+	std::vector<double> &values_);
 
-enum Problem {
-	LineFitting,
-	PerspectiveNPointFitting,
-	FundamentalMatrixFitting,
-	EssentialMatrixFitting,
-	HomographyFitting,
-	RigidTransformationFitting
-};
+void loadImagePairs(
+	const std::string &kPath_,
+	std::vector<std::pair<std::string, std::string>> &imagePairs_);
 
-// An example function showing how to fit essential matrix by Graph-Cut RANSAC
-void testEssentialMatrixFitting(
-	const std::string& source_path_, // The source image's path
-	const std::string& destination_path_, // The destination image's path
-	const std::string& source_intrinsics_path_, // Path where the intrinsics camera matrix of the source image is
-	const std::string& destination_intrinsics_path_, // Path where the intrinsics camera matrix of the destination image is
-	const std::string& out_correspondence_path_, // The path where the detected correspondences (before the robust estimation) will be saved (or loaded from if exists)
-	const std::string& in_correspondence_path_, // The path where the inliers of the estimated fundamental matrices will be saved
-	const std::string& output_match_image_path_, // The path where the matched image pair will be saved
-	const double confidence_, // The RANSAC confidence value
-	const double inlier_outlier_threshold_, // The used inlier-outlier threshold in GC-RANSAC.
-	const double spatial_coherence_weight_, // The weight of the spatial coherence term in the graph-cut energy minimization.
-	const size_t cell_number_in_neighborhood_graph_, // The radius of the neighborhood ball for determining the neighborhoods.
-	const int fps_, // The required FPS limit. If it is set to -1, the algorithm will not be interrupted before finishing.
-	const double minimum_inlier_ratio_for_sprt_ = 0.00001); // An assumption about the minimum inlier ratio used for the SPRT test
+template <size_t _HeaderLines>
+void loadPoses(
+	const std::string &kPath_,
+	std::map<std::string, CameraPose> &poses_);
 
-// An example function showing how to fit fundamental matrix by Graph-Cut RANSAC
-void testFundamentalMatrixFitting(
-	const std::string& source_path_, // The source image's path
-	const std::string& destination_path_, // The destination image's path
-	const std::string& out_correspondence_path_, // The path where the detected correspondences (before the robust estimation) will be saved (or loaded from if exists)
-	const std::string& in_correspondence_path_, // The path where the inliers of the estimated fundamental matrices will be saved
-	const std::string& output_match_image_path_, // The path where the matched image pair will be saved
-	const double confidence_, // The RANSAC confidence value
-	const double inlier_outlier_threshold_, // The used inlier-outlier threshold in GC-RANSAC.
-	const double spatial_coherence_weight_, // The weight of the spatial coherence term in the graph-cut energy minimization.
-	const size_t cell_number_in_neighborhood_graph_, // The radius of the neighborhood ball for determining the neighborhoods.
-	const int fps_, // The required FPS limit. If it is set to -1, the algorithm will not be interrupted before finishing.
-	const double minimum_inlier_ratio_for_sprt_ = 0.00001); // An assumption about the minimum inlier ratio used for the SPRT test
+void loadCalibrations(
+	const std::string &kPath_,
+	std::map<std::string, CameraIntrinsics> &calibrations_);
 
-// An example function showing how to fit homography by Graph-Cut RANSAC
-void testHomographyFitting(
-	const std::string& source_path_, // The source image's path
-	const std::string& destination_path_, // The destination image's path
-	const std::string& out_correspondence_path_, // The path where the detected correspondences (before the robust estimation) will be saved (or loaded from if exists)
-	const std::string& in_correspondence_path_, // The path where the inliers of the estimated fundamental matrices will be saved
-	const std::string& output_match_image_path_, // The path where the matched image pair will be saved
-	const double confidence_, // The RANSAC confidence value
-	const double inlier_outlier_threshold_, // The used inlier-outlier threshold in GC-RANSAC.
-	const double spatial_coherence_weight_, // The weight of the spatial coherence term in the graph-cut energy minimization.
-	const size_t cell_number_in_neighborhood_graph_, // The radius of the neighborhood ball for determining the neighborhoods.
-	const int fps_, // The required FPS limit. If it is set to -1, the algorithm will not be interrupted before finishing.
-	const double minimum_inlier_ratio_for_sprt_ = 0.00001); // An assumption about the minimum inlier ratio used for the SPRT test
+void processPair(
+	const std::string &kScene_,
+	const std::string &kDatasetPath_,
+	const std::string &k3DDatabasePath_,
+	const std::string &kCorrespondencePath_,
+	const std::string &kSourceImageName_,
+	const std::string &kDestinationImageName_,
+	const CameraPose &kSourcePose_,
+	const CameraPose &kDestinationPose_,
+	const CameraIntrinsics &kSourceIntrinsics_,
+	const CameraIntrinsics &kDestinationIntrinsics_,
+	const cv::Mat &kPoint3d_,
+	const double &kSNNThreshold_,
+	const double &kInlierOutlierThreshold_,
+	const double &kNormalAreaSize_,
+	const double &kPointAssignmentThreshold_);
 
-// An example function showing how to fit 6D pose to 2D-3D correspondences by Graph-Cut RANSAC
-void test6DPoseFitting(
-	const std::string& intrinsics_path_, // The path where the intrinsic camera matrix can be found
-	const std::string& ground_truth_pose_path_, // The path where the ground truth pose can be found
-	const std::string& points_path_, // The path of the points 
-	const std::string& inliers_point_path_, // The path where the inlier correspondences are saved
-	const double confidence_, // The RANSAC confidence value
-	const double inlier_outlier_threshold_, // The used inlier-outlier threshold in GC-RANSAC.
-	const double spatial_coherence_weight_, // The weight of the spatial coherence term in the graph-cut energy minimization.
-	const double sphere_radius_, // The radius of the sphere used for determining the neighborhood-graph
-	const int fps_, // The required FPS limit. If it is set to -1, the algorithm will not be interrupted before finishing.
-	const bool numerical_optimization_ = true, // A flag to decide if numerical optimization should be applied as a post-processing step
-	const double minimum_inlier_ratio_for_sprt_ = 0.00001); // An assumption about the minimum inlier ratio used for the SPRT test
+template <size_t _Method>
+void selectOrientedPoints(
+	const std::string &kSourceImageName_,
+	const std::string &kDestinationImageName_,
+	const std::string &kDatabaseName_,
+	const double &kSNNThreshold_,
+	const cv::Mat &kCorrespondences_,
+	const CameraPose &kSourcePose_,
+	const CameraPose &kDestinationPose_,
+	const CameraIntrinsics &kSourceIntrinsics_,
+	const CameraIntrinsics &kDestinationIntrinsics_,
+	const cv::Mat &kPoints3d_,
+	const double &kThreshold_,
+	std::vector<int> &assignment);
+	
+template<typename _MinimalSolver>
+void relativePoseEstimation(
+	const cv::Mat &kCorrespondences_,
+	const cv::Mat &kNormalizedCorrespondences_,
+	const CameraPose &kSourcePose_,
+	const CameraPose &kDestinationPose_,
+	const Eigen::Matrix3d &kIntrinsicsSource_,
+	const Eigen::Matrix3d &kIntrinsicsDestination_,
+	const double &kSNNThreshold_,
+	const double &kInlierOutlierThreshold_);
 
-// An example function showing how to fit calculate a rigid transformation from a set of 3D-3D correspondences by Graph-Cut RANSAC
-void testRigidTransformFitting(
-	const std::string& ground_truth_pose_path_, // The path where the ground truth pose can be found
-	const std::string& points_path_, // The path of the points 
-	const std::string& inliers_point_path_, // The path where the inlier correspondences are saved
-	const double confidence_, // The RANSAC confidence value
-	const double inlier_outlier_threshold_, // The used inlier-outlier threshold in GC-RANSAC.
-	const double spatial_coherence_weight_, // The weight of the spatial coherence term in the graph-cut energy minimization.
-	const double sphere_radius_,  // The radius of the sphere used for determining the neighborhood-graph
-	const double minimum_inlier_ratio_for_sprt_ = 0.00001); // An assumption about the minimum inlier ratio used for the SPRT test
-
-// An example function showing how to fit calculate a 2D line to a set of 2D points by Graph-Cut RANSAC
-void test2DLineFitting(
-	const std::string& image_path_, // The path where the ground truth pose can be found
-	const double confidence_, // The RANSAC confidence value
-	const double inlier_outlier_threshold_, // The used inlier-outlier threshold in GC-RANSAC.
-	const double spatial_coherence_weight_, // The weight of the spatial coherence term in the graph-cut energy minimization.
-	const double sphere_radius_,  // The radius of the sphere used for determining the neighborhood-graph
-	const double minimum_inlier_ratio_for_sprt_ = 0.00001); // An assumption about the minimum inlier ratio used for the SPRT test
-
-std::vector<std::string> getAvailableTestScenes(Problem problem_);
-
-// Setting the paths for the data used in homography and fundamental matrix fitting
-bool initializeScene(
-	const std::string& scene_name_, // The name of the scene
-	std::string& src_image_path_, // The path to the source image
-	std::string& dst_image_path_, // The path to the destination image
-	std::string& input_correspondence_path_, // The path to the correspondences
-	std::string& output_correspondence_path_, // The path where the found inliers should be saved
-	std::string& output_matched_image_path_, // The path where the matched image should be saved,
-	const std::string root_directory_ = ""); // The root directory where the "results" and "data" folder are
-
-// Setting the paths for the data used in essential matrix fitting
-bool initializeScene(
-	const std::string& scene_name_, // The name of the scene
-	std::string& src_image_path_, // The path to the source image
-	std::string& dst_image_path_, // The path to the destination image
-	std::string& src_intrinsics_path_, // The path where the intrinsic parameters of the source camera can be found
-	std::string& dst_intrinsics_path_, // The path where the intrinsic parameters of the destination camera can be found
-	std::string& input_correspondence_path_, // The path to the correspondences
-	std::string& output_correspondence_path_, // The path where the found inliers should be saved
-	std::string& output_matched_image_path_, // The path where the matched image should be saved
-	const std::string root_directory_ = ""); // The root directory where the "results" and "data" folder are
-
-// Setting the paths for the data used in 6D pose fitting
-bool initializeScenePnP(
-	const std::string& scene_name_, // The name of the scene
-	std::string& intrinsics_path_, // The path where the intrinsic parameters of the camera can be found
-	std::string& ground_truth_pose_path_, // The path of the ground truth pose used for evaluating the results
-	std::string& points_path_, // The path where the 2D-3D correspondences can be found
-	std::string& inlier_points_path_, // The path where the inlier correspondences should be saved
-	const std::string root_directory_ = ""); // The root directory where the "results" and "data" folder are
-
-// Setting the paths for the data used in rigid transformation fitting
-bool initializeSceneRigidPose(
-	const std::string& scene_name_, // The name of the scene
-	std::string& ground_truth_pose_path_, // The path of the ground truth pose used for evaluating the results
-	std::string& points_path_, // The path where the 2D-3D correspondences can be found
-	std::string& inlier_points_path_, // The path where the inlier correspondences should be saved
-	const std::string root_directory_ = ""); // The root directory where the "results" and "data" folder are
+template<typename _MinimalSolver>
+void absolutePoseEstimation(
+	const std::string &kScene_,
+	const cv::Mat &kCorrespondences_,
+	const cv::Mat &kNormalizedCorrespondences_,
+	const cv::Mat &kPoint3d_,
+	const std::vector<int> &assignment2D3D_,
+	const CameraPose &kSourcePose_,
+	const CameraPose &kDestinationPose_,
+	const Eigen::Matrix3d &kIntrinsicsSource_,
+	const Eigen::Matrix3d &kIntrinsicsDestination_,
+	const double &kSNNThreshold_,
+	const double &kInlierOutlierThreshold_,
+	const size_t &kNormalAreaSize_,
+	const size_t &kSpatialWeight_,
+	const bool kNormalDirection_);
 
 using namespace gcransac;
+
+std::mutex savingMutex;
+const size_t kCoreNumber = 10;
 
 int main(int argc, const char* argv[])
 {
 	srand(static_cast<int>(time(NULL)));
 
-	const std::string data_directory = "";
-	const double confidence = 0.99; // The RANSAC confidence value
-	const int fps = -1; // The required FPS limit. If it is set to -1, the algorithm will not be interrupted before finishing.
-	const double inlier_outlier_threshold_essential_matrix = 3.00; // The used inlier-outlier threshold in GC-RANSAC for essential matrix estimation.
-	const double inlier_outlier_threshold_fundamental_matrix = 0.0003; // The used adaptive (i.e., it is the percentage of the maximum image diagonal) inlier-outlier threshold in GC-RANSAC for fundamental matrix estimation.
-	const double inlier_outlier_threshold_rigid_pose = 10.0; // The used adaptive (i.e., it is the percentage of the maximum image diagonal) inlier-outlier threshold in GC-RANSAC for fundamental matrix estimation.
-	const double inlier_outlier_threshold_2d_line = 2.0; // The used adaptive (i.e., it is the percentage of the maximum image diagonal) inlier-outlier threshold in GC-RANSAC for fundamental matrix estimation.
-	const double inlier_outlier_threshold_homography = 2.00; // The used inlier-outlier threshold in GC-RANSAC for homography estimation.
-	const double inlier_outlier_threshold_pnp = 5.50; // The used inlier-outlier threshold in GC-RANSAC for homography estimation.
-	const double spatial_coherence_weight = 0.975; // The weigd_t of the spatial coherence term in the graph-cut energy minimization.
-	const size_t cell_number_in_neighborhood_graph = 4; // The number of cells along each axis in the neighborhood graph.
+	// Parameters
+	constexpr size_t kFeatureNumber = 8000,
+		kNormalAreaSize = 100,
+		kCoreNumber = 18;
 
-	printf("------------------------------------------------------------\n2D line fitting\n------------------------------------------------------------\n");
-	for (const std::string& scene : getAvailableTestScenes(Problem::LineFitting))
+	constexpr double kSNNThreshold = 0.85,	
+		kPointAssignmentThreshold = 0.5,
+		kInlierOutlierThreshold = 1.5;
+
+	const std::vector<std::string> scenes = 
+		{ "StMarysChurch", "OldHospital", "KingsCollege", "ShopFacade" }; 
+
+	for (const auto &scene : scenes)
 	{
-		printf("Processed scene = '%s'\n", scene.c_str());
-		// The path of the image which will be used for the example line fitting
-		std::string image_path = data_directory + "data/" + scene + "/" + scene + "1.png";
+		for (size_t kNormalAreaSize : { 200 })
+		{
+			const std::string datasetPath = "/media/hdd3tb/datasets/absolute_pose/" + scene + "/",
+				filenamePoints = "points3D_" + std::to_string(kNormalAreaSize) + ".txt",
+				filenameCalibrations = "model_train/calibrations.txt",
+				filenamePairs = scene + "_top20.txt",
+				filename3DAssignment = "point3d_assignments_8000_upright.h5",
+				filenameCorrs = scene + "_ACs8000_upright.h5";
+			std::vector<std::string> filenamesPose = { scene + "/dataset_train.txt", 
+				scene + "/dataset_test.txt" }; 
 
-		// Estimating a 2D line by the Graph-Cut RANSAC algorithm
-		test2DLineFitting(
-			image_path, // The path where the inlier points should be saved
-			confidence, // The RANSAC confidence value
-			inlier_outlier_threshold_2d_line, // The used inlier-outlier threshold in GC-RANSAC.
-			0.8, // The weight of the spatial coherence term in the graph-cut energy minimization.
-			20.0, // The radius of the neighborhood ball for determining the neighborhoods.
-			0.001); // Minimum inlier ratio of an unknown model.
+			// Load the 3D point cloud
+			printf("Loading 3D oriented point cloud...\n");
+			constexpr size_t kOrientedPointDimensions = 2 * 3;
+			std::vector<double> point3DData;
+			loadOrientedPoints(datasetPath + filenamePoints,
+				point3DData);
+			const size_t k3DPointNumber = point3DData.size() / kOrientedPointDimensions;
+			cv::Mat points3d(k3DPointNumber, 
+				kOrientedPointDimensions, 
+				CV_64F, 
+				&point3DData[0]);
+
+			// Load the image pairs to be tested
+			printf("Loading image pairs...\n");
+			std::vector<std::pair<std::string, std::string>> imagePairs;
+			loadImagePairs(datasetPath + filenamePairs,
+				imagePairs);
+
+			std::queue<size_t> processingQueue;
+			for (size_t pairIdx = 0; pairIdx < imagePairs.size(); ++pairIdx)
+				processingQueue.emplace(pairIdx);
+			std::mutex queueMutex;
+
+			// Load the calibration matrices
+			printf("Loading calibrations...\n");
+			std::map<std::string, CameraIntrinsics> calibrations;
+			loadCalibrations(datasetPath + filenameCalibrations,
+				calibrations);
+
+			// Load the camera poses
+			printf("Loading camera poses...\n");
+			std::map<std::string, CameraPose> poses;
+			for (const auto &filename : filenamesPose)
+				loadPoses<3>(
+					datasetPath + filename,
+					poses);
+
+			printf("Processing image pairs...\n");
+#pragma omp parallel for num_threads(kCoreNumber)
+			for (int coreIdx = 0; coreIdx < kCoreNumber; ++coreIdx)
+			//for (int imagePairIdx = 0; imagePairIdx < imagePairs.size(); ++imagePairIdx)
+			//for (const auto &[sourceImageName, destinationImageName] : imagePairs)
+			{
+				while (!processingQueue.empty())
+				{
+					queueMutex.lock();
+					if (processingQueue.empty())
+						break;
+					size_t imagePairIdx = processingQueue.front();
+					processingQueue.pop();
+					queueMutex.unlock();
+
+					const auto &[sourceImageName, destinationImageName] = imagePairs[imagePairIdx];
+
+					if (poses.find(sourceImageName) == std::end(poses))
+					{
+						fprintf(stderr, "The pose of image '%s' is unknown.\n", sourceImageName.c_str());	
+						continue;
+					} 
+					
+					if (poses.find(destinationImageName) == std::end(poses))
+					{
+						fprintf(stderr, "The pose of image '%s' is unknown.\n", destinationImageName.c_str());	
+						continue;
+					} 
+					
+					if (calibrations.find(sourceImageName) == std::end(calibrations))
+					{
+						calibrations[sourceImageName] = 
+							CameraIntrinsics(1660, 960, 540);
+						//fprintf(stderr, "The intrinsic parameters of image '%s' is unknown.\n", sourceImageName.c_str());	
+						//continue;
+					} 
+					
+					if (calibrations.find(destinationImageName) == std::end(calibrations))
+					{
+						calibrations[destinationImageName] = 
+							CameraIntrinsics(1660, 960, 540);
+						//fprintf(stderr, "The intrinsic parameters of image '%s' is unknown.\n", destinationImageName.c_str());	
+						//continue;
+					}
+
+					for (double kSNNThreshold : { /*0.85, 0.90, 0.95,*/ 0.90, 0.95, 1.0 })
+						for (double kInlierOutlierThreshold : { 4.5 })
+							processPair(
+								scene,
+								datasetPath,
+								datasetPath + filename3DAssignment,
+								datasetPath + filenameCorrs,
+								sourceImageName,
+								destinationImageName,
+								poses[sourceImageName],
+								poses[destinationImageName],
+								calibrations[sourceImageName],
+								calibrations[destinationImageName],
+								points3d,
+								kSNNThreshold,
+								kInlierOutlierThreshold,
+								kNormalAreaSize,
+								kPointAssignmentThreshold);
+				}
+			}
+		}
 	}
-
-	printf("------------------------------------------------------------\nRigid transformation fitting to 3D-3D correspondences\n------------------------------------------------------------\n");
-	for (const std::string& scene : getAvailableTestScenes(Problem::RigidTransformationFitting))
-	{
-		printf("Processed scene = '%s'\n", scene.c_str());
-		std::string points_path, // Path of the image and world points
-			ground_truth_pose_path, // Path where the ground truth pose is found
-			inlier_points_path; // Path where the inlier points are saved
-
-		// Initializing the paths
-		initializeSceneRigidPose(scene,
-			ground_truth_pose_path,
-			points_path,
-			inlier_points_path,
-			data_directory);
-
-		// Estimating a rigid transformation by the Graph-Cut RANSAC algorithm
-		testRigidTransformFitting(
-			ground_truth_pose_path, // Path where the ground truth pose is found
-			points_path, // The path where the image and world points can be found
-			inlier_points_path, // The path where the inlier points should be saved
-			confidence, // The RANSAC confidence value
-			inlier_outlier_threshold_rigid_pose, // The used inlier-outlier threshold in GC-RANSAC.
-			spatial_coherence_weight, // The weight of the spatial coherence term in the graph-cut energy minimization.
-			20.0); // The radius of the neighborhood ball for determining the neighborhoods.
-	}
-
-	printf("------------------------------------------------------------\n6D pose fitting by the PnP algorithm\n------------------------------------------------------------\n");
-	for (const std::string& scene : getAvailableTestScenes(Problem::PerspectiveNPointFitting))
-	{
-		printf("Processed scene = '%s'\n", scene.c_str());
-		std::string points_path, // Path of the image and world points
-			intrinsics_path, // Path where the intrinsics camera matrix 
-			ground_truth_pose_path, // Path where the ground truth pose is found
-			inlier_points_path; // Path where the inlier points are saved
-
-		// Initializing the paths
-		initializeScenePnP(scene,
-			intrinsics_path,
-			ground_truth_pose_path,
-			points_path,
-			inlier_points_path,
-			data_directory);
-
-		// Estimating the fundamental matrix by the Graph-Cut RANSAC algorithm
-		test6DPoseFitting(
-			intrinsics_path, // The path where the intrinsic camera matrix can be found
-			ground_truth_pose_path, // Path where the ground truth pose is found
-			points_path, // The path where the image and world points can be found
-			inlier_points_path, // The path where the inlier points should be saved
-			confidence, // The RANSAC confidence value
-			inlier_outlier_threshold_pnp, // The used inlier-outlier threshold in GC-RANSAC.
-			spatial_coherence_weight, // The weight of the spatial coherence term in the graph-cut energy minimization.
-			20.0, // The radius of the neighborhood ball for determining the neighborhoods.
-			fps); // The required FPS limit. If it is set to -1, the algorithm will not be interrupted before finishing.
-		printf("\n------------------------------------------------------------\n");
-	}
-
-	printf("------------------------------------------------------------\nFundamental matrix fitting\n------------------------------------------------------------\n");
-	for (const std::string& scene : getAvailableTestScenes(Problem::FundamentalMatrixFitting))
-	{
-		printf("Processed scene = '%s'\n", scene.c_str());
-		std::string src_image_path, // Path of the source image
-			dst_image_path, // Path of the destination image
-			input_correspondence_path, // Path where the detected correspondences are saved
-			output_correspondence_path, // Path where the inlier correspondences are saved
-			output_matched_image_path; // Path where the matched image is saved
-
-		// Initializing the paths
-		initializeScene(scene,
-			src_image_path,
-			dst_image_path,
-			input_correspondence_path,
-			output_correspondence_path,
-			output_matched_image_path,
-			data_directory);
-
-		// Estimating the fundamental matrix by the Graph-Cut RANSAC algorithm
-		testFundamentalMatrixFitting(
-			src_image_path, // The source image's path
-			dst_image_path, // The destination image's path
-			input_correspondence_path, // The path where the detected correspondences (before the robust estimation) will be saved (or loaded from if exists)
-			output_correspondence_path, // The path where the inliers of the estimated fundamental matrices will be saved
-			output_matched_image_path, // The path where the matched image pair will be saved
-			confidence, // The RANSAC confidence value
-			inlier_outlier_threshold_fundamental_matrix, // The used inlier-outlier threshold in GC-RANSAC.
-			spatial_coherence_weight, // The weight of the spatial coherence term in the graph-cut energy minimization.
-			cell_number_in_neighborhood_graph, // The radius of the neighborhood ball for determining the neighborhoods.
-			fps); // The required FPS limit. If it is set to -1, the algorithm will not be interrupted before finishing.
-		printf("\n------------------------------------------------------------\n");
-	}
-
-	printf("------------------------------------------------------------\nEssential matrix fitting\n------------------------------------------------------------\n");
-	for (const std::string& scene : getAvailableTestScenes(Problem::EssentialMatrixFitting))
-	{
-		printf("Processed scene = '%s'\n", scene.c_str());
-		std::string src_image_path, // Path of the source image
-			dst_image_path, // Path of the destination image
-			input_correspondence_path, // Path where the detected correspondences are saved
-			output_correspondence_path, // Path where the inlier correspondences are saved
-			output_matched_image_path, // Path where the matched image is saved
-			src_intrinsics_path, // Path where the intrinsics camera matrix of the source image is
-			dst_intrinsics_path; // Path where the intrinsics camera matrix of the destination image is
-
-		// Initializing the paths
-		initializeScene(scene,
-			src_image_path,
-			dst_image_path,
-			src_intrinsics_path,
-			dst_intrinsics_path,
-			input_correspondence_path,
-			output_correspondence_path,
-			output_matched_image_path,
-			data_directory);
-
-		// Estimating the fundamental matrix by the Graph-Cut RANSAC algorithm
-		testEssentialMatrixFitting(
-			src_image_path, // The source image's path
-			dst_image_path, // The destination image's path
-			src_intrinsics_path, // Path where the intrinsics camera matrix of the source image is
-			dst_intrinsics_path, // Path where the intrinsics camera matrix of the destination image is
-			input_correspondence_path, // The path where the detected correspondences (before the robust estimation) will be saved (or loaded from if exists)
-			output_correspondence_path, // The path where the inliers of the estimated fundamental matrices will be saved
-			output_matched_image_path, // The path where the matched image pair will be saved
-			confidence, // The RANSAC confidence value
-			inlier_outlier_threshold_essential_matrix, // The used inlier-outlier threshold in GC-RANSAC.
-			spatial_coherence_weight, // The weight of the spatial coherence term in the graph-cut energy minimization.
-			cell_number_in_neighborhood_graph, // The radius of the neighborhood ball for determining the neighborhoods.
-			fps); // The required FPS limit. If it is set to -1, the algorithm will not be interrupted before finishing.
-		printf("\n------------------------------------------------------------\n");
-	}
-
-	printf("------------------------------------------------------------\nHomography fitting\n------------------------------------------------------------\n");
-	for (const std::string& scene : getAvailableTestScenes(Problem::HomographyFitting))
-	{
-		printf("Processed scene = '%s'\n", scene.c_str());
-		std::string src_image_path, // Path of the source image
-			dst_image_path, // Path of the destination image
-			input_correspondence_path, // Path where the detected correspondences are saved
-			output_correspondence_path, // Path where the inlier correspondences are saved
-			output_matched_image_path; // Path where the matched image is saved
-
-		// Initializing the paths
-		initializeScene(scene,
-			src_image_path,
-			dst_image_path,
-			input_correspondence_path,
-			output_correspondence_path,
-			output_matched_image_path,
-			data_directory);
-
-		// Estimating the fundamental matrix by the Graph-Cut RANSAC algorithm
-		testHomographyFitting(
-			src_image_path, // The source image's path
-			dst_image_path, // The destination image's path
-			input_correspondence_path, // The path where the detected correspondences (before the robust estimation) will be saved (or loaded from if exists)
-			output_correspondence_path, // The path where the inliers of the estimated fundamental matrices will be saved
-			output_matched_image_path, // The path where the matched image pair will be saved
-			confidence, // The RANSAC confidence value
-			inlier_outlier_threshold_homography, // The used inlier-outlier threshold in GC-RANSAC.
-			spatial_coherence_weight, // The weight of the spatial coherence term in the graph-cut energy minimization.
-			cell_number_in_neighborhood_graph, // The radius of the neighborhood ball for determining the neighborhoods.
-			fps); // The required FPS limit. If it is set to -1, the algorithm will not be interrupted before finishing.
-		printf("\n------------------------------------------------------------\n");
-	}
-
 	return 0;
 }
 
-std::vector<std::string> getAvailableTestScenes(Problem problem_)
+void processPair(
+	const std::string &kScene_,
+	const std::string &kDatasetPath_,
+	const std::string &k3DDatabasePath_,
+	const std::string &kCorrespondencePath_,
+	const std::string &kSourceImageName_,
+	const std::string &kDestinationImageName_,
+	const CameraPose &kSourcePose_,
+	const CameraPose &kDestinationPose_,
+	const CameraIntrinsics &kSourceIntrinsics_,
+	const CameraIntrinsics &kDestinationIntrinsics_,
+	const cv::Mat &kPoints3d_,
+	const double &kSNNThreshold_,
+	const double &kInlierOutlierThreshold_,
+	const double &kNormalAreaSize_,
+	const double &kPointAssignmentThreshold_)
 {
-	switch (problem_)
-	{
-	case Problem::PerspectiveNPointFitting:
-		return { "pose6dscene" };
-	case Problem::LineFitting:
-		return { "adam" };
-	case Problem::FundamentalMatrixFitting:
-		return { "head", "johnssona", "Kyoto" };
-	case Problem::HomographyFitting:
-		return { "graf", "Eiffel", "adam" };
-	case Problem::RigidTransformationFitting:
-		return { "kitchen" };
-	default:
-		return { "fountain" };
-	}
+	printf("Process pair '%s' and '%s'\n", 
+		kSourceImageName_.c_str(), 
+		kDestinationImageName_.c_str());
+
+	// Read affine correspondences from the database
+	cv::Mat correspondences;	
+	datareading::readData(kCorrespondencePath_,
+		kSourceImageName_ + "-" + kDestinationImageName_,
+		correspondences);
+	const size_t kPointNumber = correspondences.rows;
+
+	// Filter the correspondences by the SNN ratio
+	std::vector<size_t> filteredIndices;
+	filteredIndices.reserve(correspondences.rows);
+	for (size_t pointIdx = 0; pointIdx < correspondences.rows; ++pointIdx)
+		if (correspondences.at<double>(pointIdx, 8) < kSNNThreshold_)
+			filteredIndices.emplace_back(pointIdx);
+	cv::Mat filteredCorrespondences(filteredIndices.size(), correspondences.cols, correspondences.type());
+	for (size_t idx = 0; idx < filteredIndices.size(); ++idx)
+		correspondences.row(filteredIndices[idx]).copyTo(filteredCorrespondences.row(idx));
+
+
+	// Normalize the correspondences
+	cv::Mat normalizedCorrespondences(filteredCorrespondences.size(), filteredCorrespondences.type());	
+	gcransac::utils::normalizeCorrespondences(
+		filteredCorrespondences,
+		kSourceIntrinsics_.matrix(),
+		kDestinationIntrinsics_.matrix(),
+		normalizedCorrespondences);
+
+	// Calculate the threshold normalizer
+	const double kThresholdNormalizer = 
+		0.25 * (kSourceIntrinsics_.matrix()(0, 0) + kSourceIntrinsics_.matrix()(1, 1) + kDestinationIntrinsics_.matrix()(0, 0) + kDestinationIntrinsics_.matrix()(1, 1));
+		
+
+	// Select a 3D oriented point for each correspondence
+	std::vector<int> pointAssignment;
+	selectOrientedPoints<2>(
+		kSourceImageName_,
+		kDestinationImageName_,
+		k3DDatabasePath_,
+		kSNNThreshold_,
+		normalizedCorrespondences,
+		kSourcePose_,
+		kDestinationPose_,
+		kSourceIntrinsics_,
+		kDestinationIntrinsics_,
+		kPoints3d_,
+		kInlierOutlierThreshold_ / kThresholdNormalizer,
+		pointAssignment);
+
+	// Relative pose estimation from point correspondences
+	/*relativePoseEstimation<gcransac::estimator::solver::EssentialMatrixFivePointNisterSolver>(
+		filteredCorrespondences,
+		normalizedCorrespondences,
+		kSourcePose_,
+		kDestinationPose_,
+		kSourceIntrinsics_.matrix(),
+		kDestinationIntrinsics_.matrix(),
+		kSNNThreshold_,
+		kInlierOutlierThreshold_);
+
+	// Relative pose estimation from affine correspondences
+	relativePoseEstimation<gcransac::estimator::solver::EssentialMatrixTwoAffineSolver>(
+		filteredCorrespondences,
+		normalizedCorrespondences,
+		kSourcePose_,
+		kDestinationPose_,
+		kSourceIntrinsics_.matrix(),
+		kDestinationIntrinsics_.matrix(),
+		kSNNThreshold_,
+		kInlierOutlierThreshold_);*/
+
+	// Absolute pose by P3P
+	if (kSNNThreshold_ == 0.9)
+		absolutePoseEstimation<gcransac::estimator::solver::P3PSolver>(
+			kScene_,
+			filteredCorrespondences,
+			normalizedCorrespondences,
+			kPoints3d_,
+			pointAssignment, 
+			kSourcePose_,
+			kDestinationPose_,
+			kSourceIntrinsics_.matrix(),
+			kDestinationIntrinsics_.matrix(),
+			kSNNThreshold_,
+			kInlierOutlierThreshold_,
+			10,
+			0.0,
+			0);
+
+	// Absolute pose by affine correspondences
+	absolutePoseEstimation<gcransac::estimator::solver::ACP1PCayleySolver>(
+		kScene_,
+		filteredCorrespondences,
+		normalizedCorrespondences,
+		kPoints3d_,
+		pointAssignment, 
+		kSourcePose_,
+		kDestinationPose_,
+		kSourceIntrinsics_.matrix(),
+		kDestinationIntrinsics_.matrix(),
+		kSNNThreshold_,
+		kInlierOutlierThreshold_,
+		kNormalAreaSize_,
+		0.0,
+		0);
+
+	/*absolutePoseEstimation<gcransac::estimator::solver::ACP1PCayleySolver>(
+		kScene_,
+		filteredCorrespondences,
+		normalizedCorrespondences,
+		kPoints3d_,
+		pointAssignment, 
+		kSourcePose_,
+		kDestinationPose_,
+		kSourceIntrinsics_.matrix(),
+		kDestinationIntrinsics_.matrix(),
+		kSNNThreshold_,
+		kInlierOutlierThreshold_,
+		kNormalAreaSize_,
+		0.4,
+		0);*/
 }
 
-bool initializeSceneRigidPose(
-	const std::string& scene_name_,
-	std::string& ground_truth_pose_path_,
-	std::string& points_path_,
-	std::string& inlier_image_points_path_,
-	const std::string root_directory_)
+template<typename _MinimalSolver>
+void absolutePoseEstimation(
+	const std::string &kScene_,
+	const cv::Mat &kCorrespondences_,
+	const cv::Mat &kNormalizedCorrespondences_,
+	const cv::Mat &kPoint3d_,
+	const std::vector<int> &assignment2D3D_,
+	const CameraPose &kSourcePose_,
+	const CameraPose &kDestinationPose_,
+	const Eigen::Matrix3d &kIntrinsicsSource_,
+	const Eigen::Matrix3d &kIntrinsicsDestination_,
+	const double &kSNNThreshold_,
+	const double &kInlierOutlierThreshold_,
+	const size_t &kNormalAreaSize_,
+	const size_t &kSpatialWeight_,
+	const bool kNormalDirection_)
 {
-	// The directory to which the results will be saved
-	std::string results_dir = root_directory_ + "results";
-
-	// Create the task directory if it doesn't exist
-	if (stat(results_dir.c_str(), &info) != 0) // Check if exists
-	{
-#ifdef _WIN32 // Create a directory on Windows
-		if (_mkdir(results_dir.c_str()) != 0) // Create it, if not
-		{
-			fprintf(stderr, "Error while creating folder 'results'\n");
-			return false;
-		}
-#else // Create a directory on Linux
-		if (mkdir(results_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
-		{
-			fprintf(stderr, "Error while creating a new folder in 'results'\n");
-			return false;
-		}
-#endif
-	}
-
-	// The directory to which the results will be saved
-	std::string dir = root_directory_ + "results/" + scene_name_;
-
-	// Create the task directory if it doesn't exist
-	if (stat(dir.c_str(), &info) != 0) // Check if exists
-	{
-#ifdef _WIN32 // Create a directory on Windows
-		if (_mkdir(dir.c_str()) != 0) // Create it, if not
-		{
-			fprintf(stderr, "Error while creating a new folder in 'results'\n");
-			return false;
-		}
-#else // Create a directory on Linux
-		if (mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
-		{
-			fprintf(stderr, "Error while creating a new folder in 'results'\n");
-			return false;
-		}
-#endif
-	}
-
-	// The path where the ground truth pose can be found
-	ground_truth_pose_path_ =
-		root_directory_ + "data/" + scene_name_ + "/" + scene_name_ + "_gt.txt";
-	// The path where the 3D point cloud can be found
-	points_path_ =
-		root_directory_ + "data/" + scene_name_ + "/" + scene_name_ + "_points.txt";
-	// The path where the inliers of the estimated fundamental matrices will be saved
-	inlier_image_points_path_ =
-		root_directory_ + "results/" + scene_name_ + "/result_" + scene_name_ + ".txt";
-
-	return true;
-}
-
-bool initializeScenePnP(
-	const std::string& scene_name_,
-	std::string& intrinsics_path_,
-	std::string& ground_truth_pose_path_,
-	std::string& points_path_,
-	std::string& inlier_image_points_path_,
-	const std::string root_directory_) // The root directory where the "results" and "data" folder are
-{
-	// The directory to which the results will be saved
-	std::string results_dir = root_directory_ + "results";
-
-	// Create the task directory if it doesn't exist
-	if (stat(results_dir.c_str(), &info) != 0) // Check if exists
-	{
-#ifdef _WIN32 // Create a directory on Windows
-		if (_mkdir(results_dir.c_str()) != 0) // Create it, if not
-		{
-			fprintf(stderr, "Error while creating folder 'results'\n");
-			return false;
-		}
-#else // Create a directory on Linux
-		if (mkdir(results_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
-		{
-			fprintf(stderr, "Error while creating a new folder in 'results'\n");
-			return false;
-		}
-#endif
-	}
-
-	// The directory to which the results will be saved
-	std::string dir = root_directory_ + "results/" + scene_name_;
-
-	// Create the task directory if it doesn't exist
-	if (stat(dir.c_str(), &info) != 0) // Check if exists
-	{
-#ifdef _WIN32 // Create a directory on Windows
-		if (_mkdir(dir.c_str()) != 0) // Create it, if not
-		{
-			fprintf(stderr, "Error while creating a new folder in 'results'\n");
-			return false;
-		}
-#else // Create a directory on Linux
-		if (mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
-		{
-			fprintf(stderr, "Error while creating a new folder in 'results'\n");
-			return false;
-		}
-#endif
-	}
-
-	// The path where the intrinsics camera matrix of the source camera can be found
-	intrinsics_path_ =
-		root_directory_ + "data/" + scene_name_ + "/" + scene_name_ + ".K";
-	// The path where the ground truth pose can be found
-	ground_truth_pose_path_ =
-		root_directory_ + "data/" + scene_name_ + "/" + scene_name_ + "_gt.txt";
-	// The path where the 3D point cloud can be found
-	points_path_ =
-		root_directory_ + "data/" + scene_name_ + "/" + scene_name_ + "_points.txt";
-	// The path where the inliers of the estimated fundamental matrices will be saved
-	inlier_image_points_path_ =
-		root_directory_ + "results/" + scene_name_ + "/result_" + scene_name_ + ".txt";
-
-	return true;
-}
-
-bool initializeScene(
-	const std::string& scene_name_, // The name of the scene
-	std::string& src_image_path_, // The path to the source image
-	std::string& dst_image_path_, // The path to the destination image
-	std::string& input_correspondence_path_, // The path to the correspondences
-	std::string& output_correspondence_path_, // The path where the found inliers should be saved
-	std::string& output_matched_image_path_, // The path where the matched image should be saved,
-	const std::string root_directory_) // The root directory where the "results" and "data" folder are
-{
-	// The directory to which the results will be saved
-	std::string results_dir = root_directory_ + "results";
-
-	// Create the task directory if it doesn't exist
-	if (stat(results_dir.c_str(), &info) != 0) // Check if exists
-	{
-#ifdef _WIN32 // Create a directory on Windows
-		if (_mkdir(results_dir.c_str()) != 0) // Create it, if not
-		{
-			fprintf(stderr, "Error while creating folder 'results'\n");
-			return false;
-		}
-#else // Create a directory on Linux
-		if (mkdir(results_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
-		{
-			fprintf(stderr, "Error while creating a new folder in 'results'\n");
-			return false;
-		}
-#endif
-	}
-
-	// The directory to which the results will be saved
-	std::string dir = root_directory_ + "results/" + scene_name_;
-
-	// Create the task directory if it doesn't exist
-	if (stat(dir.c_str(), &info) != 0) // Check if exists
-	{
-#ifdef _WIN32 // Create a directory on Windows
-		if (_mkdir(dir.c_str()) != 0) // Create it, if not
-		{
-			fprintf(stderr, "Error while creating a new folder in 'results'\n");
-			return false;
-		}
-#else // Create a directory on Linux
-		if (mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
-		{
-			fprintf(stderr, "Error while creating a new folder in 'results'\n");
-			return false;
-		}
-#endif
-	}
-
-	// The source image's path
-	src_image_path_ =
-		root_directory_ + "data/" + scene_name_ + "/" + scene_name_ + "1.jpg";
-	if (cv::imread(src_image_path_).empty())
-		src_image_path_ = root_directory_ + "data/" + scene_name_ + "/" + scene_name_ + "1.png";
-	if (cv::imread(src_image_path_).empty())
-	{
-		fprintf(stderr, "Error while loading image '%s'\n", src_image_path_.c_str());
-		return false;
-	}
-
-	// The destination image's path
-	dst_image_path_ =
-		root_directory_ + "data/" + scene_name_ + "/" + scene_name_ + "2.jpg";
-	if (cv::imread(dst_image_path_).empty())
-		dst_image_path_ = root_directory_ + "data/" + scene_name_ + "/" + scene_name_ + "2.png";
-	if (cv::imread(dst_image_path_).empty())
-	{
-		fprintf(stderr, "Error while loading image '%s'\n", dst_image_path_.c_str());
-		return false;
-	}
-
-	// The path where the detected correspondences (before the robust estimation) will be saved (or loaded from if exists)
-	input_correspondence_path_ =
-		root_directory_ + "results/" + scene_name_ + "/" + scene_name_ + "_points_with_no_annotation.txt";
-	// The path where the inliers of the estimated fundamental matrices will be saved
-	output_correspondence_path_ =
-		root_directory_ + "results/" + scene_name_ + "/result_" + scene_name_ + ".txt";
-	// The path where the matched image pair will be saved
-	output_matched_image_path_ =
-		root_directory_ + "results/" + scene_name_ + "/matches_" + scene_name_ + ".png";
-
-	return true;
-}
-
-bool initializeScene(const std::string& scene_name_,
-	std::string& src_image_path_,
-	std::string& dst_image_path_,
-	std::string& src_intrinsics_path_,
-	std::string& dst_intrinsics_path_,
-	std::string& input_correspondence_path_,
-	std::string& output_correspondence_path_,
-	std::string& output_matched_image_path_,
-	const std::string root_directory_) // The root directory where the "results" and "data" folder are
-{
-	// The directory to which the results will be saved
-	std::string results_dir = root_directory_ + "results";
-
-	// Create the task directory if it doesn't exist
-	if (stat(results_dir.c_str(), &info) != 0) // Check if exists
-	{
-#ifdef _WIN32 // Create a directory on Windows
-		if (_mkdir(results_dir.c_str()) != 0) // Create it, if not
-		{
-			fprintf(stderr, "Error while creating folder 'results'\n");
-			return false;
-		}
-#else // Create a directory on Linux
-		if (mkdir(results_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
-		{
-			fprintf(stderr, "Error while creating a new folder in 'results'\n");
-			return false;
-		}
-#endif
-	}
-
-	// The directory to which the results will be saved
-	std::string dir = root_directory_ + "results/" + scene_name_;
-
-	// Create the task directory if it doesn't exist
-	if (stat(dir.c_str(), &info) != 0) // Check if exists
-	{
-#ifdef _WIN32 // Create a directory on Windows
-		if (_mkdir(dir.c_str()) != 0) // Create it, if not
-		{
-			fprintf(stderr, "Error while creating a new folder in 'results'\n");
-			return false;
-		}
-#else // Create a directory on Linux
-		if (mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
-		{
-			fprintf(stderr, "Error while creating a new folder in 'results'\n");
-			return false;
-		}
-#endif
-	}
-
-	// The source image's path
-	src_image_path_ =
-		root_directory_ + "data/" + scene_name_ + "/" + scene_name_ + "1.jpg";
-	if (cv::imread(src_image_path_).empty())
-		src_image_path_ = root_directory_ + "data/" + scene_name_ + "/" + scene_name_ + "1.png";
-	if (cv::imread(src_image_path_).empty())
-	{
-		fprintf(stderr, "Error while loading image '%s'\n", src_image_path_.c_str());
-		return false;
-	}
-
-	// The destination image's path
-	dst_image_path_ =
-		root_directory_ + "data/" + scene_name_ + "/" + scene_name_ + "2.jpg";
-	if (cv::imread(dst_image_path_).empty())
-		dst_image_path_ = root_directory_ + "data/" + scene_name_ + "/" + scene_name_ + "2.png";
-	if (cv::imread(dst_image_path_).empty())
-	{
-		fprintf(stderr, "Error while loading image '%s'\n", dst_image_path_.c_str());
-		return false;
-	}
-
-	// The path where the intrinsics camera matrix of the source camera can be found
-	src_intrinsics_path_ =
-		root_directory_ + "data/" + scene_name_ + "/" + scene_name_ + "1.K";
-	// The path where the intrinsics camera matrix of the destination camera can be found
-	dst_intrinsics_path_ =
-		root_directory_ + "data/" + scene_name_ + "/" + scene_name_ + "2.K";
-	// The path where the detected correspondences (before the robust estimation) will be saved (or loaded from if exists)
-	input_correspondence_path_ =
-		root_directory_ + "results/" + scene_name_ + "/" + scene_name_ + "_points_with_no_annotation.txt";
-	// The path where the inliers of the estimated fundamental matrices will be saved
-	output_correspondence_path_ =
-		root_directory_ + "results/" + scene_name_ + "/result_" + scene_name_ + ".txt";
-	// The path where the matched image pair will be saved
-	output_matched_image_path_ =
-		root_directory_ + "results/" + scene_name_ + "/matches_" + scene_name_ + ".png";
-
-	return true;
-}
-
-// An example function showing how to fit calculate a 2D line to a set of 2D points by Graph-Cut RANSAC
-void test2DLineFitting(
-	const std::string& image_path_, // The path where the ground truth pose can be found
-	const double confidence_, // The RANSAC confidence value
-	const double inlier_outlier_threshold_, // The used inlier-outlier threshold in GC-RANSAC.
-	const double spatial_coherence_weight_, // The weight of the spatial coherence term in the graph-cut energy minimization.
-	const double sphere_radius_,  // The radius of the sphere used for determining the neighborhood-graph
-	const double minimum_inlier_ratio_for_sprt_) // An assumption about the minimum inlier ratio used for the SPRT test
-{
-	// Load the image
-	cv::Mat image = cv::imread(image_path_),
-		image_gray;
-
-	// Checking if the image has been loaded
-	if (image.empty())
-	{
-		fprintf(stderr, "Image '%s' has not been loaded correctly.\n", image_path_.c_str());
-		return;
-	}
-
-	// Applying Canny edge detection
-	constexpr double
-		low_threshold = 50,
-		max_low_threshold = 100,
-		kernel_size = 3,
-		ratio = 3;
-
-	cv::Mat detected_edges;
-	cv::cvtColor(image, image_gray, cv::COLOR_BGR2GRAY);
-	cv::blur(image_gray, detected_edges, cv::Size(3, 3));
-
-	cv::Canny(detected_edges,
-		detected_edges,
-		low_threshold,
-		low_threshold * ratio,
-		kernel_size);
-
-	// Storing the points for line fitting
-	cv::Mat points(0, 2, CV_64F),
-		point(1, 2, CV_64F);
-	for (size_t row = 0; row < detected_edges.rows; row += 1)
-		for (size_t col = 0; col < detected_edges.cols; col += 1)
-			if (detected_edges.at<uchar>(row, col) > std::numeric_limits<int>::epsilon())
-			{
-				point.at<double>(0) = col;
-				point.at<double>(1) = row;
-				points.push_back(point);
-			}
-
-	// Initialize the neighborhood used in Graph-cut RANSAC and, perhaps,
-	// in the sampler if NAPSAC or Progressive-NAPSAC sampling is applied.
-	std::chrono::time_point<std::chrono::system_clock> start, end; // Variables for time measurement
-	start = std::chrono::system_clock::now(); // The starting time of the neighborhood calculation
-	neighborhood::GridNeighborhoodGraph<2> neighborhood(&points, // The data points
-		{ image.cols / 16.0,
-			image.rows / 16.0 },
-		16); // The radius of the neighborhood sphere used for determining the neighborhood structure
-	end = std::chrono::system_clock::now(); // The end time of the neighborhood calculation
-	std::chrono::duration<double> elapsed_seconds = end - start; // The elapsed time in seconds
-	printf("Neighborhood calculation time = %f secs\n", elapsed_seconds.count());
-
-	// Apply Graph-cut RANSAC
-	utils::Default2DLineEstimator estimator; // The estimator used for the pose fitting
-	Line2D model; // The estimated model parameters
-
-	// Initialize the samplers
-	// The main sampler is used inside the local optimization
-	// The main sampler is used inside the local optimization
-	sampler::ProgressiveNapsacSampler<2> main_sampler(&points,
-		{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
-							// (image_width / 16) * (image_height / 16), etc.
-		estimator.sampleSize(), // The size of a minimal sample
-		{ static_cast<double>(image.cols), // The width of the image
-			static_cast<double>(image.rows) });  // The height of the image
-	sampler::UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
-
-	// Checking if the samplers are initialized successfully.
-	if (!main_sampler.isInitialized() ||
-		!local_optimization_sampler.isInitialized())
-	{
-		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
-		return;
-	}
-
-	// Initializing SPRT test
-	preemption::SPRTPreemptiveVerfication<utils::Default2DLineEstimator> preemptive_verification(
-		points, // The set of 2D points
-		estimator, // The line estimator object
-		minimum_inlier_ratio_for_sprt_); // The minimum acceptable inlier ratio. Models with fewer inliers will not be accepted.
-
-	// Initializing the fast inlier selector object
-	inlier_selector::EmptyInlierSelector<utils::Default2DLineEstimator, 
-		neighborhood::GridNeighborhoodGraph<2>> inlier_selector(&neighborhood);
-
-	GCRANSAC<utils::Default2DLineEstimator,
-		neighborhood::GridNeighborhoodGraph<2>,
-		MSACScoringFunction<utils::Default2DLineEstimator>,
-		preemption::SPRTPreemptiveVerfication<utils::Default2DLineEstimator>> gcransac;
-	gcransac.settings.threshold = inlier_outlier_threshold_; // The inlier-outlier threshold
-	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
-	gcransac.settings.confidence = confidence_; // The required confidence in the results
-	gcransac.settings.max_iteration_number = 5000; // The maximum number of iterations
-	gcransac.settings.min_iteration_number = 20; // The minimum number of iterations
-
-	// Start GC-RANSAC
-	gcransac.run(points, // The normalized points
-		estimator,  // The estimator
-		&main_sampler, // The sample used for selecting minimal samples in the main iteration
-		&local_optimization_sampler, // The sampler used for selecting a minimal sample when doing the local optimization
-		&neighborhood, // The neighborhood-graph
-		model, // The obtained model parameters
-		preemptive_verification,
-		inlier_selector);
-
-	// Get the statistics of the results
-	const utils::RANSACStatistics& statistics = gcransac.getRansacStatistics();
-
-	printf("Elapsed time = %f secs\n", statistics.processing_time);
-	printf("Inlier number before = %d\n", static_cast<int>(statistics.inliers.size()));
-	printf("Applied number of local optimizations = %d\n", static_cast<int>(statistics.local_optimization_number));
-	printf("Applied number of graph-cuts = %d\n", static_cast<int>(statistics.graph_cut_number));
-	printf("Number of iterations = %d\n\n", static_cast<int>(statistics.iteration_number));
-
-	// Draw the inlier to the image
-	for (const auto& inlierIdx : statistics.inliers)
-		cv::circle(image,
-			cv::Point(points.at<double>(inlierIdx, 0), points.at<double>(inlierIdx, 1)),
-			2,
-			cv::Scalar(0, 255, 0),
-			-1);
-
-	// Draw the line to the image
-	double x1 = 0,
-		x2 = image.cols;
-	double y1 = -(model.descriptor(0) * x1 + model.descriptor(2)) / model.descriptor(1),
-		y2 = -(model.descriptor(0) * x2 + model.descriptor(2)) / model.descriptor(1);
-	cv::line(image, cv::Point(x1, y1), cv::Point(x2, y2), cv::Scalar(0, 0, 255), 2);
-
-	printf("Press a button to continue.\n");
-	cv::imshow("Detected edges", detected_edges);
-	cv::imshow("Found line", image);
-	cv::waitKey(0);
-
-	// Cleaning up
-	cv::destroyWindow("Detected edges");
-	cv::destroyWindow("Found line");
-	image.release();
-}
-
-// An example function showing how to fit calculate a rigid transformation from a set of 3D-3D correspondences by Graph-Cut RANSAC
-void testRigidTransformFitting(
-	const std::string& ground_truth_pose_path_, // The path where the ground truth pose can be found
-	const std::string& points_path_, // The path of the points 
-	const std::string& inliers_point_path_, // The path where the inlier correspondences are saved
-	const double confidence_, // The RANSAC confidence value
-	const double inlier_outlier_threshold_, // The used inlier-outlier threshold in GC-RANSAC.
-	const double spatial_coherence_weight_, // The weight of the spatial coherence term in the graph-cut energy minimization.
-	const double sphere_radius_,  // The radius of the sphere used for determining the neighborhood-graph
-	const double minimum_inlier_ratio_for_sprt_) // An assumption about the minimum inlier ratio used for the SPRT test
-{
-	// The image and world points stored as rows in the matrix. Each row is of format 'u v x y z'.
-	cv::Mat points;
-
-	// Loading the 3D-3D correspondences 
-	gcransac::utils::loadPointsFromFile<6, 1, false>(points, // The points in the image
-		points_path_.c_str()); // The path where the image points are stored
-
-	// Load the ground truth pose
-	Eigen::Matrix<double, 8, 4> reference_pose;
-	if (!utils::loadMatrix<double, 8, 4>(ground_truth_pose_path_,
-		reference_pose))
-	{
-		printf("An error occured when loading the reference camera pose from '%s'\n",
-			ground_truth_pose_path_.c_str());
-		return;
-	}
-
-	const Eigen::Matrix4d& initial_T =
-		reference_pose.block<4, 4>(0, 0);
-	const Eigen::Matrix4d& ground_truth_T =
-		reference_pose.block<4, 4>(4, 0);
-
-	// Transform the point by the initial transformation
-	for (size_t point_idx = 0; point_idx < points.rows; ++point_idx)
-	{
-		const double
-			x = points.at<double>(point_idx, 0),
-			y = points.at<double>(point_idx, 1),
-			z = points.at<double>(point_idx, 2);
-
-		points.at<double>(point_idx, 0) = initial_T(0, 0) * x + initial_T(1, 0) * y + initial_T(2, 0) * z + initial_T(3, 0);
-		points.at<double>(point_idx, 1) = initial_T(0, 1) * x + initial_T(1, 1) * y + initial_T(2, 1) * z + initial_T(3, 1);
-		points.at<double>(point_idx, 2) = initial_T(0, 2) * x + initial_T(1, 2) * y + initial_T(2, 2) * z + initial_T(3, 2);
-	}
-
-	// Initialize the neighborhood used in Graph-cut RANSAC and, perhaps,
-	// in the sampler if NAPSAC or Progressive-NAPSAC sampling is applied.
-	std::chrono::time_point<std::chrono::system_clock> start, end; // Variables for time measurement
-	start = std::chrono::system_clock::now(); // The starting time of the neighborhood calculation
-	// TODO: generalize the grid class to handle not only point correspondences
-	neighborhood::FlannNeighborhoodGraph neighborhood(&points, // The data points
-		sphere_radius_); // The radius of the neighborhood sphere used for determining the neighborhood structure
-	end = std::chrono::system_clock::now(); // The end time of the neighborhood calculation
-	std::chrono::duration<double> elapsed_seconds = end - start; // The elapsed time in seconds
-	printf("Neighborhood calculation time = %f secs\n", elapsed_seconds.count());
-
-	// Apply Graph-cut RANSAC
-	utils::DefaultRigidTransformationEstimator estimator; // The estimator used for the pose fitting
-	RigidTransformation model; // The estimated model parameters
-
-	// Initialize the samplers
-	// The main sampler is used inside the local optimization
-	sampler::UniformSampler main_sampler(&points); // The data points
-	sampler::UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
-
-	// Checking if the samplers are initialized successfully.
-	if (!main_sampler.isInitialized() ||
-		!local_optimization_sampler.isInitialized())
-	{
-		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
-		return;
-	}
-
-	// Initializing SPRT test
-	preemption::SPRTPreemptiveVerfication<utils::DefaultRigidTransformationEstimator> preemptive_verification(
-		points,
-		estimator,
-		minimum_inlier_ratio_for_sprt_);
-
-	// Initializing the fast inlier selector object
-	inlier_selector::EmptyInlierSelector<utils::DefaultRigidTransformationEstimator, 
-		neighborhood::FlannNeighborhoodGraph> inlier_selector(&neighborhood);
-
-	GCRANSAC<utils::DefaultRigidTransformationEstimator,
-		neighborhood::FlannNeighborhoodGraph,
-		MSACScoringFunction<utils::DefaultRigidTransformationEstimator>,
-		preemption::SPRTPreemptiveVerfication<utils::DefaultRigidTransformationEstimator>> gcransac;
-	gcransac.settings.threshold = inlier_outlier_threshold_; // The inlier-outlier threshold
-	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
-	gcransac.settings.confidence = confidence_; // The required confidence in the results
-	gcransac.settings.max_iteration_number = 5000; // The maximum number of iterations
-	gcransac.settings.min_iteration_number = 20; // The minimum number of iterations
-	gcransac.settings.neighborhood_sphere_radius = sphere_radius_; // The radius of the neighborhood ball
-
-	// Start GC-RANSAC
-	gcransac.run(points, // The normalized points
-		estimator,  // The estimator
-		&main_sampler, // The sample used for selecting minimal samples in the main iteration
-		&local_optimization_sampler, // The sampler used for selecting a minimal sample when doing the local optimization
-		&neighborhood, // The neighborhood-graph
-		model, // The obtained model parameters
-		preemptive_verification,
-		inlier_selector);
-
-	// Get the statistics of the results
-	const utils::RANSACStatistics& statistics = gcransac.getRansacStatistics();
-
-	printf("Elapsed time = %f secs\n", statistics.processing_time);
-	printf("Inlier number before = %d\n", static_cast<int>(statistics.inliers.size()));
-	printf("Applied number of local optimizations = %d\n", static_cast<int>(statistics.local_optimization_number));
-	printf("Applied number of graph-cuts = %d\n", static_cast<int>(statistics.graph_cut_number));
-	printf("Number of iterations = %d\n\n", static_cast<int>(statistics.iteration_number));
-
-	// Save the inliers to file
-	utils::savePointsToFile(points, // The loaded data points
-		inliers_point_path_.c_str(), // The path where the results should be saved
-		&statistics.inliers); // The set of inlier found
-
-	model.descriptor =
-		initial_T * model.descriptor;
-
-	// The estimated rotation matrix
-	Eigen::Matrix3d rotation =
-		model.descriptor.block<3, 3>(0, 0);
-	// The estimated translation
-	Eigen::Vector3d translation =
-		model.descriptor.block<1, 3>(3, 0);
-
-	// The number of inliers found
-	const size_t inlier_number = statistics.inliers.size();
-
-	// Calculate the estimation error
-	constexpr double radian_to_degree_multiplier = 180.0 / M_PI;
-	const double angular_error = radian_to_degree_multiplier * (Eigen::Quaterniond(
-		rotation).angularDistance(Eigen::Quaterniond(ground_truth_T.block<3, 3>(0, 0))));
-	const double translation_error = (ground_truth_T.block<1, 3>(3, 0) - translation.transpose()).norm();
-
-	printf("The error in the rotation matrix = %f degrees\n", angular_error);
-	printf("The error in the translation = %f\n", translation_error / 10.0);
-}
-
-void testHomographyFitting(
-	const std::string& source_path_,
-	const std::string& destination_path_,
-	const std::string& out_correspondence_path_,
-	const std::string& in_correspondence_path_,
-	const std::string& output_match_image_path_,
-	const double confidence_,
-	const double inlier_outlier_threshold_,
-	const double spatial_coherence_weight_,
-	const size_t cell_number_in_neighborhood_graph_,
-	const int fps_,
-	const double minimum_inlier_ratio_for_sprt_) // An assumption about the minimum inlier ratio used for the SPRT test
-{
-	// Read the images
-	cv::Mat source_image = cv::imread(source_path_); // The source image
-	cv::Mat destination_image = cv::imread(destination_path_); // The destination image
-
-	if (source_image.empty()) // Check if the source image is loaded successfully
-	{
-		printf("An error occured while loading image '%s'\n",
-			source_path_.c_str());
-		return;
-	}
-
-	if (destination_image.empty()) // Check if the destination image is loaded successfully
-	{
-		printf("An error occured while loading image '%s'\n",
-			destination_path_.c_str());
-		return;
-	}
-
-	// Detect or load point correspondences using AKAZE 
-	cv::Mat points;
-	utils::detectFeatures(
-		in_correspondence_path_, // The path where the correspondences are read from or saved to.
-		source_image, // The source image
-		destination_image, // The destination image
-		points); // The detected point correspondences. Each row is of format "x1 y1 x2 y2"
-
-	// Initialize the neighborhood used in Graph-cut RANSAC and, perhaps,
-	// in the sampler if NAPSAC or Progressive-NAPSAC sampling is applied.
-	std::chrono::time_point<std::chrono::system_clock> start, end; // Variables for time measurement
-	start = std::chrono::system_clock::now(); // The starting time of the neighborhood calculation
-	neighborhood::GridNeighborhoodGraph<4> neighborhood(&points,
-		{ source_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
-			source_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_),
-			destination_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
-			destination_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_) },
-		cell_number_in_neighborhood_graph_);
-	end = std::chrono::system_clock::now(); // The end time of the neighborhood calculation
-	std::chrono::duration<double> elapsed_seconds = end - start; // The elapsed time in seconds
-	printf("Neighborhood calculation time = %f secs\n", elapsed_seconds.count());
-
-	// Checking if the neighborhood graph is initialized successfully.
-	if (!neighborhood.isInitialized())
-	{
-		fprintf(stderr, "The neighborhood graph is not initialized successfully.\n");
-		return;
-	}
-
-	// Apply Graph-cut RANSAC
-	utils::DefaultHomographyEstimator estimator;
-	std::vector<int> inliers;
-	Model model;
-
-	// Initializing SPRT test
-	/*preemption::SPRTPreemptiveVerfication<utils::DefaultHomographyEstimator> preemptive_verification(
-		points,
-		estimator,
-		minimum_inlier_ratio_for_sprt_);*/
-	preemption::EmptyPreemptiveVerfication<utils::DefaultHomographyEstimator> preemptive_verification;
-
-	// Initializing the fast inlier selector object
-	inlier_selector::SpacePartitioningRANSAC<utils::DefaultHomographyEstimator, 
-		neighborhood::GridNeighborhoodGraph<4>> inlier_selector(&neighborhood);
-
-	GCRANSAC<utils::DefaultHomographyEstimator,
-		neighborhood::GridNeighborhoodGraph<4>,
-		MSACScoringFunction<utils::DefaultHomographyEstimator>,
-		preemption::EmptyPreemptiveVerfication<utils::DefaultHomographyEstimator>,
-		inlier_selector::SpacePartitioningRANSAC<utils::DefaultHomographyEstimator, neighborhood::GridNeighborhoodGraph<4>>> gcransac;
-	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
-	gcransac.settings.threshold = inlier_outlier_threshold_; // The inlier-outlier threshold
-	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
-	gcransac.settings.confidence = confidence_; // The required confidence in the results
-	gcransac.settings.max_local_optimization_number = 50; // The maximm number of local optimizations
-	gcransac.settings.max_iteration_number = 5000; // The maximum number of iterations
-	gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
-	gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
-	gcransac.settings.core_number = std::thread::hardware_concurrency(); // The number of parallel processes
-
-	// Initialize the samplers
-	// The main sampler is used inside the local optimization
-	sampler::ProgressiveNapsacSampler<4> main_sampler(&points,
-		{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
-							// (source_image_width / 16) * (source_image_height / 16)  * (destination_image_width / 16)  (destination_image_height / 16), etc.
-		estimator.sampleSize(), // The size of a minimal sample
-		{ static_cast<double>(source_image.cols), // The width of the source image
-			static_cast<double>(source_image.rows), // The height of the source image
-			static_cast<double>(destination_image.cols), // The width of the destination image
-			static_cast<double>(destination_image.rows) },  // The height of the destination image
-		0.5); // The length (i.e., 0.5 * <point number> iterations) of fully blending to global sampling 
-
-	sampler::UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
-
-	// Checking if the samplers are initialized successfully.
-	if (!main_sampler.isInitialized() ||
-		!local_optimization_sampler.isInitialized())
-	{
-		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
-		return;
-	}
-
-	// Start GC-RANSAC
-	gcransac.run(points,
-		estimator,
-		&main_sampler,
-		&local_optimization_sampler,
-		&neighborhood,
-		model,
-		preemptive_verification,
-		inlier_selector);
-
-	// Get the statistics of the results
-	const utils::RANSACStatistics& statistics = gcransac.getRansacStatistics();
-
-	// Write statistics
-	printf("Elapsed time = %f secs\n", statistics.processing_time);
-	printf("Inlier number = %d\n", static_cast<int>(statistics.inliers.size()));
-	printf("Applied number of local optimizations = %d\n", static_cast<int>(statistics.local_optimization_number));
-	printf("Applied number of graph-cuts = %d\n", static_cast<int>(statistics.graph_cut_number));
-	printf("Number of iterations = %d\n\n", static_cast<int>(statistics.iteration_number));
-
-	// Draw the inlier matches to the images
-	cv::Mat match_image;
-	utils::drawMatches(points,
-		statistics.inliers,
-		source_image,
-		destination_image,
-		match_image);
-
-	printf("Saving the matched images to file '%s'.\n", output_match_image_path_.c_str());
-	imwrite(output_match_image_path_, match_image); // Save the matched image to file
-	printf("Saving the inlier correspondences to file '%s'.\n", out_correspondence_path_.c_str());
-	utils::savePointsToFile(points, out_correspondence_path_.c_str(), &statistics.inliers); // Save the inliers to file
-
-	printf("Press a button to continue...\n");
-
-	// Showing the image
-	utils::showImage(match_image,
-		"Inlier correspondences",
-		1600,
-		1200,
-		true);
-}
-
-void testFundamentalMatrixFitting(
-	const std::string& source_path_,
-	const std::string& destination_path_,
-	const std::string& out_correspondence_path_,
-	const std::string& in_correspondence_path_,
-	const std::string& output_match_image_path_,
-	const double confidence_,
-	const double inlier_outlier_threshold_,
-	const double spatial_coherence_weight_,
-	const size_t cell_number_in_neighborhood_graph_,
-	const int fps_,
-	const double minimum_inlier_ratio_for_sprt_) // An assumption about the minimum inlier ratio used for the SPRT test
-{
-	// Read the images
-	cv::Mat source_image = cv::imread(source_path_);
-	cv::Mat destination_image = cv::imread(destination_path_);
-
-	if (source_image.empty()) // Check if the source image is loaded successfully
-	{
-		printf("An error occured while loading image '%s'\n",
-			source_path_.c_str());
-		return;
-	}
-
-	if (destination_image.empty()) // Check if the destination image is loaded successfully
-	{
-		printf("An error occured while loading image '%s'\n",
-			destination_path_.c_str());
-		return;
-	}
-
-	// Detect or load point correspondences using AKAZE 
-	cv::Mat points;
-	utils::detectFeatures(
-		in_correspondence_path_, // The path where the correspondences are read from or saved to.
-		source_image, // The source image
-		destination_image, // The destination image
-		points); // The detected point correspondences. Each row is of format "x1 y1 x2 y2"
-
-	// Initialize the neighborhood used in Graph-cut RANSAC and, perhaps,
-	// in the sampler if NAPSAC or Progressive-NAPSAC sampling is applied.
-	std::chrono::time_point<std::chrono::system_clock> start, end; // Variables for time measurement
-	start = std::chrono::system_clock::now(); // The starting time of the neighborhood calculation
-	neighborhood::GridNeighborhoodGraph<4> neighborhood(&points,
-		{ source_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
-			source_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_),
-			destination_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
-			destination_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_) },
-		cell_number_in_neighborhood_graph_);
-	end = std::chrono::system_clock::now(); // The end time of the neighborhood calculation
-	std::chrono::duration<double> elapsed_seconds = end - start; // The elapsed time in seconds
-	printf("Neighborhood calculation time = %f secs\n", elapsed_seconds.count());
-
-	// Checking if the neighborhood graph is initialized successfully.
-	if (!neighborhood.isInitialized())
-	{
-		fprintf(stderr, "The neighborhood graph is not initialized successfully.\n");
-		return;
-	}
-
-	// Calculating the maximum image diagonal to be used for setting the threshold
-	// adaptively for each image pair. 
-	const double max_image_diagonal =
-		sqrt(pow(MAX(source_image.cols, destination_image.cols), 2) + pow(MAX(source_image.rows, destination_image.rows), 2));
-
-	// Apply Graph-cut RANSAC
-	utils::DefaultFundamentalMatrixEstimator estimator;
-	std::vector<int> inliers;
-	FundamentalMatrix model;
-
-	// Initializing SPRT test
-	preemption::SPRTPreemptiveVerfication<utils::DefaultFundamentalMatrixEstimator> preemptive_verification(
-		points,
-		estimator,
-		minimum_inlier_ratio_for_sprt_);
+	// Calculate the threshold normalizer
+	const double kThresholdNormalizer = 
+		0.25 * (kIntrinsicsSource_(0, 0) + kIntrinsicsSource_(1, 1) + kIntrinsicsDestination_(0, 0) + kIntrinsicsDestination_(1, 1));
+
+	cv::Mat dataPoints;
+	const size_t kPointNumber = kNormalizedCorrespondences_.rows;
+	size_t max_iteration_number = 1000,
+		min_iteration_number = 1000,
+		lo_number = 50;
+
+	// Count how many 2D-3D assignments are found
+	std::vector<size_t> validAssignments;
+	validAssignments.reserve(kPointNumber);
+	for (size_t pointIdx = 0; pointIdx < kPointNumber; ++pointIdx)
+		if (assignment2D3D_[pointIdx] > -1)
+			validAssignments.emplace_back(pointIdx);
+	const size_t kValidAssignmentNumber = validAssignments.size();
 	
-	// Initializing the fast inlier selector object
-	inlier_selector::EmptyInlierSelector<utils::DefaultFundamentalMatrixEstimator, 
-		neighborhood::GridNeighborhoodGraph<4>> inlier_selector(&neighborhood);
+	// The default estimator for PnP fitting
+	typedef estimator::PerspectiveNPointEstimator<_MinimalSolver, // The solver used for fitting a model to a minimal sample
+		estimator::solver::DLSPnP> // The solver used for fitting a model to a non-minimal sample
+		PnPEstimator;
 
-	// Initialize the samplers
-	// The main sampler is used inside the local optimization
-	sampler::ProgressiveNapsacSampler<4> main_sampler(&points,
-		{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
-							// (source_image_width / 16) * (source_image_height / 16)  * (destination_image_width / 16)  (destination_image_height / 16), etc.
-		estimator.sampleSize(), // The size of a minimal sample
-		{ static_cast<double>(source_image.cols), // The width of the source image
-			static_cast<double>(source_image.rows), // The height of the source image
-			static_cast<double>(destination_image.cols), // The width of the destination image
-			static_cast<double>(destination_image.rows) });  // The height of the destination image
-	sampler::UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
-
-	// Checking if the samplers are initialized successfully.
-	if (!main_sampler.isInitialized() ||
-		!local_optimization_sampler.isInitialized())
-	{
-		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
-		return;
-	}
-
-	GCRANSAC<utils::DefaultFundamentalMatrixEstimator,
-		neighborhood::GridNeighborhoodGraph<4>,
-		MSACScoringFunction<utils::DefaultFundamentalMatrixEstimator>,
-		preemption::SPRTPreemptiveVerfication<utils::DefaultFundamentalMatrixEstimator>> gcransac;
-	gcransac.settings.threshold = inlier_outlier_threshold_ * max_image_diagonal; // The inlier-outlier threshold
-	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
-	gcransac.settings.confidence = confidence_; // The required confidence in the results
-	gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
-	gcransac.settings.max_iteration_number = 5000; // The maximum number of iterations
-	gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
-	gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
-
-	// Printinf the actually used threshold
-	printf("Used threshold is %.2f pixels (%.2f%% of the image diagonal)\n",
-		gcransac.settings.threshold, 100.0 * inlier_outlier_threshold_);
-
-	// Start GC-RANSAC
-	gcransac.run(points,
-		estimator,
-		&main_sampler,
-		&local_optimization_sampler,
-		&neighborhood,
-		model,
-		preemptive_verification,
-		inlier_selector);
-
-	// Get the statistics of the results
-	const utils::RANSACStatistics& statistics = gcransac.getRansacStatistics();
-
-	// Write statistics
-	printf("Elapsed time = %f secs\n", statistics.processing_time);
-	printf("Inlier number = %d\n", static_cast<int>(statistics.inliers.size()));
-	printf("Applied number of local optimizations = %d\n", static_cast<int>(statistics.local_optimization_number));
-	printf("Applied number of graph-cuts = %d\n", static_cast<int>(statistics.graph_cut_number));
-	printf("Number of iterations = %d\n\n", static_cast<int>(statistics.iteration_number));
-
-	// Draw the inlier matches to the images
-	cv::Mat match_image;
-	utils::drawMatches(points,
-		statistics.inliers,
-		source_image,
-		destination_image,
-		match_image);
-
-	printf("Saving the matched images to file '%s'.\n",
-		output_match_image_path_.c_str());
-	imwrite(output_match_image_path_, match_image); // Save the matched image to file
-	printf("Saving the inlier correspondences to file '%s'.\n",
-		out_correspondence_path_.c_str());
-	utils::savePointsToFile(points, out_correspondence_path_.c_str(), &statistics.inliers); // Save the inliers to file
-
-	printf("Press a button to continue...\n");
-
-	// Showing the image
-	utils::showImage(match_image,
-		"Inlier correspondences",
-		1600,
-		1200,
-		true);
-}
-
-void test6DPoseFitting(
-	const std::string& intrinsics_path_,
-	const std::string& ground_truth_pose_path_,
-	const std::string& points_path_,
-	const std::string& inlier_image_points_path_,
-	const double confidence_,
-	const double inlier_outlier_threshold_,
-	const double spatial_coherence_weight_,
-	const double sphere_radius_,
-	const int fps_,
-	const bool numerical_optimization_, // A flag to decide if numerical optimization should be applied as a post-processing step)
-	const double minimum_inlier_ratio_for_sprt_) // An assumption about the minimum inlier ratio used for the SPRT test
-{
-	// The image and world points stored as rows in the matrix. Each row is of format 'u v x y z'.
-	cv::Mat points;
-
-	// Loading the image and world points
-	gcransac::utils::loadPointsFromFile<5>(points, // The points in the image
-		points_path_.c_str()); // The path where the image points are stored
-
-	// Load the intrinsic camera matrix
-	Eigen::Matrix3d intrinsics;
-
-	if (!utils::loadMatrix<double, 3, 3>(intrinsics_path_,
-		intrinsics))
-	{
-		printf("An error occured when loading the intrinsics camera matrix from '%s'\n",
-			intrinsics_path_.c_str());
-		return;
-	}
-
-	// Load the ground truth pose
-	Eigen::Matrix<double, 3, 4> reference_pose;
-	if (!utils::loadMatrix<double, 3, 4>(ground_truth_pose_path_,
-		reference_pose))
-	{
-		printf("An error occured when loading the reference camera pose from '%s'\n",
-			ground_truth_pose_path_.c_str());
-		return;
-	}
-
-	// The ground truth rotation matrix
-	const Eigen::Matrix3d& gt_rotation =
-		reference_pose.leftCols<3>();
-
-	// The ground truth translation matrix
-	const Eigen::Vector3d& gt_translation =
-		reference_pose.rightCols<1>();
-
-	// Normalize the point coordinate by the intrinsic matrix
-	cv::Rect roi(0, 0, 2, points.rows); // A rectangle covering the 2D image points in the matrix
-	cv::Mat normalized_points = points.clone(); // The 2D image points normalized by the intrinsic camera matrix
-	// Normalizing the image points by the camera matrix
-	utils::normalizeImagePoints(
-		points(roi), // The loaded image points
-		intrinsics, // The intrinsic camera matrix
-		normalized_points); // The normalized points
-
-	// Normalize the threshold by the average of the focal lengths
-	const double avg_focal_length =
-		(intrinsics(0, 0) + intrinsics(1, 1)) / 2.0;
-	const double normalized_threshold =
-		inlier_outlier_threshold_ / avg_focal_length;
-
-	// Initialize the neighborhood used in Graph-cut RANSAC and, perhaps,
-	// in the sampler if NAPSAC or Progressive-NAPSAC sampling is applied.
-	std::chrono::time_point<std::chrono::system_clock> start, end; // Variables for time measurement
-	start = std::chrono::system_clock::now(); // The starting time of the neighborhood calculation
-	// TODO: generalize the grid class to handle not only point correspondences
-	neighborhood::FlannNeighborhoodGraph neighborhood(&points, // The data points
-		sphere_radius_); // The radius of the neighborhood sphere used for determining the neighborhood structure
-	end = std::chrono::system_clock::now(); // The end time of the neighborhood calculation
-	std::chrono::duration<double> elapsed_seconds = end - start; // The elapsed time in seconds
-	printf("Neighborhood calculation time = %f secs\n", elapsed_seconds.count());
-
-	// Apply Graph-cut RANSAC
-	utils::DefaultPnPEstimator estimator; // The estimator used for the pose fitting
 	Pose6D model; // The estimated model parameters
 
 	// Initialize the samplers
-	// The main sampler is used inside the local optimization
-	sampler::ProsacSampler main_sampler(&points, // The data points
-		estimator.sampleSize()); // The size of a minimal sample
-	sampler::UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
+	// The main sampler is used for sampling in the main RANSAC loop
+	typedef sampler::Sampler<cv::Mat, size_t> AbstractSampler;
+	std::unique_ptr<AbstractSampler> main_sampler;
+		
+	const Eigen::Matrix3d kInverseSourceRotation = 
+		kSourcePose_.rotation().transpose();
+	const Eigen::Matrix3d kInverseDestinationRotation = 
+		kDestinationPose_.rotation().transpose();
+	const Eigen::Vector3d &kDestinationPosition = 
+		kDestinationPose_.position();
+
+	const Eigen::Matrix<double, 3, 4> kProjectionSource = kSourcePose_.projectionMatrix(),
+		kProjectionDestination = kDestinationPose_.projectionMatrix();
+
+	cv::Mat transformedPoints3d(kPoint3d_.size(), kPoint3d_.type());
+	for (size_t idx = 0; idx < kPoint3d_.rows; ++idx)
+	{
+		Eigen::Vector3d p, n;
+		p << 
+			kPoint3d_.at<double>(idx, 0), 
+			kPoint3d_.at<double>(idx, 1), 
+			kPoint3d_.at<double>(idx, 2);
+		n << 
+			kPoint3d_.at<double>(idx, 3), 
+			kPoint3d_.at<double>(idx, 4), 
+			kPoint3d_.at<double>(idx, 5);
+
+		p = kSourcePose_.rotation() * p + kSourcePose_.translation();
+		n = kSourcePose_.rotation() * n;
+
+		// Invert the normal direction if it does not point towards the camera
+		Eigen::Vector3d ppn = p + n,
+			pmn = p - n;
+
+		if (kNormalDirection_)
+		{
+			if (ppn.squaredNorm() > pmn.squaredNorm())
+				n *= -1;
+		} else
+		{
+			if (ppn.squaredNorm() < pmn.squaredNorm())
+				n *= -1;
+		}
+
+		transformedPoints3d.at<double>(idx, 0) = p(0);
+		transformedPoints3d.at<double>(idx, 1) = p(1);
+		transformedPoints3d.at<double>(idx, 2) = p(2);
+		
+		transformedPoints3d.at<double>(idx, 3) = n(0);
+		transformedPoints3d.at<double>(idx, 4) = n(1);
+		transformedPoints3d.at<double>(idx, 5) = n(2);
+	}
+
+	// Doing standard PnP
+	cv::Mat pointsForNeighborhood(kValidAssignmentNumber, 5, kPoint3d_.type());
+	if constexpr (std::is_same<_MinimalSolver, gcransac::estimator::solver::P3PSolver>())
+	{
+		// Initialize the data points
+		dataPoints.create(kValidAssignmentNumber, 5, CV_64F);
+		
+		for (size_t idx = 0; idx < kValidAssignmentNumber; ++idx)
+		{
+			const size_t &pointIdx = validAssignments[idx];
+			const int assignment = assignment2D3D_[pointIdx];			
+			double depth = 
+				transformedPoints3d.at<double>(assignment, 2);
+			dataPoints.at<double>(idx, 0) = kNormalizedCorrespondences_.at<double>(pointIdx, 2);
+			dataPoints.at<double>(idx, 1) = kNormalizedCorrespondences_.at<double>(pointIdx, 3);
+			dataPoints.at<double>(idx, 2) = depth * kNormalizedCorrespondences_.at<double>(pointIdx, 0); // kPoint3d_.at<double>(assignment, 0);
+			dataPoints.at<double>(idx, 3) = depth * kNormalizedCorrespondences_.at<double>(pointIdx, 1); // kPoint3d_.at<double>(assignment, 1);
+			dataPoints.at<double>(idx, 4) = depth;
+			
+			// Saving the points for neighborhood calculation
+			pointsForNeighborhood.at<double>(idx, 0) = kCorrespondences_.at<double>(pointIdx, 2);
+			pointsForNeighborhood.at<double>(idx, 1) = kCorrespondences_.at<double>(pointIdx, 3);
+			pointsForNeighborhood.at<double>(idx, 2) = 100 * depth * kNormalizedCorrespondences_.at<double>(pointIdx, 0); // kPoint3d_.at<double>(assignment, 0);
+			pointsForNeighborhood.at<double>(idx, 3) = 100 * depth * kNormalizedCorrespondences_.at<double>(pointIdx, 1); // kPoint3d_.at<double>(assignment, 1);
+			pointsForNeighborhood.at<double>(idx, 4) = 100 * depth;
+		}
+
+		// The sampler is used inside the local optimization
+		main_sampler = std::unique_ptr<AbstractSampler>(new sampler::UniformSampler(&dataPoints));
+	} else if (std::is_same<_MinimalSolver, gcransac::estimator::solver::ACP1PCayleySolver>())
+	{
+		// Initialize the data points
+		dataPoints.create(kValidAssignmentNumber, 12, CV_64F);
+		
+		for (size_t idx = 0; idx < kValidAssignmentNumber; ++idx)
+		{
+			const size_t &pointIdx = validAssignments[idx];
+			const int assignment = assignment2D3D_[pointIdx];
+			
+			// Reference image = Source image
+			// Query image = Destination image
+			Eigen::Vector3d projectedPoint, normal, point3d;
+			Eigen::Matrix2d A;
+			point3d << 
+				transformedPoints3d.at<double>(assignment, 0), 
+				transformedPoints3d.at<double>(assignment, 1), 
+				transformedPoints3d.at<double>(assignment, 2);
+
+			// Projective depth in the source (reference) image
+			//projectedPoint = 
+			//	kProjectionSource * point3d.homogeneous();
+			double depth = point3d(2);
+
+			// Normal in the coordinate system of the destination (reference) image
+			normal << 
+				transformedPoints3d.at<double>(assignment, 3), 
+				transformedPoints3d.at<double>(assignment, 4), 
+				transformedPoints3d.at<double>(assignment, 5);
+			// normal = kSourcePose_.rotation() * normal;
+
+			// Affine frame from the source to the destination image
+			A << kNormalizedCorrespondences_.at<double>(pointIdx, 4), kNormalizedCorrespondences_.at<double>(pointIdx, 5),
+				kNormalizedCorrespondences_.at<double>(pointIdx, 6), kNormalizedCorrespondences_.at<double>(pointIdx, 7);
+
+			dataPoints.at<double>(idx, 0) = kNormalizedCorrespondences_.at<double>(pointIdx, 2);
+			dataPoints.at<double>(idx, 1) = kNormalizedCorrespondences_.at<double>(pointIdx, 3);
+			dataPoints.at<double>(idx, 2) = depth * kNormalizedCorrespondences_.at<double>(pointIdx, 0); // kPoint3d_.at<double>(assignment, 0);
+			dataPoints.at<double>(idx, 3) = depth * kNormalizedCorrespondences_.at<double>(pointIdx, 1); // kPoint3d_.at<double>(assignment, 1);
+			dataPoints.at<double>(idx, 4) = depth;
+			dataPoints.at<double>(idx, 5) = normal(0);
+			dataPoints.at<double>(idx, 6) = normal(1);
+			dataPoints.at<double>(idx, 7) = normal(2);
+			dataPoints.at<double>(idx, 8) =  A(0, 0);
+			dataPoints.at<double>(idx, 9) =  A(0, 1);
+			dataPoints.at<double>(idx, 10) = A(1, 0);
+			dataPoints.at<double>(idx, 11) = A(1, 1);
+			
+			// Saving the points for neighborhood calculation
+			pointsForNeighborhood.at<double>(idx, 0) = kCorrespondences_.at<double>(pointIdx, 2);
+			pointsForNeighborhood.at<double>(idx, 1) = kCorrespondences_.at<double>(pointIdx, 3);
+			pointsForNeighborhood.at<double>(idx, 2) = 100 * depth * kNormalizedCorrespondences_.at<double>(pointIdx, 0); // kPoint3d_.at<double>(assignment, 0);
+			pointsForNeighborhood.at<double>(idx, 3) = 100 * depth * kNormalizedCorrespondences_.at<double>(pointIdx, 1); // kPoint3d_.at<double>(assignment, 1);
+			pointsForNeighborhood.at<double>(idx, 4) = 100 * depth;
+		}
+
+		// Initialize the samplers
+		main_sampler = std::unique_ptr<AbstractSampler>(new sampler::SinglePointSampler(&dataPoints, 1));
+
+		//min_iteration_number = kValidAssignmentNumber;
+		//max_iteration_number = kValidAssignmentNumber;
+		lo_number = 100;
+	}
+
+	// Initialize the neighborhood used in Graph-cut RANSAC and, perhaps,
+	// in the sampler if NAPSAC or Progressive-NAPSAC sampling is applied.
+	neighborhood::FlannNeighborhoodGraph neighborhood(&pointsForNeighborhood, 20.0);
+
+	// Apply Graph-cut RANSAC
+	PnPEstimator estimator; // The estimator used for the pose fitting
+
+	sampler::UniformSampler local_optimization_sampler(&dataPoints); // The local optimization sampler is used inside the local optimization
 
 	// Checking if the samplers are initialized successfully.
-	if (!main_sampler.isInitialized() ||
+	if (!main_sampler->isInitialized() ||
 		!local_optimization_sampler.isInitialized())
 	{
 		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
@@ -1402,306 +617,645 @@ void test6DPoseFitting(
 	}
 
 	// Initializing SPRT test
-	preemption::SPRTPreemptiveVerfication<utils::DefaultPnPEstimator> preemptive_verification(
-		points,
-		estimator,
-		minimum_inlier_ratio_for_sprt_);
-	
+	preemption::SPRTPreemptiveVerfication<PnPEstimator> sprt_verification(
+		dataPoints,
+		estimator);
+
 	// Initializing the fast inlier selector object
-	inlier_selector::EmptyInlierSelector<utils::DefaultPnPEstimator, 
+	inlier_selector::EmptyInlierSelector<PnPEstimator, 
 		neighborhood::FlannNeighborhoodGraph> inlier_selector(&neighborhood);
 
-	GCRANSAC<utils::DefaultPnPEstimator,
+	GCRANSAC<PnPEstimator,
 		neighborhood::FlannNeighborhoodGraph,
-		MSACScoringFunction<utils::DefaultPnPEstimator>,
-		preemption::SPRTPreemptiveVerfication<utils::DefaultPnPEstimator>> gcransac;
-	gcransac.settings.threshold = normalized_threshold; // The inlier-outlier threshold
-	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
-	gcransac.settings.confidence = confidence_; // The required confidence in the results
-	gcransac.settings.max_iteration_number = 5000; // The maximum number of iterations
-	gcransac.settings.min_iteration_number = 20; // The minimum number of iterations
-	gcransac.settings.neighborhood_sphere_radius = sphere_radius_; // The radius of the neighborhood ball
+		MSACScoringFunction<PnPEstimator>,
+		preemption::SPRTPreemptiveVerfication<PnPEstimator>> gcransac;
+	gcransac.settings.threshold = kInlierOutlierThreshold_ / kThresholdNormalizer; // The inlier-outlier threshold
+	gcransac.settings.spatial_coherence_weight = 0.0; // The weight of the spatial coherence term
+	gcransac.settings.confidence = 0.999; // The required confidence in the results
+	gcransac.settings.max_local_optimization_number = lo_number;
+	gcransac.settings.max_iteration_number = max_iteration_number; // The maximum number of iterations
+	gcransac.settings.min_iteration_number = min_iteration_number; // The minimum number of iterations
 
 	// Start GC-RANSAC
-	gcransac.run(normalized_points, // The normalized points
+	gcransac.run(dataPoints, // The normalized points
 		estimator,  // The estimator
-		&main_sampler, // The sample used for selecting minimal samples in the main iteration
+		main_sampler.get(), // The sample used for selecting minimal samples in the main iteration
 		&local_optimization_sampler, // The sampler used for selecting a minimal sample when doing the local optimization
 		&neighborhood, // The neighborhood-graph
 		model, // The obtained model parameters
-		preemptive_verification,
+		sprt_verification,
 		inlier_selector);
 
 	// Get the statistics of the results
 	const utils::RANSACStatistics& statistics = gcransac.getRansacStatistics();
 
-	printf("Elapsed time = %f secs\n", statistics.processing_time);
-	printf("Inlier number before = %d\n", static_cast<int>(statistics.inliers.size()));
-	printf("Applied number of local optimizations = %d\n", static_cast<int>(statistics.local_optimization_number));
-	printf("Applied number of graph-cuts = %d\n", static_cast<int>(statistics.graph_cut_number));
-	printf("Number of iterations = %d\n\n", static_cast<int>(statistics.iteration_number));
-
-	// Save the inliers to file
-	utils::savePointsToFile(points, // The loaded data points
-		inlier_image_points_path_.c_str(), // The path where the results should be saved
-		&statistics.inliers); // The set of inlier found
-
-	// The estimated rotation matrix
-	Eigen::Matrix3d rotation =
-		model.descriptor.leftCols<3>();
-	// The estimated translation
-	Eigen::Vector3d translation =
-		model.descriptor.rightCols<1>();
-
-	// The number of inliers found
-	const size_t inlier_number = statistics.inliers.size();
-
-	// Calculate the estimation error
-	constexpr double radian_to_degree_multiplier = 180.0 / M_PI;
-	const double angular_error = radian_to_degree_multiplier * (Eigen::Quaterniond(
-		rotation).angularDistance(Eigen::Quaterniond(gt_rotation)));
-	const double translation_error = (gt_translation - translation).norm();
-
-	printf("The error in the rotation matrix = %f degrees\n", angular_error);
-	printf("The error in the translation = %f cm\n", translation_error / 10.0);
-
-	// If numerical optimization is needed, apply the Levenberg-Marquardt 
-	// implementation of OpenCV.
-	if (numerical_optimization_ && inlier_number >= 3)
+	// Doing BA as a last step
+	if (statistics.inliers.size() > 3)
 	{
-		// Copy the data into two matrices containing the image and object points. 
-		// This would not be necessary, but selecting the submatrices by cv::Rect
-		// leads to an error in cv::solvePnP().
-		cv::Mat inlier_image_points(inlier_number, 2, CV_64F),
-			inlier_object_points(inlier_number, 3, CV_64F);
-
-		for (size_t i = 0; i < inlier_number; ++i)
-		{
-			const size_t& idx = statistics.inliers[i];
-			inlier_image_points.at<double>(i, 0) = normalized_points.at<double>(idx, 0);
-			inlier_image_points.at<double>(i, 1) = normalized_points.at<double>(idx, 1);
-			inlier_object_points.at<double>(i, 0) = points.at<double>(idx, 2);
-			inlier_object_points.at<double>(i, 1) = points.at<double>(idx, 3);
-			inlier_object_points.at<double>(i, 2) = points.at<double>(idx, 4);
-		}
-
-		// Converting the estimated pose parameters OpenCV format
-		cv::Mat cv_rotation(3, 3, CV_64F, rotation.data()), // The estimated rotation matrix converted to OpenCV format
-			cv_translation(3, 1, CV_64F, translation.data()); // The estimated translation converted to OpenCV format
-
-		// Convert the rotation matrix by the rodrigues formula
-		cv::Mat cv_rodrigues(3, 1, CV_64F);
-		cv::Rodrigues(cv_rotation.t(), cv_rodrigues);
-
-		// Applying numerical optimization to the estimated pose parameters
-		cv::solvePnP(inlier_object_points, // The object points
-			inlier_image_points, // The image points
-			cv::Mat::eye(3, 3, CV_64F), // The camera's intrinsic parameters 
-			cv::Mat(), // An empty vector since the radial distortion is not known
-			cv_rodrigues, // The initial rotation
-			cv_translation, // The initial translation
-			true, // Use the initial values
-			cv::SOLVEPNP_ITERATIVE); // Apply numerical refinement
-
-		// Convert the rotation vector back to a rotation matrix
-		cv::Rodrigues(cv_rodrigues, cv_rotation);
-
-		// Transpose the rotation matrix back
-		cv_rotation = cv_rotation.t();
-
-		// Calculate the error of the refined pose
-		const double angular_error_refined = radian_to_degree_multiplier * (Eigen::Quaterniond(
-			rotation).angularDistance(Eigen::Quaterniond(gt_rotation)));
-		const double translation_error_refined = (gt_translation - translation).norm();
-
-		printf("The error in the rotation matrix after numerical refinement = %f degrees\n", angular_error_refined);
-		printf("The error in the translation after numerical refinement = %f cm\n", translation_error_refined / 10.0);
+		std::vector<Model> models = { model };
+		estimator::solver::PnPBundleAdjustment bundleAdjustment;
+		if (bundleAdjustment.estimateModel(
+			kNormalizedCorrespondences_, // The set of data points
+			&statistics.inliers[0], // The sample used for the estimation
+			statistics.inliers.size(), // The size of the sample
+			models)) // The estimated model parameters
+			model.descriptor = models[0].descriptor;
 	}
+
+	// Calculate relative pose
+	const Eigen::Matrix3d kRelativeRotation = 
+		kDestinationPose_.rotation() * kSourcePose_.rotation().transpose();
+	const Eigen::Vector3d kRelativeTranslation = 
+		kDestinationPose_.rotation() * (kSourcePose_.position() - kDestinationPose_.position());
+
+	// The pose error
+	double rotError = 180.0,
+		posError = 0.0,
+		transError = 180.0;
+
+	// Calculate the errors
+	rotError = rotationError(
+		model.descriptor.block<3, 3>(0, 0),
+		kRelativeRotation);
+
+	transError = translationError(
+		model.descriptor.rightCols<1>(),
+		kRelativeTranslation);
+
+	posError = (model.descriptor.rightCols<1>() - kRelativeTranslation).norm();
+
+	// Print the statistics
+	printf("%d\t%.3f\t%.3f\t%.3f\t%d\t%.3f\n", 
+		_MinimalSolver::sampleSize(),
+		rotError, transError, posError,
+		static_cast<int>(statistics.inliers.size()),
+		statistics.processing_time);
+
+	savingMutex.lock();
+	std::ofstream file("results.csv", std::fstream::app);
+	file << 
+		kScene_ << ";" <<
+		"DoG + AffNet + HardNet (upright) SPRT" << ";" <<
+		_MinimalSolver::sampleSize() << ";" <<
+		kSNNThreshold_ << ";" <<
+		kInlierOutlierThreshold_ << ";" <<
+		kSpatialWeight_ << ";" <<
+		kNormalAreaSize_ << ";" <<
+		kNormalDirection_ << ";" <<
+		rotError << ";" <<
+		transError << ";" <<
+		posError << ";" <<
+		static_cast<int>(statistics.inliers.size()) << ";" <<
+		statistics.processing_time << "\n";
+	savingMutex.unlock();
+
+	AbstractSampler *sampler_ptr = main_sampler.release();
+	delete sampler_ptr;
 }
 
-void testEssentialMatrixFitting(
-	const std::string& source_path_,
-	const std::string& destination_path_,
-	const std::string& source_intrinsics_path_,
-	const std::string& destination_intrinsics_path_,
-	const std::string& out_correspondence_path_,
-	const std::string& in_correspondence_path_,
-	const std::string& output_match_image_path_,
-	const double confidence_,
-	const double inlier_outlier_threshold_,
-	const double spatial_coherence_weight_,
-	const size_t cell_number_in_neighborhood_graph_,
-	const int fps_,
-	const double minimum_inlier_ratio_for_sprt_) // An assumption about the minimum inlier ratio used for the SPRT test
+template<typename _MinimalSolver>
+void relativePoseEstimation(
+	const cv::Mat &kCorrespondences_,
+	const cv::Mat &kNormalizedCorrespondences_,
+	const CameraPose &kSourcePose_,
+	const CameraPose &kDestinationPose_,
+	const Eigen::Matrix3d &kIntrinsicsSource_,
+	const Eigen::Matrix3d &kIntrinsicsDestination_,
+	const double &kSNNThreshold_,
+	const double &kInlierOutlierThreshold_)
 {
-	// Read the images
-	cv::Mat source_image = cv::imread(source_path_);
-	cv::Mat destination_image = cv::imread(destination_path_);
-
-	if (source_image.empty()) // Check if the source image is loaded successfully
-	{
-		printf("An error occured while loading image '%s'\n",
-			source_path_.c_str());
-		return;
-	}
-
-	if (destination_image.empty()) // Check if the destination image is loaded successfully
-	{
-		printf("An error occured while loading image '%s'\n",
-			destination_path_.c_str());
-		return;
-	}
-
-	// Detect or load point correspondences using AKAZE 
-	cv::Mat points;
-	utils::detectFeatures(
-		in_correspondence_path_, // The path where the correspondences are read from or saved to.
-		source_image, // The source image
-		destination_image, // The destination image
-		points); // The detected point correspondences. Each row is of format "x1 y1 x2 y2"
-
-	// Load the intrinsic camera matrices
-	Eigen::Matrix3d intrinsics_src,
-		intrinsics_dst;
-
-	if (!utils::loadMatrix<double, 3, 3>(source_intrinsics_path_,
-		intrinsics_src))
-	{
-		printf("An error occured when loading the intrinsics camera matrix from '%s'\n",
-			source_intrinsics_path_.c_str());
-		return;
-	}
-
-	if (!utils::loadMatrix<double, 3, 3>(destination_intrinsics_path_,
-		intrinsics_dst))
-	{
-		printf("An error occured when loading the intrinsics camera matrix from '%s'\n",
-			destination_intrinsics_path_.c_str());
-		return;
-	}
-
-	// Normalize the point coordinate by the intrinsic matrices
-	cv::Mat normalized_points(points.size(), CV_64F);
-	utils::normalizeCorrespondences(points,
-		intrinsics_src,
-		intrinsics_dst,
-		normalized_points);
-
-	// Normalize the threshold by the average of the focal lengths
-	const double normalized_threshold =
-		inlier_outlier_threshold_ / ((intrinsics_src(0, 0) + intrinsics_src(1, 1) +
-			intrinsics_dst(0, 0) + intrinsics_dst(1, 1)) / 4.0);
+	// Calculate the threshold normalizer
+	const double kThresholdNormalizer = 
+		0.25 * (kIntrinsicsSource_(0, 0) + kIntrinsicsSource_(1, 1) + kIntrinsicsDestination_(0, 0) + kIntrinsicsDestination_(1, 1));
 
 	// Initialize the neighborhood used in Graph-cut RANSAC and, perhaps,
 	// in the sampler if NAPSAC or Progressive-NAPSAC sampling is applied.
-	std::chrono::time_point<std::chrono::system_clock> start, end; // Variables for time measurement
-	start = std::chrono::system_clock::now(); // The starting time of the neighborhood calculation
-	neighborhood::GridNeighborhoodGraph<4> neighborhood(&points,
-		{ source_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
-			source_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_),
-			destination_image.cols / static_cast<double>(cell_number_in_neighborhood_graph_),
-			destination_image.rows / static_cast<double>(cell_number_in_neighborhood_graph_) },
-		cell_number_in_neighborhood_graph_);
-	end = std::chrono::system_clock::now(); // The end time of the neighborhood calculation
-	std::chrono::duration<double> elapsed_seconds = end - start; // The elapsed time in seconds
-	printf("Neighborhood calculation time = %f secs\n", elapsed_seconds.count());
+	cv::Mat emptyPoints(0, 4, CV_64F);
+	neighborhood::GridNeighborhoodGraph<4> neighborhood(&emptyPoints,
+		{ 0, 0, 0, 0 },
+		1);
 
-	// Checking if the neighborhood graph is initialized successfully.
-	if (!neighborhood.isInitialized())
-	{
-		fprintf(stderr, "The neighborhood graph is not initialized successfully.\n");
-		return;
-	}
+	// The default estimator for essential matrix fitting
+	typedef estimator::EssentialMatrixEstimator<_MinimalSolver, // The solver used for fitting a model to a minimal sample
+		estimator::solver::EssentialMatrixFivePointSteweniusSolver> // The solver used for fitting a model to a non-minimal sample
+		EssentialMatrixEstimator;
 
 	// Apply Graph-cut RANSAC
-	utils::DefaultEssentialMatrixEstimator estimator(intrinsics_src,
-		intrinsics_dst);
+	EssentialMatrixEstimator estimator(kIntrinsicsSource_,
+		kIntrinsicsDestination_);
 	std::vector<int> inliers;
 	EssentialMatrix model;
 
 	// Initializing SPRT test
-	preemption::SPRTPreemptiveVerfication<utils::DefaultEssentialMatrixEstimator> preemptive_verification(
-		points,
+	preemption::SPRTPreemptiveVerfication<EssentialMatrixEstimator> preemptiveVerification(
+		kCorrespondences_,
 		estimator,
-		minimum_inlier_ratio_for_sprt_);
+		0.001);
 
 	// Initializing the fast inlier selector object
-	inlier_selector::EmptyInlierSelector<utils::DefaultEssentialMatrixEstimator, 
+	inlier_selector::EmptyInlierSelector<EssentialMatrixEstimator, 
 		neighborhood::GridNeighborhoodGraph<4>> inlier_selector(&neighborhood);
 
 	// Initialize the samplers
 	// The main sampler is used inside the local optimization
-	sampler::ProgressiveNapsacSampler<4> main_sampler(&points,
-		{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
-							// (source_image_width / 16) * (source_image_height / 16)  * (destination_image_width / 16)  (destination_image_height / 16), etc.
-		estimator.sampleSize(), // The size of a minimal sample
-		{ static_cast<double>(source_image.cols), // The width of the source image
-			static_cast<double>(source_image.rows), // The height of the source image
-			static_cast<double>(destination_image.cols), // The width of the destination image
-			static_cast<double>(destination_image.rows) });  // The height of the destination image
-	sampler::UniformSampler local_optimization_sampler(&points); // The local optimization sampler is used inside the local optimization
+	sampler::UniformSampler mainSampler(&kNormalizedCorrespondences_); // The main sampler
+	sampler::UniformSampler localOptimizationSampler(&kNormalizedCorrespondences_); // The local optimization sampler is used inside the local optimization
 
 	// Checking if the samplers are initialized successfully.
-	if (!main_sampler.isInitialized() ||
-		!local_optimization_sampler.isInitialized())
+	if (!mainSampler.isInitialized() ||
+		!localOptimizationSampler.isInitialized())
 	{
 		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
 		return;
 	}
 
-	GCRANSAC<utils::DefaultEssentialMatrixEstimator,
+	GCRANSAC<EssentialMatrixEstimator,
 		neighborhood::GridNeighborhoodGraph<4>,
-		MSACScoringFunction<utils::DefaultEssentialMatrixEstimator>,
-		preemption::SPRTPreemptiveVerfication<utils::DefaultEssentialMatrixEstimator>> gcransac;
-	gcransac.setFPS(fps_); // Set the desired FPS (-1 means no limit)
-	gcransac.settings.threshold = normalized_threshold; // The inlier-outlier threshold
-	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
-	gcransac.settings.confidence = confidence_; // The required confidence in the results
+		MSACScoringFunction<EssentialMatrixEstimator>,
+		preemption::SPRTPreemptiveVerfication<EssentialMatrixEstimator>> gcransac;
+	gcransac.settings.threshold = kInlierOutlierThreshold_ / kThresholdNormalizer; // The inlier-outlier threshold
+	gcransac.settings.spatial_coherence_weight = 0.0; // The weight of the spatial coherence term
+	gcransac.settings.confidence = 0.999; // The required confidence in the results
 	gcransac.settings.max_local_optimization_number = 50; // The maximum number of local optimizations
-	gcransac.settings.max_iteration_number = 5000; // The maximum number of iterations
-	gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
-	gcransac.settings.neighborhood_sphere_radius = cell_number_in_neighborhood_graph_; // The radius of the neighborhood ball
-	gcransac.settings.core_number = std::thread::hardware_concurrency(); // The number of parallel processes
+	gcransac.settings.max_iteration_number = 1000; // The maximum number of iterations
+	gcransac.settings.min_iteration_number = 1000; // The minimum number of iterations
 
 	// Start GC-RANSAC
-	gcransac.run(normalized_points,
+	gcransac.run(kNormalizedCorrespondences_,
 		estimator,
-		&main_sampler,
-		&local_optimization_sampler,
+		&mainSampler,
+		&localOptimizationSampler,
 		&neighborhood,
 		model,
-		preemptive_verification,
+		preemptiveVerification,
 		inlier_selector);
 
 	// Get the statistics of the results
 	const utils::RANSACStatistics& statistics = gcransac.getRansacStatistics();
 
+    // The pose error
+    double rotationError = 180.0,
+		translationError = 180.0;
+
+	// Calculate relative pose
+	const Eigen::Matrix3d kRelativeRotation = 
+		kDestinationPose_.rotation() * kSourcePose_.rotation().transpose();
+	//const Eigen::Vector3d kRelativeTranslation = 
+	//	kDestinationPose_.translation() - kSourcePose_.rotation().transpose() * kSourcePose_.translation();
+	const Eigen::Vector3d kRelativeTranslation = 
+		kDestinationPose_.rotation() * (kSourcePose_.position() - kDestinationPose_.position());
+
+	// Calculate the errors
+	calculateRelativePoseError(
+		model.descriptor, // The currently tested essential matrix
+		kIntrinsicsSource_, // The intrinsic parameters of the source camera
+		kIntrinsicsDestination_, // The intrinsic parameters of the destination camera
+		kRelativeRotation, // The ground truth relative rotation
+		kRelativeTranslation, // The ground truth relative translation
+		rotationError, // The rotation error
+		translationError); // The translation error
+
 	// Print the statistics
-	printf("Elapsed time = %f secs\n", statistics.processing_time);
-	printf("Inlier number = %d\n", static_cast<int>(statistics.inliers.size()));
-	printf("Applied number of local optimizations = %d\n", static_cast<int>(statistics.local_optimization_number));
-	printf("Applied number of graph-cuts = %d\n", static_cast<int>(statistics.graph_cut_number));
-	printf("Number of iterations = %d\n\n", static_cast<int>(statistics.iteration_number));
+	printf("%d\t%.3f\t%.3f\t\t%d\t%.3f\n", 
+		_MinimalSolver::sampleSize(),
+		rotationError, translationError, 
+		static_cast<int>(statistics.inliers.size()),
+		statistics.processing_time);
 
-	// Draw the inlier matches to the images
-	cv::Mat match_image;
-	utils::drawMatches(points,
-		statistics.inliers,
-		source_image,
-		destination_image,
-		match_image);
+	savingMutex.lock();
+	std::ofstream file("results.csv", std::fstream::app);
+	file << 
+		_MinimalSolver::sampleSize() << ";" <<
+		kSNNThreshold_ << ";" <<
+		kInlierOutlierThreshold_ << ";" <<
+		rotationError << ";" <<
+		translationError <<  ";" <<
+		";" <<
+		static_cast<int>(statistics.inliers.size()) << ";" <<
+		statistics.processing_time << "\n";
+	savingMutex.unlock();
+}
 
-	printf("Saving the matched images to file '%s'.\n", output_match_image_path_.c_str());
-	imwrite(output_match_image_path_, match_image); // Save the matched image to file
-	printf("Saving the inlier correspondences to file '%s'.\n", out_correspondence_path_.c_str());
-	utils::savePointsToFile(points, out_correspondence_path_.c_str(), &statistics.inliers); // Save the inliers to file
+template <size_t _Method>
+void selectOrientedPoints(
+	const std::string &kSourceImageName_,
+	const std::string &kDestinationImageName_,
+	const std::string &kDatabaseName_,
+	const double &kSNNThreshold_,
+	const cv::Mat &kCorrespondences_,
+	const CameraPose &kSourcePose_,
+	const CameraPose &kDestinationPose_,
+	const CameraIntrinsics &kSourceIntrinsics_,
+	const CameraIntrinsics &kDestinationIntrinsics_,
+	const cv::Mat &kPoints3d_,
+	const double &kPointAssignmentThreshold_,
+	std::vector<int> &assignment_)
+{	
+	std::string databaseLabel = kSourceImageName_ + "-" + kDestinationImageName_ + "-" + std::to_string(kSNNThreshold_);
+	std::replace(databaseLabel.begin(), databaseLabel.end(), '/', '-');
 
-	printf("Press a button to continue...\n");
+	cv::Mat assignmentMat;
+	if (datareading::readData(
+		kDatabaseName_,
+		databaseLabel,
+		assignmentMat))
+	{
+		for (size_t pointIdx = 0; pointIdx < assignmentMat.rows; ++pointIdx)
+			assignment_.emplace_back(assignmentMat.at<int>(pointIdx));
+		return;
+	}
 
-	// Showing the image
-	utils::showImage(match_image,
-		"Inlier correspondences",
-		1600,
-		1200,
-		true);
+	// Select the closest 3D point by sending a ray through the pixel in the first image
+	if constexpr (_Method == 0)
+	{
+		const size_t kPointNumber = kCorrespondences_.rows;
+		assignment_.resize(kPointNumber, -1);
+		const Eigen::Matrix3d kInverseSourceRotation = 
+			kSourcePose_.rotation().transpose();
+		const Eigen::Vector3d &sourcePosition = kSourcePose_.position();
+		Eigen::Vector3d ray, point3d, diff;
+		double pointToRayDistance,
+			closestPointToRayDistance,
+			pointToCameraDistance,
+			closestPointDistance;
+
+//#pragma omp parallel for num_threads(kCoreNumber)
+		for (int pointIdx = 0; pointIdx < kPointNumber; ++pointIdx)
+		{
+			closestPointToRayDistance = std::numeric_limits<double>::max();
+			closestPointDistance = std::numeric_limits<double>::max();
+
+			// Calculate the ray direction
+			ray(0) = kCorrespondences_.at<double>(pointIdx, 0);
+			ray(1) = kCorrespondences_.at<double>(pointIdx, 1);
+			ray(2) = 1;
+			ray = kInverseSourceRotation * ray.normalized();
+
+			// Iterate through the 3D points and find the ones that are close to the ray
+			for (size_t point3dIdx = 0; point3dIdx < kPoints3d_.rows; ++point3dIdx)
+			{
+				// Point-to-ray distance
+				point3d(0) = kPoints3d_.at<double>(point3dIdx, 0);
+				point3d(1) = kPoints3d_.at<double>(point3dIdx, 1);
+				point3d(2) = kPoints3d_.at<double>(point3dIdx, 2);
+
+				diff = point3d - sourcePosition;
+				pointToRayDistance = ray.cross(diff).norm();
+				closestPointToRayDistance = MIN(closestPointToRayDistance, pointToRayDistance);
+				if (pointToRayDistance < kPointAssignmentThreshold_)
+				{
+					pointToCameraDistance = diff.norm();
+					if (pointToCameraDistance < closestPointDistance)
+					{
+						closestPointDistance = pointToCameraDistance;
+						assignment_[pointIdx] = point3dIdx;
+					}
+				}
+			}
+
+			/*if (assignment_[pointIdx] > -1)
+			{
+				Eigen::Vector3d pp = sourcePosition + ray;
+				Eigen::Vector3d qq;
+				qq(0) = kPoints3d_.at<double>(assignment_[pointIdx], 0);
+				qq(1) = kPoints3d_.at<double>(assignment_[pointIdx], 1);
+				qq(2) = kPoints3d_.at<double>(assignment_[pointIdx], 2);
+
+				std::ofstream ff("point_selection.txt", std::fstream::app);
+				ff << sourcePosition(0) << " " << sourcePosition(1) << " " << sourcePosition(2) << " "
+				 	<< 255 << " " << 0 << " " << 0 << "\n";
+				ff << pp(0) << " " << pp(1) << " " << pp(2) << " "
+				 	<< 0 << " " << 255 << " " << 0 << "\n";
+				ff << qq(0) << " " << qq(1) << " " << qq(2) << " "
+				 	<< 0 << " " << 0 << " " << 255 << "\n";
+				ff.close();
+			}*/
+		}
+	} else if (_Method == 1)
+	{
+		const size_t kPointNumber = kCorrespondences_.rows;
+		assignment_.resize(kPointNumber, -1);
+		const Eigen::Matrix3d kInverseSourceRotation = 
+			kSourcePose_.rotation().transpose();
+		const Eigen::Matrix3d kInverseDestinationRotation = 
+			kDestinationPose_.rotation().transpose();
+		const Eigen::Vector3d &sourcePosition = 
+			kSourcePose_.position();
+		const Eigen::Vector3d &destinationPosition = 
+			kDestinationPose_.position();
+		Eigen::Vector3d raySource, rayDestination,
+			point3d, diff1, diff2;
+		double pointToRayDistance1,
+			pointToRayDistance2,
+			closestPointToRayDistance,
+			pointToCameraDistance,
+			closestPointDistance;
+
+//#pragma omp parallel for num_threads(kCoreNumber)
+		for (int pointIdx = 0; pointIdx < kPointNumber; ++pointIdx)
+		{
+			closestPointToRayDistance = std::numeric_limits<double>::max();
+			closestPointDistance = std::numeric_limits<double>::max();
+
+			// Calculate the ray direction in the source image
+			raySource(0) = kCorrespondences_.at<double>(pointIdx, 0);
+			raySource(1) = kCorrespondences_.at<double>(pointIdx, 1);
+			raySource(2) = 1;
+			raySource = kInverseSourceRotation * raySource.normalized();
+			
+			// Calculate the ray direction in the destination image
+			rayDestination(0) = kCorrespondences_.at<double>(pointIdx, 2);
+			rayDestination(1) = kCorrespondences_.at<double>(pointIdx, 3);
+			rayDestination(2) = 1;
+			rayDestination = kInverseDestinationRotation * rayDestination.normalized();
+
+			// Iterate through the 3D points and find the ones that are close to the ray
+			for (size_t point3dIdx = 0; point3dIdx < kPoints3d_.rows; ++point3dIdx)
+			{
+				// Point-to-ray distance
+				point3d(0) = kPoints3d_.at<double>(point3dIdx, 0);
+				point3d(1) = kPoints3d_.at<double>(point3dIdx, 1);
+				point3d(2) = kPoints3d_.at<double>(point3dIdx, 2);
+
+				diff1 = point3d - sourcePosition;
+				diff2 = point3d - destinationPosition;
+				
+				pointToRayDistance1 = raySource.cross(diff1).norm();
+				pointToRayDistance2 = rayDestination.cross(diff2).norm();
+
+				if (pointToRayDistance1 + pointToRayDistance2 < 2 * kPointAssignmentThreshold_ &&
+					pointToRayDistance1 + pointToRayDistance2 < closestPointDistance)
+				{
+					closestPointDistance = pointToRayDistance1 + pointToRayDistance2;
+					assignment_[pointIdx] = point3dIdx;
+				}
+			}
+
+			/*if (assignment_[pointIdx] > -1)
+			{
+				Eigen::Vector3d pp = sourcePosition + raySource;
+				Eigen::Vector3d qq;
+				qq(0) = kPoints3d_.at<double>(assignment_[pointIdx], 0);
+				qq(1) = kPoints3d_.at<double>(assignment_[pointIdx], 1);
+				qq(2) = kPoints3d_.at<double>(assignment_[pointIdx], 2);
+
+				std::ofstream ff("point_selection.txt", std::fstream::app);
+				ff << sourcePosition(0) << " " << sourcePosition(1) << " " << sourcePosition(2) << " "
+				 	<< 255 << " " << 0 << " " << 0 << "\n";
+				ff << pp(0) << " " << pp(1) << " " << pp(2) << " "
+				 	<< 0 << " " << 255 << " " << 0 << "\n";
+					
+				pp = destinationPosition + rayDestination;
+				ff << destinationPosition(0) << " " << destinationPosition(1) << " " << destinationPosition(2) << " "
+				 	<< 255 << " " << 255 << " " << 0 << "\n";
+				ff << pp(0) << " " << pp(1) << " " << pp(2) << " "
+				 	<< 0 << " " << 255 << " " << 0 << "\n";
+				ff << qq(0) << " " << qq(1) << " " << qq(2) << " "
+				 	<< 0 << " " << 0 << " " << 255 << "\n";
+				ff.close();
+			}*/
+		}
+	} else if (_Method == 2)
+	{
+		const size_t kPointNumber = kCorrespondences_.rows;
+		assignment_.resize(kPointNumber, -1);
+		Eigen::Vector3d diff;
+
+		const Eigen::Matrix<double, 3, 4> kProjectionSource = kSourcePose_.projectionMatrix(),
+			kProjectionDestination = kDestinationPose_.projectionMatrix();
+
+		// Calculate relative pose
+		const Eigen::Matrix3d kRelativeRotation = 
+			kDestinationPose_.rotation() * kSourcePose_.rotation().transpose();
+		const Eigen::Vector3d kRelativeTranslation = 
+			kDestinationPose_.rotation() * (kSourcePose_.position() - kDestinationPose_.position());
+
+		Eigen::Matrix3d translationCrossProduct;
+		translationCrossProduct << 0, -kRelativeTranslation(2), kRelativeTranslation(1), 
+		kRelativeTranslation(2), 0, -kRelativeTranslation(0),
+		-kRelativeTranslation(1), kRelativeTranslation(0), 0;
+
+		Eigen::Matrix3d kEssentialMatrix = translationCrossProduct * kRelativeRotation;
+		
+		// The default estimator for essential matrix fitting
+		gcransac::utils::DefaultEssentialMatrixEstimator estimator(
+			Eigen::Matrix3d::Identity(),
+			Eigen::Matrix3d::Identity());
+
+		for (int pointIdx = 0; pointIdx < kPointNumber; ++pointIdx)
+		{ 
+			// Check if the correspondence is consistent with the epipolar geometry
+			double residual = estimator.residual(kCorrespondences_.row(pointIdx),
+				kEssentialMatrix);
+
+			if (residual > kPointAssignmentThreshold_)
+			{
+				assignment_[pointIdx] = 
+					round((kPoints3d_.rows - 1.0) * static_cast<double>(rand()) / RAND_MAX);
+				continue;
+			}
+
+			Eigen::Vector4d triangulatedPoint;
+			optimalTriangulation(
+				kProjectionSource,
+				kProjectionDestination,
+				kCorrespondences_.row(pointIdx),
+				triangulatedPoint);
+
+			if (triangulatedPoint(3) < 0)
+			{
+				assignment_[pointIdx] = 
+					round((kPoints3d_.rows - 1.0) * static_cast<double>(rand()) / RAND_MAX);
+				continue;
+			}
+
+			double pointDistance = 0,
+				bestDistance = std::numeric_limits<double>::max();
+			Eigen::Vector3d triangulatedPoint3d = triangulatedPoint.hnormalized(),
+				point3d;
+				
+			// Iterate through the 3D points and find the ones that are close to the ray
+			for (size_t point3dIdx = 0; point3dIdx < kPoints3d_.rows; ++point3dIdx)
+			{
+				// Point-to-ray distance
+				point3d(0) = kPoints3d_.at<double>(point3dIdx, 0);
+				point3d(1) = kPoints3d_.at<double>(point3dIdx, 1);
+				point3d(2) = kPoints3d_.at<double>(point3dIdx, 2);
+
+				diff = point3d - triangulatedPoint3d;
+				pointDistance = diff.norm();
+
+				if (pointDistance < bestDistance)
+				{
+					bestDistance = pointDistance;
+					assignment_[pointIdx] = point3dIdx;
+				}
+			}
+			
+			/*if (assignment_[pointIdx] > -1)
+			{
+				const Eigen::Vector3d &sourcePosition = 
+					kSourcePose_.position();
+				const Eigen::Vector3d &destinationPosition = 
+					kDestinationPose_.position();
+					
+				const Eigen::Matrix3d kInverseSourceRotation = 
+					kSourcePose_.rotation().transpose();
+				const Eigen::Matrix3d kInverseDestinationRotation = 
+					kDestinationPose_.rotation().transpose();
+
+				// Calculate the ray direction in the source image
+				Eigen::Vector3d raySource, rayDestination;
+				raySource(0) = kCorrespondences_.at<double>(pointIdx, 0);
+				raySource(1) = kCorrespondences_.at<double>(pointIdx, 1);
+				raySource(2) = 1;
+				raySource = kInverseSourceRotation * raySource.normalized();
+				
+				// Calculate the ray direction in the destination image
+				rayDestination(0) = kCorrespondences_.at<double>(pointIdx, 2);
+				rayDestination(1) = kCorrespondences_.at<double>(pointIdx, 3);
+				rayDestination(2) = 1;
+				rayDestination = kInverseDestinationRotation * rayDestination.normalized();
+
+				Eigen::Vector3d pp = sourcePosition + raySource;
+				Eigen::Vector3d qq;
+				qq(0) = kPoints3d_.at<double>(assignment_[pointIdx], 0);
+				qq(1) = kPoints3d_.at<double>(assignment_[pointIdx], 1);
+				qq(2) = kPoints3d_.at<double>(assignment_[pointIdx], 2);
+
+				std::ofstream ff("point_selection.txt", std::fstream::app);
+				ff << sourcePosition(0) << " " << sourcePosition(1) << " " << sourcePosition(2) << " "
+					<< 255 << " " << 0 << " " << 0 << "\n";
+				ff << pp(0) << " " << pp(1) << " " << pp(2) << " "
+					<< 0 << " " << 255 << " " << 0 << "\n";
+					
+				pp = destinationPosition + rayDestination;
+				ff << destinationPosition(0) << " " << destinationPosition(1) << " " << destinationPosition(2) << " "
+					<< 255 << " " << 255 << " " << 0 << "\n";
+				ff << pp(0) << " " << pp(1) << " " << pp(2) << " "
+					<< 0 << " " << 255 << " " << 0 << "\n";
+				ff << qq(0) << " " << qq(1) << " " << qq(2) << " "
+					<< 0 << " " << 0 << " " << 255 << "\n";
+				ff.close();
+			}	*/		
+		}
+
+		//while (1);
+	}
+
+	// Save the assignment to the database
+	assignmentMat = cv::Mat(assignment_.size(), 1, CV_32S, &assignment_[0]);
+	datareading::writeResults(
+		kDatabaseName_,
+		assignmentMat,
+		databaseLabel);
+}
+
+void loadCalibrations(
+	const std::string &kPath_,
+	std::map<std::string, CameraIntrinsics> &calibrations_)
+{
+	std::ifstream file(kPath_);
+	if (!file.is_open())
+	{
+		fprintf(stderr, "A problem occured when opening file '%s'.\n", kPath_.c_str());
+		return;
+	}
+
+	std::string imageName;
+	double focalLength,
+		principalPointX,
+		principalPointY;
+
+	while (file >> imageName >> 
+		focalLength >> 
+		principalPointX >> 
+		principalPointY)
+	{
+		auto iterator = calibrations_.find(imageName);
+		if (iterator != std::end(calibrations_))
+		{
+			fprintf(stderr, "Image '%s' has multiple poses.\n", imageName.c_str());
+			continue;	
+		}
+		
+		calibrations_[imageName] =
+			CameraIntrinsics(focalLength, principalPointX, principalPointY);
+	}
+}
+
+template <size_t _HeaderLines>
+void loadPoses(
+	const std::string &kPath_,
+	std::map<std::string, CameraPose> &poses_)
+{
+	std::ifstream file(kPath_);
+	if (!file.is_open())
+	{
+		fprintf(stderr, "A problem occured when opening file '%s'.\n", kPath_.c_str());
+		return;
+	}
+
+	std::string str;
+	for (size_t lineIdx = 0; lineIdx < _HeaderLines; ++lineIdx)
+		std::getline(file, str);
+
+	Eigen::Quaterniond quaternion;
+	Eigen::Vector4d qVec;
+	Eigen::Vector3d position;
+	while (file >> str >> 
+		position(0) >> position(1) >> position(2) >>
+		qVec(0) >> qVec(1) >> qVec(2) >> qVec(3))
+	{
+		auto iterator = poses_.find(str);
+		if (iterator != std::end(poses_))
+		{
+			fprintf(stderr, "Image '%s' has multiple poses.\n", str.c_str());
+			continue;	
+		}
+
+		quaternion = 
+			Eigen::Quaterniond(qVec(0), qVec(1), qVec(2), qVec(3));
+		poses_[str] = 
+			CameraPose(quaternion, 
+				position);
+	}
+
+	file.close();
+}
+
+void loadImagePairs(
+	const std::string &kPath_,
+	std::vector<std::pair<std::string, std::string>> &imagePairs_)
+{
+	std::ifstream file(kPath_);
+	if (!file.is_open())
+	{
+		fprintf(stderr, "A problem occured when opening file '%s'.\n", kPath_.c_str());
+		return;
+	}
+
+	imagePairs_.clear();	
+	std::string imageNameSource, imageNameDestination;
+	while (file >> imageNameSource >> imageNameDestination)
+		imagePairs_.emplace_back(std::make_pair(imageNameSource, imageNameDestination));
+	file.close();
+}
+
+void loadOrientedPoints(
+	const std::string &kPath_,
+	std::vector<double> &values_)
+{
+	std::ifstream file(kPath_);
+	if (!file.is_open())
+	{
+		fprintf(stderr, "A problem occured when opening file '%s'.\n", kPath_.c_str());
+		return;
+	}
+
+	values_.clear();
+	double value;
+	while (file >> value)
+		values_.emplace_back(value);
+	file.close();
 }

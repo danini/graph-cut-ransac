@@ -36,6 +36,7 @@
 #include <vector>
 #include <opencv2/core.hpp>
 #include "model.h"
+#include "utils.h"
 #include "inlier_selector.h"
 #include "neighborhood/grid_neighborhood_graph.h"
 

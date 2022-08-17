@@ -153,7 +153,7 @@ namespace gcransac
 						cv_rodrigues, // The initial rotation
 						cv_translation, // The initial translation
 						false, // Use the initial values
-						cv::SOLVEPNP_EPNP); // Apply numerical refinement
+						cv::SOLVEPNP_ITERATIVE); // Apply numerical refinement
 			
 					// Convert the rotation vector back to a rotation matrix
 					cv::Rodrigues(cv_rodrigues, cv_rotation);
@@ -165,32 +165,6 @@ namespace gcransac
 					model.descriptor.resize(3, 4);
 					model.descriptor << rotation, translation;
 					temp_models.emplace_back(model);
-
-					/*estimator::solver::DLSPnP solver;
-					solver.estimateModel(data_, // All point correspondences
-						sample_, // The sample, i.e., indices of points to be used
-						sample_number_, // The size of the sample
-						temp_models, // The estimated model parameters
-						weights_); // The weights used for the estimation*/
-
-					/*size_t temp_sample[3];
-					for (size_t rep = 0; rep < 20; ++rep)
-					{
-						temp_sample[0] = round(static_cast<double>(rand()) / static_cast<double>(RAND_MAX) * (sample_number_ - 1));
-						temp_sample[1] = round(static_cast<double>(rand()) / static_cast<double>(RAND_MAX) * (sample_number_ - 1));
-						temp_sample[2] = round(static_cast<double>(rand()) / static_cast<double>(RAND_MAX) * (sample_number_ - 1));
-
-						temp_sample[0] = sample_[temp_sample[0]];
-						temp_sample[1] = sample_[temp_sample[1]];
-						temp_sample[2] = sample_[temp_sample[2]];
-
-						estimator::solver::P3PSolver solver;
-						solver.estimateModel(data_, // All point correspondences
-							temp_sample, // The sample, i.e., indices of points to be used
-							3, // The size of the sample
-							temp_models, // The estimated model parameters
-							weights_); // The weights used for the estimation
-					}*/
 				} else
 					temp_models = models_;
 				models_.clear();
