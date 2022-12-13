@@ -346,6 +346,3 @@ MigrationBackup/
 
 # Specific to this report
 results/*
-build
-*.txt
-*.npy

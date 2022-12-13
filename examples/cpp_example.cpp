@@ -387,7 +387,7 @@ std::vector<std::string> getAvailableTestScenes(Problem problem_)
 	case Problem::HomographyFitting:
 		return { "graf", "Eiffel", "adam" };
 	case Problem::RigidTransformationFitting:
-		return { "kitchen" };
+		return { "rigid_pose_example" };
 	default:
 		return { "fountain" };
 	}
@@ -868,31 +868,13 @@ void testRigidTransformFitting(
 		points_path_.c_str()); // The path where the image points are stored
 
 	// Load the ground truth pose
-	Eigen::Matrix<double, 8, 4> reference_pose;
-	if (!utils::loadMatrix<double, 8, 4>(ground_truth_pose_path_,
-		reference_pose))
+	Eigen::Matrix<double, 4, 4> ground_truth_T;
+	if (!utils::loadMatrix<double, 4, 4>(ground_truth_pose_path_,
+		ground_truth_T))
 	{
 		printf("An error occured when loading the reference camera pose from '%s'\n",
 			ground_truth_pose_path_.c_str());
 		return;
-	}
-
-	const Eigen::Matrix4d& initial_T =
-		reference_pose.block<4, 4>(0, 0);
-	const Eigen::Matrix4d& ground_truth_T =
-		reference_pose.block<4, 4>(4, 0);
-
-	// Transform the point by the initial transformation
-	for (size_t point_idx = 0; point_idx < points.rows; ++point_idx)
-	{
-		const double
-			x = points.at<double>(point_idx, 0),
-			y = points.at<double>(point_idx, 1),
-			z = points.at<double>(point_idx, 2);
-
-		points.at<double>(point_idx, 0) = initial_T(0, 0) * x + initial_T(1, 0) * y + initial_T(2, 0) * z + initial_T(3, 0);
-		points.at<double>(point_idx, 1) = initial_T(0, 1) * x + initial_T(1, 1) * y + initial_T(2, 1) * z + initial_T(3, 1);
-		points.at<double>(point_idx, 2) = initial_T(0, 2) * x + initial_T(1, 2) * y + initial_T(2, 2) * z + initial_T(3, 2);
 	}
 
 	// Initialize the neighborhood used in Graph-cut RANSAC and, perhaps,
@@ -924,10 +906,7 @@ void testRigidTransformFitting(
 	}
 
 	// Initializing SPRT test
-	preemption::SPRTPreemptiveVerfication<utils::DefaultRigidTransformationEstimator> preemptive_verification(
-		points,
-		estimator,
-		minimum_inlier_ratio_for_sprt_);
+	preemption::EmptyPreemptiveVerfication<utils::DefaultRigidTransformationEstimator> preemptive_verification;
 
 	// Initializing the fast inlier selector object
 	inlier_selector::EmptyInlierSelector<utils::DefaultRigidTransformationEstimator, 
@@ -936,12 +915,12 @@ void testRigidTransformFitting(
 	GCRANSAC<utils::DefaultRigidTransformationEstimator,
 		neighborhood::FlannNeighborhoodGraph,
 		MSACScoringFunction<utils::DefaultRigidTransformationEstimator>,
-		preemption::SPRTPreemptiveVerfication<utils::DefaultRigidTransformationEstimator>> gcransac;
+		preemption::EmptyPreemptiveVerfication<utils::DefaultRigidTransformationEstimator>> gcransac;
 	gcransac.settings.threshold = inlier_outlier_threshold_; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatial_coherence_weight_; // The weight of the spatial coherence term
 	gcransac.settings.confidence = confidence_; // The required confidence in the results
 	gcransac.settings.max_iteration_number = 5000; // The maximum number of iterations
-	gcransac.settings.min_iteration_number = 20; // The minimum number of iterations
+	gcransac.settings.min_iteration_number = 50; // The minimum number of iterations
 	gcransac.settings.neighborhood_sphere_radius = sphere_radius_; // The radius of the neighborhood ball
 
 	// Start GC-RANSAC
@@ -968,12 +947,9 @@ void testRigidTransformFitting(
 		inliers_point_path_.c_str(), // The path where the results should be saved
 		&statistics.inliers); // The set of inlier found
 
-	model.descriptor =
-		initial_T * model.descriptor;
-
 	// The estimated rotation matrix
 	Eigen::Matrix3d rotation =
-		model.descriptor.block<3, 3>(0, 0);
+		model.descriptor.block<3, 3>(0, 0).transpose();
 	// The estimated translation
 	Eigen::Vector3d translation =
 		model.descriptor.block<1, 3>(3, 0);
@@ -985,7 +961,7 @@ void testRigidTransformFitting(
 	constexpr double radian_to_degree_multiplier = 180.0 / M_PI;
 	const double angular_error = radian_to_degree_multiplier * (Eigen::Quaterniond(
 		rotation).angularDistance(Eigen::Quaterniond(ground_truth_T.block<3, 3>(0, 0))));
-	const double translation_error = (ground_truth_T.block<1, 3>(3, 0) - translation.transpose()).norm();
+	const double translation_error = (ground_truth_T.block<3, 1>(0, 3) - translation).norm();
 
 	printf("The error in the rotation matrix = %f degrees\n", angular_error);
 	printf("The error in the translation = %f\n", translation_error / 10.0);
