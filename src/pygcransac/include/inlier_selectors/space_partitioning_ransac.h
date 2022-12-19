@@ -41,42 +41,46 @@
 
 namespace gcransac
 {
-	namespace inlier_selector
-	{
+    namespace inlier_selector
+    {
         template <
             typename _Estimator,
             typename _NeighborhoodStructure>
-        class SpacePartitioningRANSAC : public AbstractInlierSelector<_Estimator, _NeighborhoodStructure>
+            class SpacePartitioningRANSAC : public AbstractInlierSelector<_Estimator, _NeighborhoodStructure>
         {
         protected:
             std::vector<bool> gridCornerMask;
             std::vector<std::tuple<int, int, double, double>> gridCornerCoordinatesH;
+            std::vector<std::tuple<int, int, int, double, double, double>> gridCornerCoordinates3D;
             std::vector<double> additionalParameters;
 
         public:
             static constexpr bool doesSomething() { return true; }
 
-            explicit SpacePartitioningRANSAC(const _NeighborhoodStructure *kNeighborhoodGraph_) : 
+            explicit SpacePartitioningRANSAC(const _NeighborhoodStructure* kNeighborhoodGraph_) :
                 AbstractInlierSelector<_Estimator, _NeighborhoodStructure>(kNeighborhoodGraph_)
             {
+                // Save additional info needed for the selection
+                const auto& kSizes = kNeighborhoodGraph_->getCellSizes();
+                // Number of dimensions
+                const size_t& kDimensions = kSizes.size();
+
                 // The number cells filled in the grid
-                const size_t &kCellNumber = kNeighborhoodGraph_->filledCellNumber();
-                const size_t &kDivisionNumber = kNeighborhoodGraph_->getDivisionNumber();
-                const size_t kMaximumCellNumber = std::pow(kDivisionNumber, 4);
+                const size_t& kCellNumber = kNeighborhoodGraph_->filledCellNumber();
+                const size_t& kDivisionNumber = kNeighborhoodGraph_->getDivisionNumber();
+                const size_t kMaximumCellNumber = std::pow(kDivisionNumber, kDimensions);
 
                 // Initialize the structures speeding up the selection by caching data
                 gridCornerMask.resize(kMaximumCellNumber, false);
-                gridCornerCoordinatesH.resize(kMaximumCellNumber);
+                if (kDimensions == 6)
+                    gridCornerCoordinates3D.resize(kMaximumCellNumber);
+                else
+                    gridCornerCoordinatesH.resize(kMaximumCellNumber);
 
-                // Save additional info needed for the selection
-                const auto &sizes = kNeighborhoodGraph_->getCellSizes();
-
-                additionalParameters.resize(5);
-                additionalParameters[0] = sizes[0]; // The width of the source image
-                additionalParameters[1] = sizes[1]; // The height of the source image
-                additionalParameters[2] = sizes[2]; // The width of the destination image
-                additionalParameters[3] = sizes[3]; // The height of the destination image
-                additionalParameters[4] = kDivisionNumber; // The number of cells along an axis   
+                additionalParameters.resize(kDimensions + 1);
+                for (size_t dimension = 0; dimension < kDimensions; ++dimension)
+                    additionalParameters[dimension] = kSizes[dimension]; // The cell size along the current dimension
+                additionalParameters[kDimensions] = kDivisionNumber; // The number of cells along an axis   
             }
 
             // The function that runs the model-based inlier selector
@@ -86,10 +90,18 @@ namespace gcransac
                 const _NeighborhoodStructure& kNeighborhood_, // The neighborhood structure. This probably will be a GridNeighborhood currently.
                 const double& inlierOutlierThreshold_,
                 std::vector<const std::vector<size_t>*>& selectedCells_, // The indices of the points selected
-                size_t& pointNumber_); 
+                size_t& pointNumber_);
 
         protected:
             void runHomography(
+                const cv::Mat& kCorrespondences_,
+                const gcransac::Model& kModel_,
+                const _NeighborhoodStructure& kNeighborhood_,
+                std::vector<const std::vector<size_t>*>& selectedCells_,
+                size_t& pointNumber_,
+                const double& inlierOutlierThreshold_);
+
+            void runRigidTransformation(
                 const cv::Mat& kCorrespondences_,
                 const gcransac::Model& kModel_,
                 const _NeighborhoodStructure& kNeighborhood_,
@@ -102,19 +114,27 @@ namespace gcransac
         template <
             typename _Estimator,
             typename _NeighborhoodStructure>
-        void SpacePartitioningRANSAC<_Estimator, _NeighborhoodStructure>::run(
-            const cv::Mat& kCorrespondences_, // All point correspondences
-            const gcransac::Model& kModel_, // The model parameters
-            const _NeighborhoodStructure& kNeighborhood_, // The neighborhood structure. This probably will be a GridNeighborhood currently.
-            const double& inlierOutlierThreshold_,
-            std::vector<const std::vector<size_t>*>& selectedCells_, // The indices of the points selected
-            size_t& pointNumber_)
+            void SpacePartitioningRANSAC<_Estimator, _NeighborhoodStructure>::run(
+                const cv::Mat& kCorrespondences_, // All point correspondences
+                const gcransac::Model& kModel_, // The model parameters
+                const _NeighborhoodStructure& kNeighborhood_, // The neighborhood structure. This probably will be a GridNeighborhood currently.
+                const double& inlierOutlierThreshold_,
+                std::vector<const std::vector<size_t>*>& selectedCells_, // The indices of the points selected
+                size_t& pointNumber_)
         {
             // Initializing the selected point number to zero
             pointNumber_ = 0;
 
             if constexpr (std::is_same<_Estimator, gcransac::utils::DefaultHomographyEstimator>())
                 runHomography(
+                    kCorrespondences_,
+                    kModel_,
+                    kNeighborhood_,
+                    selectedCells_,
+                    pointNumber_,
+                    inlierOutlierThreshold_);
+            else if constexpr (std::is_same<_Estimator, gcransac::utils::DefaultRigidTransformationEstimator>())
+                runRigidTransformation(
                     kCorrespondences_,
                     kModel_,
                     kNeighborhood_,
@@ -128,28 +148,209 @@ namespace gcransac
                 selectedCells_.reserve(cellMap.size());
                 for (const auto& [cell, value] : cellMap)
                 {
-                    const auto &points = value.first;
+                    const auto& points = value.first;
                     selectedCells_.emplace_back(&points);
                     pointNumber_ += points.size();
                 }
             }
         }
-        
+
         template <typename _Estimator,
             typename _NeighborhoodStructure>
-        OLGA_INLINE void SpacePartitioningRANSAC<_Estimator, _NeighborhoodStructure>::runHomography(
-            const cv::Mat& kCorrespondences_,
-            const gcransac::Model& kModel_,
-            const _NeighborhoodStructure& kNeighborhood_,
-            std::vector<const std::vector<size_t>*>& selectedCells_,
-            size_t& pointNumber_,
-            const double& inlierOutlierThreshold_)
+            OLGA_INLINE void SpacePartitioningRANSAC<_Estimator, _NeighborhoodStructure>::runRigidTransformation(
+                const cv::Mat& kCorrespondences_,
+                const gcransac::Model& kModel_,
+                const _NeighborhoodStructure& kNeighborhood_,
+                std::vector<const std::vector<size_t>*>& selectedCells_,
+                size_t& pointNumber_,
+                const double& inlierOutlierThreshold_)
         {
-            /* 
+            const double& kCellSize1 = additionalParameters[0],
+                & kCellSize2 = additionalParameters[1],
+                & kCellSize3 = additionalParameters[2],
+                & kCellSize4 = additionalParameters[3],
+                & kCellSize5 = additionalParameters[4],
+                & kCellSize6 = additionalParameters[5],
+                & kPartitionNumber = additionalParameters[6];
+
+            const Eigen::Matrix4d& descriptor = kModel_.descriptor;
+
+            // Iterate through all cells and project their corners to the second image
+            const static std::vector<int> steps = {
+                0, 0, 0,
+                0, 1, 0,
+                1, 0, 0,
+                1, 1, 0,
+                0, 0, 1,
+                0, 1, 1,
+                1, 0, 1,
+                1, 1, 1 };
+
+            std::fill(std::begin(gridCornerMask), std::end(gridCornerMask), 0);
+
+            // Iterating through all cells in the neighborhood graph
+            for (const auto& [cell, value] : kNeighborhood_.getCells())
+            {
+                // The points in the cell
+                const auto& points = value.first;
+
+                // Checking if there are enough points in the cell to make the cell selection worth it
+                if (points.size() < 8)
+                {
+                    // If not, simply test all points from the cell and continue
+                    selectedCells_.emplace_back(&points);
+                    pointNumber_ += points.size();
+                    continue;
+                }
+
+                const auto& kCornerIndices = value.second;
+                bool overlaps = false;
+
+                // Iterate through the corners of the current cell
+                for (size_t stepIdx = 0; stepIdx < 24; stepIdx += 3)
+                {
+                    // The index of the currently projected corner
+                    const size_t kCornerXIndex = kCornerIndices[0] + steps[stepIdx];
+                    if (kCornerXIndex >= kPartitionNumber)
+                        continue;
+
+                    const size_t kCornerYIndex = kCornerIndices[1] + steps[stepIdx + 1];
+                    if (kCornerYIndex >= kPartitionNumber)
+                        continue;
+
+                    const size_t kCornerZIndex = kCornerIndices[2] + steps[stepIdx + 2];
+                    if (kCornerZIndex >= kPartitionNumber)
+                        continue;
+
+                    // Get the index of the corner's projection in the destination image
+                    const size_t kIdx3d = kCornerXIndex * kPartitionNumber * kPartitionNumber + kCornerYIndex * kPartitionNumber + kCornerYIndex;
+
+                    // This is already or will be the horizontal and vertical indices in the destination image
+                    auto& indexPair = gridCornerCoordinates3D[kIdx3d];
+
+                    // If the corner hasn't yet been projected to the destination image
+                    if (!gridCornerMask[kIdx3d])
+                    {
+                        // Get the coordinates of the corner
+                        const double kX1 = kCornerXIndex * kCellSize1,
+                            kY1 = kCornerYIndex * kCellSize2,
+                            kZ1 = kCornerZIndex * kCellSize3;
+
+                        const double x2p = descriptor(0, 0) * kX1 + descriptor(1, 0) * kY1 + descriptor(2, 0) * kZ1 + descriptor(3, 0),
+                            y2p = descriptor(0, 1) * kX1 + descriptor(1, 1) * kY1 + descriptor(2, 1) * kZ1 + descriptor(3, 1),
+                            z2p = descriptor(0, 2) * kX1 + descriptor(1, 2) * kY1 + descriptor(2, 2) * kZ1 + descriptor(3, 2);
+
+                        // Store the projected corner's cell indices
+                        std::get<0>(indexPair) = x2p / kCellSize4;
+                        std::get<1>(indexPair) = y2p / kCellSize5;
+                        std::get<2>(indexPair) = z2p / kCellSize6;
+                        std::get<3>(indexPair) = x2p;
+                        std::get<4>(indexPair) = y2p;
+                        std::get<5>(indexPair) = z2p;
+
+                        // Note that the corner has been already projected
+                        gridCornerMask[kIdx3d] = true;
+                    }
+
+                    // Check if the projected corner is equal to the correspondence's destination point's grid cell.
+                    // This works due to the coordinate truncation.
+                    if (std::get<0>(indexPair) == kCornerIndices[3] &&
+                        std::get<1>(indexPair) == kCornerIndices[4] &&
+                        std::get<2>(indexPair) == kCornerIndices[5])
+                    {
+                        // Store the points in the cell to be tested
+                        selectedCells_.emplace_back(&points);
+                        pointNumber_ += points.size();
+                        overlaps = true;
+                        break;
+                    }
+                }
+
+                // Check if there is an overlap
+                if (!overlaps)
+                {
+                    // The X index of the bottom-right corner
+                    const size_t kCornerXIndex111 = kCornerIndices[0] + 1;
+                    // The Y index of the bottom-right corner
+                    const size_t kCornerYIndex111 = kCornerIndices[1] + 1;
+                    // The Z index of the bottom-right corner
+                    const size_t kCornerZIndex111 = kCornerIndices[2] + 1;
+
+                    // Calculating the index of the top-left corner
+                    const size_t kIdx3d000 = kCornerIndices[0] * kPartitionNumber * kPartitionNumber + kCornerIndices[1] * kPartitionNumber + kCornerIndices[2];
+                    // Calculating the index of the bottom-right corner
+                    const size_t kIdx3d111 = kCornerXIndex111 * kPartitionNumber * kPartitionNumber + kCornerYIndex111 * kPartitionNumber + kCornerZIndex111;
+
+                    // Coordinates of the top-left and bottom-right corners in the destination image
+                    auto& indexPair000 = gridCornerCoordinates3D[kIdx3d000];
+
+                    std::tuple<int, int, int, double, double, double> indexPair111;
+                    if (kCornerYIndex111 >= kPartitionNumber ||
+                        kCornerXIndex111 >= kPartitionNumber ||
+                        kCornerZIndex111 >= kPartitionNumber)
+                    {
+                        // Get the coordinates of the corner
+                        const double kX111 = kCornerXIndex111 * kCellSize1,
+                            kY111 = kCornerYIndex111 * kCellSize2,
+                            kZ111 = kCornerZIndex111 * kCellSize3;
+
+                        // Project them by the estimated homography matrix
+                        const double x2p = descriptor(0, 0) * kX111 + descriptor(1, 0) * kY111 + descriptor(2, 0) * kZ111 + descriptor(3, 0),
+                            y2p = descriptor(0, 1) * kX111 + descriptor(1, 1) * kY111 + descriptor(2, 1) * kZ111 + descriptor(3, 1),
+                            z2p = descriptor(0, 2) * kX111 + descriptor(1, 2) * kY111 + descriptor(2, 2) * kZ111 + descriptor(3, 2);
+
+                        indexPair111 = std::tuple<int, int, int, double, double, double>(
+                            x2p / kCellSize4, y2p / kCellSize5, z2p / kCellSize6,
+                            x2p, y2p, z2p);
+                    }
+                    else
+                        indexPair111 = gridCornerCoordinates3D[kIdx3d111];
+
+                    const double &l1x = std::get<3>(indexPair000) - inlierOutlierThreshold_;
+                    const double &l1y = std::get<4>(indexPair000) - inlierOutlierThreshold_;
+                    const double &l1z = std::get<5>(indexPair000) - inlierOutlierThreshold_;
+                    const double &r1x = std::get<3>(indexPair111) + inlierOutlierThreshold_;
+                    const double &r1y = std::get<4>(indexPair111) + inlierOutlierThreshold_;
+                    const double &r1z = std::get<5>(indexPair111) + inlierOutlierThreshold_;
+
+                    const double l2x = kCellSize4 * kCornerIndices[3];
+                    const double l2y = kCellSize5 * kCornerIndices[4];
+                    const double l2z = kCellSize6 * kCornerIndices[5];
+                    const double r2x = l2x + kCellSize4;
+                    const double r2y = l2y + kCellSize5;
+                    const double r2z = l2z + kCellSize6;
+
+                    // If one rectangle is on left side of other
+                    if (l1x <= r2x && l2x <= r1x ||
+                        // If one rectangle is above other
+                        r1y <= l2y && r2y <= l1y ||
+                        // If one rectangle is above other
+                        r1z <= l2z && r2z <= l1z)
+                    {
+                        // Store the points in the cell to be tested
+                        selectedCells_.emplace_back(&points);
+                        pointNumber_ += points.size();
+                        overlaps = true;
+                    }
+                }
+            }
+        }
+
+        template <typename _Estimator,
+            typename _NeighborhoodStructure>
+            OLGA_INLINE void SpacePartitioningRANSAC<_Estimator, _NeighborhoodStructure>::runHomography(
+                const cv::Mat& kCorrespondences_,
+                const gcransac::Model& kModel_,
+                const _NeighborhoodStructure& kNeighborhood_,
+                std::vector<const std::vector<size_t>*>& selectedCells_,
+                size_t& pointNumber_,
+                const double& inlierOutlierThreshold_)
+        {
+            /*
                 Selecting cells based on mutual visibility
             */
             constexpr double kDeterminantEpsilon = 1e-3;
-            const Eigen::Matrix3d &descriptor = kModel_.descriptor;
+            const Eigen::Matrix3d& descriptor = kModel_.descriptor;
             const double kDeterminant = descriptor.determinant();
             if (abs(kDeterminant) < kDeterminantEpsilon)
                 return;
@@ -172,7 +373,7 @@ namespace gcransac
             for (const auto& [cell, value] : kNeighborhood_.getCells())
             {
                 // The points in the cell
-                const auto &points = value.first;
+                const auto& points = value.first;
 
                 // Checking if there are enough points in the cell to make the cell selection worth it
                 if (points.size() < 4)
@@ -224,7 +425,7 @@ namespace gcransac
                         std::get<1>(indexPair) = y2p / kCellSize4;
                         std::get<2>(indexPair) = x2p;
                         std::get<3>(indexPair) = y2p;
-                        
+
                         // Note that the corner has been already projected
                         gridCornerMask[kIdx2d] = true;
                     }
@@ -275,14 +476,14 @@ namespace gcransac
                         y2p /= h2p;
 
                         indexPair11 = std::tuple<int, int, double, double>(x2p / kCellSize3, y2p / kCellSize4, x2p, y2p);
-                    } 
+                    }
                     else
                         indexPair11 = gridCornerCoordinatesH[kIdx2d11];
 
-                    const double &l1x = std::get<2>(indexPair00) - inlierOutlierThreshold_;
-                    const double &l1y = std::get<3>(indexPair00) - inlierOutlierThreshold_;
-                    const double &r1x = std::get<2>(indexPair11) + inlierOutlierThreshold_;
-                    const double &r1y = std::get<3>(indexPair11) + inlierOutlierThreshold_;
+                    const double& l1x = std::get<2>(indexPair00) - inlierOutlierThreshold_;
+                    const double& l1y = std::get<3>(indexPair00) - inlierOutlierThreshold_;
+                    const double& r1x = std::get<2>(indexPair11) + inlierOutlierThreshold_;
+                    const double& r1y = std::get<3>(indexPair11) + inlierOutlierThreshold_;
 
                     const double l2x = kCellSize3 * kCornerIndices[2];
                     const double l2y = kCellSize4 * kCornerIndices[3];
