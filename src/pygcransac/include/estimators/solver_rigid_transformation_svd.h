@@ -165,7 +165,6 @@ namespace gcransac
 						offset = cols * sample_[i];
 						if (weights_ != nullptr)
 							weight = weights_[i];
-							//weight = weights_[sample_[i]];
 					}
 
 					const double

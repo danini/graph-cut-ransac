@@ -3,10 +3,8 @@
 
 // A method for estimating a rigid translation between two point clouds
 int findRigidTransform_(
-	// The first point cloud
-	std::vector<double>& points1, 
-	// The second point cloud
-	std::vector<double>& points2,
+	// The 3D-3D point correspondences
+	std::vector<double>& correspondences,
 	// The probabilities for each 3D-3D point correspondence if available
 	std::vector<double> &point_probabilities,
 	// Output: the found inliers 
@@ -40,6 +38,12 @@ int findRigidTransform_(
 	// The size of the neighborhood.
 	// If (0) FLANN is used, the size if the Euclidean distance in the correspondence space
 	double neighborhood_size,
+	// The variance parameter of the AR-Sampler. It is only used if that particular sampler is selected.
+	double sampler_variance,
+	// A flag determining if space partitioning from 
+	// Barath, Daniel, and Gabor Valasek. "Space-Partitioning RANSAC." arXiv preprint arXiv:2111.12385 (2021).
+	// should be used to speed up the model verification.
+	bool use_space_partitioning,
 	// The number of RANSAC iterations done in the local optimization
 	int lo_number);
 
