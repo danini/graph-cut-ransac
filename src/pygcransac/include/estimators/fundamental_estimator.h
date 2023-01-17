@@ -195,7 +195,7 @@ namespace gcransac
 			OLGA_INLINE double squaredSampsonDistance(const cv::Mat& point_,
 				const Eigen::Matrix3d& descriptor_) const
 			{
-				const double* s = reinterpret_cast<double *>(point_.data);
+				const double* s = point_.ptr<double>(0);
 				const double 
 					&x1 = *s,
 					&y1 = *(s + 1),
@@ -208,14 +208,11 @@ namespace gcransac
 					&e13 = descriptor_(0, 2),
 					&e21 = descriptor_(1, 0),
 					&e22 = descriptor_(1, 1),
-					&e23 = descriptor_(1, 2),
-					&e31 = descriptor_(2, 0),
-					&e32 = descriptor_(2, 1),
-					&e33 = descriptor_(2, 2);
+					&e23 = descriptor_(1, 2);
 
-				double rxc = e11 * x2 + e21 * y2 + e31;
-				double ryc = e12 * x2 + e22 * y2 + e32;
-				double rwc = e13 * x2 + e23 * y2 + e33;
+				double rxc = e11 * x2 + e21 * y2 + descriptor_(2, 0);
+				double ryc = e12 * x2 + e22 * y2 + descriptor_(2, 1);
+				double rwc = e13 * x2 + e23 * y2 + descriptor_(2, 2);
 				double r = (x1 * rxc + y1 * ryc + rwc);
 				double rx = e11 * x1 + e12 * y1 + e13;
 				double ry = e21 * x1 + e22 * y1 + e23;
@@ -228,7 +225,7 @@ namespace gcransac
 			OLGA_INLINE double squaredSymmetricEpipolarDistance(const cv::Mat& point_,
 				const Eigen::MatrixXd& descriptor_) const
 			{
-				const double* s = reinterpret_cast<double *>(point_.data);
+				const double* s = point_.ptr<double>(0);
 				const double 
 					&x1 = *s,
 					&y1 = *(s + 1),
@@ -241,14 +238,11 @@ namespace gcransac
 					&e13 = descriptor_(0, 2),
 					&e21 = descriptor_(1, 0),
 					&e22 = descriptor_(1, 1),
-					&e23 = descriptor_(1, 2),
-					&e31 = descriptor_(2, 0),
-					&e32 = descriptor_(2, 1),
-					&e33 = descriptor_(2, 2);
+					&e23 = descriptor_(1, 2);
 
-				const double rxc = e11 * x2 + e21 * y2 + e31;
-				const double ryc = e12 * x2 + e22 * y2 + e32;
-				const double rwc = e13 * x2 + e23 * y2 + e33;
+				const double rxc = e11 * x2 + e21 * y2 + descriptor_(2, 0);
+				const double ryc = e12 * x2 + e22 * y2 + descriptor_(2, 1);
+				const double rwc = e13 * x2 + e23 * y2 + descriptor_(2, 2);
 				const double r = (x1 * rxc + y1 * ryc + rwc);
 				const double rx = e11 * x1 + e12 * y1 + e13;
 				const double ry = e21 * x1 + e22 * y1 + e23;
@@ -375,7 +369,7 @@ namespace gcransac
 				
 				// Calculate the epipole in the second image
 				const Eigen::Vector3d epipole =
-					svd.matrixU().rightCols<1>().head<3>() / svd.matrixU()(2,2);
+					svd.matrixU().col(2) / svd.matrixU()(2,2);
 				
 				// The calculate the cross-produced matrix of the epipole
 				Eigen::Matrix3d epipolar_cross;
@@ -390,6 +384,8 @@ namespace gcransac
 				bool h_degenerate_sample = false;
 				// The homography which the H-degenerate part of the sample implies
 				Eigen::Matrix3d best_homography;
+				// Get the data pointer
+				const double *data_ptr = data_.ptr<double>(0);
 				// Iterate through the triplets of points in the sample
 				for (size_t triplet_idx = 0; triplet_idx < number_of_triplets; ++triplet_idx)
 				{
@@ -402,24 +398,21 @@ namespace gcransac
 
 					// A pointer to the first point's first coordinate
 					const double *point_1_ptr =
-						reinterpret_cast<double *>(data_.data) + point_1_idx * columns;
+						data_ptr + point_1_idx * columns;
 					// A pointer to the second point's first coordinate
 					const double *point_2_ptr =
-						reinterpret_cast<double *>(data_.data) + point_2_idx * columns;
+						data_ptr + point_2_idx * columns;
 					// A pointer to the third point's first coordinate
 					const double *point_3_ptr =
-						reinterpret_cast<double *>(data_.data) + point_3_idx * columns;
+						data_ptr + point_3_idx * columns;
 
 					// Copy the point coordinates into Eigen vectors
-					Eigen::Vector3d point_1_1, point_1_2, point_1_3,
-						point_2_1, point_2_2, point_2_3;
-
-					point_1_1 << point_1_ptr[0], point_1_ptr[1], 1;
-					point_2_1 << point_1_ptr[2], point_1_ptr[3], 1;
-					point_1_2 << point_2_ptr[0], point_2_ptr[1], 1;
-					point_2_2 << point_2_ptr[2], point_2_ptr[3], 1;
-					point_1_3 << point_3_ptr[0], point_3_ptr[1], 1;
-					point_2_3 << point_3_ptr[2], point_3_ptr[3], 1;
+					Eigen::Vector3d point_1_1(point_1_ptr[0], point_1_ptr[1], 1), 
+						point_1_2(point_2_ptr[0], point_2_ptr[1], 1), 
+						point_1_3(point_3_ptr[0], point_3_ptr[1], 1),
+						point_2_1(point_1_ptr[2], point_1_ptr[3], 1), 
+						point_2_2(point_2_ptr[2], point_2_ptr[3], 1), 
+						point_2_3(point_3_ptr[2], point_3_ptr[3], 1);
 
 					// Calculate the cross-product of the epipole end each point
 					Eigen::Vector3d point_1_cross_epipole = point_2_1.cross(epipole);
@@ -456,7 +449,7 @@ namespace gcransac
 					
 						// Calculate the re-projection error
 						const double *point_ptr =
-							reinterpret_cast<double *>(data_.data) + idx * columns;
+							data_ptr + idx * columns;
 
 						const double &x1 = point_ptr[0], // The x coordinate in the first image
 							&y1 = point_ptr[1], // The y coordinate in the first image

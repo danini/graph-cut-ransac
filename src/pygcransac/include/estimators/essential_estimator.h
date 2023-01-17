@@ -186,7 +186,7 @@ namespace gcransac
 			OLGA_INLINE double squaredSampsonDistance(const cv::Mat& point_,
 				const Eigen::Matrix3d& descriptor_) const
 			{
-				const double* s = reinterpret_cast<double *>(point_.data);
+				const double* s = point_.ptr<double>(0);
 				const double 
 					&x1 = *s,
 					&y1 = *(s + 1),
@@ -199,14 +199,11 @@ namespace gcransac
 					&e13 = descriptor_(0, 2),
 					&e21 = descriptor_(1, 0),
 					&e22 = descriptor_(1, 1),
-					&e23 = descriptor_(1, 2),
-					&e31 = descriptor_(2, 0),
-					&e32 = descriptor_(2, 1),
-					&e33 = descriptor_(2, 2);
+					&e23 = descriptor_(1, 2);
 
-				double rxc = e11 * x2 + e21 * y2 + e31;
-				double ryc = e12 * x2 + e22 * y2 + e32;
-				double rwc = e13 * x2 + e23 * y2 + e33;
+				double rxc = e11 * x2 + e21 * y2 + descriptor_(2, 0);
+				double ryc = e12 * x2 + e22 * y2 + descriptor_(2, 1);
+				double rwc = e13 * x2 + e23 * y2 + descriptor_(2, 2);
 				double r = (x1 * rxc + y1 * ryc + rwc);
 				double rx = e11 * x1 + e12 * y1 + e13;
 				double ry = e21 * x1 + e22 * y1 + e23;
@@ -219,7 +216,7 @@ namespace gcransac
 			OLGA_INLINE double squaredSymmetricEpipolarDistance(const cv::Mat& point_,
 				const Eigen::MatrixXd& descriptor_) const
 			{
-				const double* s = reinterpret_cast<double *>(point_.data);
+				const double* s = point_.ptr<double>(0);
 				const double 
 					&x1 = *s,
 					&y1 = *(s + 1),
@@ -232,14 +229,11 @@ namespace gcransac
 					&e13 = descriptor_(0, 2),
 					&e21 = descriptor_(1, 0),
 					&e22 = descriptor_(1, 1),
-					&e23 = descriptor_(1, 2),
-					&e31 = descriptor_(2, 0),
-					&e32 = descriptor_(2, 1),
-					&e33 = descriptor_(2, 2);
+					&e23 = descriptor_(1, 2);
 
-				const double rxc = e11 * x2 + e21 * y2 + e31;
-				const double ryc = e12 * x2 + e22 * y2 + e32;
-				const double rwc = e13 * x2 + e23 * y2 + e33;
+				const double rxc = e11 * x2 + e21 * y2 + descriptor_(2, 0);
+				const double ryc = e12 * x2 + e22 * y2 + descriptor_(2, 1);
+				const double rwc = e13 * x2 + e23 * y2 + descriptor_(2, 2);
 				const double r = (x1 * rxc + y1 * ryc + rwc);
 				const double rx = e11 * x1 + e12 * y1 + e13;
 				const double ry = e21 * x1 + e22 * y1 + e23;

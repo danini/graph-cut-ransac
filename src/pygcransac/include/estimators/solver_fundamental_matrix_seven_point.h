@@ -99,13 +99,12 @@ namespace gcransac
 				const double *data_ptr = reinterpret_cast<double *>(data_.data);
 				const int cols = data_.cols;
 				double c[4];
-				double t0, t1, t2;
 				int i, n;
 
 				// Form a linear system: i-th row of A(=a) represents
 				// the equation: (m2[i], 1)'*F*(m1[i], 1) = 0
 				double weight = 1.0;
-				for (i = 0; i < 7; i++)
+				for (i = 0; i < sample_number_; i++)
 				{
 					const int sample_idx = sample_[i];
 					const int offset = cols * sample_idx;
@@ -159,7 +158,7 @@ namespace gcransac
 				// https://eigen.tuxfamily.org/dox/group__DenseDecompositionBenchmark.html
 				if (sample_number_ == sampleSize())
 				{
-					const Eigen::FullPivLU<Eigen::MatrixXd> lu(coefficients.transpose() * coefficients);
+					const Eigen::FullPivLU<Eigen::MatrixXd> lu(coefficients);
 					if (lu.dimensionOfKernel() != 2) 
 						return false;
 
@@ -191,36 +190,56 @@ namespace gcransac
 				// use the additional constraint det(f) = det(lambda*f1 + (1-lambda)*f2) to find lambda.
 				// it will be a cubic equation.
 				// find c - polynomial coefficients.
-				for (i = 0; i < 9; i++)
-					f1[i] -= f2[i];
+				f1 -= f2;
 
-				t0 = f2[4] * f2[8] - f2[5] * f2[7];
-				t1 = f2[3] * f2[8] - f2[5] * f2[6];
-				t2 = f2[3] * f2[7] - f2[4] * f2[6];
+				const double 
+					&f2_0 = f2[0],
+					&f2_1 = f2[1],
+					&f2_2 = f2[2],
+					&f2_3 = f2[3],
+					&f2_4 = f2[4],
+					&f2_5 = f2[5],
+					&f2_6 = f2[6],
+					&f2_7 = f2[7],
+					&f2_8 = f2[8],
+					&f1_0 = f1[0],
+					&f1_1 = f1[1],
+					&f1_2 = f1[2],
+					&f1_3 = f1[3],
+					&f1_4 = f1[4],
+					&f1_5 = f1[5],
+					&f1_6 = f1[6],
+					&f1_7 = f1[7],
+					&f1_8 = f1[8];
 
-				c[0] = f2[0] * t0 - f2[1] * t1 + f2[2] * t2;
+				double t0, t1, t2;
+				t0 = f2_4 * f2_8 - f2_5 * f2_7;
+				t1 = f2_3 * f2_8 - f2_5 * f2_6;
+				t2 = f2_3 * f2_7 - f2_4 * f2_6;
 
-				c[1] = f1[0] * t0 - f1[1] * t1 + f1[2] * t2 -
-					f1[3] * (f2[1] * f2[8] - f2[2] * f2[7]) +
-					f1[4] * (f2[0] * f2[8] - f2[2] * f2[6]) -
-					f1[5] * (f2[0] * f2[7] - f2[1] * f2[6]) +
-					f1[6] * (f2[1] * f2[5] - f2[2] * f2[4]) -
-					f1[7] * (f2[0] * f2[5] - f2[2] * f2[3]) +
-					f1[8] * (f2[0] * f2[4] - f2[1] * f2[3]);
+				c[0] = f2_0 * t0 - f2_1 * t1 + f2_2 * t2;
+				
+				c[1] = f1_0 * t0 - f1_1 * t1 + f1_2 * t2 -
+					f1_3 * (f2_1 * f2_8 - f2_2 * f2_7) +
+					f1_4 * (f2_0 * f2_8 - f2_2 * f2_6) -
+					f1_5 * (f2_0 * f2_7 - f2_1 * f2_6) +
+					f1_6 * (f2_1 * f2_5 - f2_2 * f2_4) -
+					f1_7 * (f2_0 * f2_5 - f2_2 * f2_3) +
+					f1_8 * (f2_0 * f2_4 - f2_1 * f2_3);
 
-				t0 = f1[4] * f1[8] - f1[5] * f1[7];
-				t1 = f1[3] * f1[8] - f1[5] * f1[6];
-				t2 = f1[3] * f1[7] - f1[4] * f1[6];
+				t0 = f1_4 * f1_8 - f1_5 * f1_7;
+				t1 = f1_3 * f1_8 - f1_5 * f1_6;
+				t2 = f1_3 * f1_7 - f1_4 * f1_6;
 
-				c[2] = f2[0] * t0 - f2[1] * t1 + f2[2] * t2 -
-					f2[3] * (f1[1] * f1[8] - f1[2] * f1[7]) +
-					f2[4] * (f1[0] * f1[8] - f1[2] * f1[6]) -
-					f2[5] * (f1[0] * f1[7] - f1[1] * f1[6]) +
-					f2[6] * (f1[1] * f1[5] - f1[2] * f1[4]) -
-					f2[7] * (f1[0] * f1[5] - f1[2] * f1[3]) +
-					f2[8] * (f1[0] * f1[4] - f1[1] * f1[3]);
+				c[2] = f2_0 * t0 - f2_1 * t1 + f2_2 * t2 -
+					f2_3 * (f1_1 * f1_8 - f1_2 * f1_7) +
+					f2_4 * (f1_0 * f1_8 - f1_2 * f1_6) -
+					f2_5 * (f1_0 * f1_7 - f1_1 * f1_6) +
+					f2_6 * (f1_1 * f1_5 - f1_2 * f1_4) -
+					f2_7 * (f1_0 * f1_5 - f1_2 * f1_3) +
+					f2_8 * (f1_0 * f1_4 - f1_1 * f1_3);
 
-				c[3] = f1[0] * t0 - f1[1] * t1 + f1[2] * t2;
+				c[3] = f1_0 * t0 - f1_1 * t1 + f1_2 * t2;
 				
 				// Check if the sum of the polynomical coefficients is close to zero. 
 				// In this case "psolve.realRoots(real_roots)" gets into an infinite loop.
@@ -240,7 +259,7 @@ namespace gcransac
 				if (n < 1 || n > 3)
 					return false;
 
-				double f[8];
+				Eigen::Matrix<double, 9, 1> f;
 				for (const double &root : real_roots)
 				{
 					// for each root form the fundamental matrix
@@ -254,8 +273,7 @@ namespace gcransac
 						mu = 1.0f / s;
 						lambda *= mu;
 
-						for (auto i = 0; i < 8; ++i)
-							f[i] = f1[i] * lambda + f2[i] * mu;
+						f = f1 * lambda + f2 * mu;
 
 						FundamentalMatrix model;
 						model.descriptor << f[0], f[1], f[2],
