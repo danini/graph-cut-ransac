@@ -315,60 +315,21 @@ namespace gcransac
 				if (sample_number_ < nonMinimalSampleSize())
 					return false;
 
-				// Number of points used for selecting the best model out of the estimated ones.
-				// In case the solver return a single model, 0 points are not used for the estimation.
-				size_t points_not_used = 0; 
-				if constexpr (_NonMinimalSolverEngine::returnMultipleModels())
-					points_not_used = 
-						MAX(1, std::round(sample_number_ * point_ratio_for_selecting_from_multiple_models));
-
-				// Number of points used for the estimation
-				const size_t points_used = sample_number_ - points_not_used;
-
-				// The container where the estimated models are stored
-				std::vector<Model> temp_models;
-
 				// The eight point fundamental matrix fitting algorithm
 				if (!non_minimal_solver->estimateModel(data_,
 					sample_,
-					points_used,
-					temp_models,
+					sample_number_,
+					*models_,
 					weights_))
 					return false;
-				
-				// Denormalizing the estimated essential matrices and selecting the best
-				// if multiple ones have been estimated.
-				const size_t &model_number = temp_models.size();
-				double best_residual = std::numeric_limits<double>::max();
-				size_t best_model_idx = 0;
-				for (size_t model_idx = 0; model_idx < model_number; ++model_idx)
-				{
-					// Get the reference of the current model
-					Model &model = temp_models[model_idx];
-
-					// Calculate the sum of squared residuals from the selected point set
-					double current_residual = 0.0;
-					if (model_number > 1)
-						for (size_t sample_idx = points_used; sample_idx < sample_number_; ++sample_idx)
-							current_residual += squaredResidual(data_.row(sample_[sample_idx]), model.descriptor);
-
-					// Update the best model index if the sum of squared residuals measured from the correspondences
-					// not used in the estimation is smaller than the previous best.
-					if (current_residual < best_residual)
-					{
-						best_residual = current_residual;
-						best_model_idx = model_idx;
-					}
-				}
-
-				// Store the best model
-				models_->emplace_back(temp_models[best_model_idx]);
-				Model &best_model = models_->back();
 
 				// Normalizing the essential matrix elements
-				best_model.descriptor.normalize();
-				if (best_model.descriptor(2, 2) < 0)
-					best_model.descriptor = -best_model.descriptor;
+				for (auto &model : *models_)
+				{
+					model.descriptor.normalize();
+					if (model.descriptor(2, 2) < 0)
+						model.descriptor = -model.descriptor;
+				}
 
 				return true;
 			}

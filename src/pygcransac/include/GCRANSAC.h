@@ -242,8 +242,10 @@ namespace gcransac
 		point_number = points_.rows; // Number of points in the dataset
 
 		size_t inlier_container_offset = 0; // Index to show which inlier vector is currently in use
+		size_t inlier_container_idx; // The index of the currently tested inlier container
 		Model so_far_the_best_model; // The current so-far-the-best model parameters
-		Score so_far_the_best_score; // The score of the current so-far-the-best model
+		Score current_score, // The score of the current model 
+			so_far_the_best_score; // The score of the current so-far-the-best model
 		std::vector<std::vector<size_t>> temp_inner_inliers(2); // The inliers of the current and previous best models 
 		temp_inner_inliers[0].reserve(point_number);
 		temp_inner_inliers[1].reserve(point_number);
@@ -340,9 +342,6 @@ namespace gcransac
 			// Select the so-far-the-best from the estimated models
 			for (auto &model : models)
 			{
-				// The score of the current model
-				Score score;
-
 				// Do point pre-filtering if needed.
 				if constexpr (_FastInlierSelector::doesSomething())
 				{
@@ -386,7 +385,7 @@ namespace gcransac
 							current_sample.get(), // The current minimal sample
 							sample_number, // The number of samples used
 							temp_inner_inliers[inlier_container_offset], // The current inlier set
-							score,
+							current_score,
 							&preselected_index_sets))
 							should_reject = true;
 					}
@@ -401,7 +400,7 @@ namespace gcransac
 							current_sample.get(), // The current minimal sample
 							sample_number, // The number of samples used
 							temp_inner_inliers[inlier_container_offset], // The current inlier set
-							score))
+							current_score))
 							should_reject = true;
 					}
 
@@ -418,7 +417,7 @@ namespace gcransac
 				{
 					// Use the pre-selected inlier indices if the pre-selection is applied
 					if constexpr (_FastInlierSelector::doesSomething())
-						score = scoring_function->getScore(points_, // All points
+						current_score = scoring_function->getScore(points_, // All points
 							model, // The current model parameters
 							estimator_, // The estimator 
 							settings.threshold, // The current threshold
@@ -427,7 +426,7 @@ namespace gcransac
 							true, // Flag to decide if the inliers are needed
 							&preselected_index_sets); // The point index set consisting of the pre-selected points' indices
 					else // Otherwise, run on all points
-						score = scoring_function->getScore(points_, // All points
+						current_score = scoring_function->getScore(points_, // All points
 							model, // The current model parameters
 							estimator_, // The estimator 
 							settings.threshold, // The current threshold
@@ -439,7 +438,7 @@ namespace gcransac
 				bool is_model_updated = false;
 
 				// Store the model of its score is higher than that of the previous best
-				if (so_far_the_best_score < score && // Comparing the so-far-the-best model's score and current model's score
+				if (so_far_the_best_score < current_score && // Comparing the so-far-the-best model's score and current model's score
 					estimator_.isValidModel(model, // The current model parameters
 						points_, // All input points
 						temp_inner_inliers[inlier_container_offset], // The inliers of the current model
@@ -449,7 +448,7 @@ namespace gcransac
 				{
 					// Get the inliers and the score of the non-optimized model
 					if (is_model_updated)
-						score = scoring_function->getScore(points_, // All points
+						current_score = scoring_function->getScore(points_, // All points
 							model, // The current model parameters
 							estimator_, // The estimator 
 							settings.threshold, // The current threshold
@@ -459,7 +458,7 @@ namespace gcransac
 
 					inlier_container_offset = (inlier_container_offset + 1) % 2;
 					so_far_the_best_model = model; // The new so-far-the-best model
-					so_far_the_best_score = score; // The new so-far-the-best model's score
+					so_far_the_best_score = current_score; // The new so-far-the-best model's score
 					// Decide if local optimization is needed. The current criterion requires a minimum number of iterations
 					// and number of inliers before applying GC.
 					do_local_optimization = statistics.iteration_number > settings.min_iteration_number_before_lo &&
@@ -570,15 +569,15 @@ namespace gcransac
 
 			if (success)
 			{
-				size_t inlier_container_idx = (inlier_container_offset + 1) % 2;
+				inlier_container_idx = (inlier_container_offset + 1) % 2;
 				temp_inner_inliers[inlier_container_idx].clear();
-				Score score = scoring_function->getScore(points_, // All points
+				current_score = scoring_function->getScore(points_, // All points
 					model, // Best model parameters
 					estimator_, // The estimator
 					settings.threshold, // The inlier-outlier threshold
 					temp_inner_inliers[inlier_container_idx]); // The current inliers
 
-				if (so_far_the_best_score < score)
+				if (so_far_the_best_score < current_score)
 				{
 					iterative_refitting_applied = true;
 					so_far_the_best_model.descriptor = model.descriptor;
@@ -596,7 +595,25 @@ namespace gcransac
 				so_far_the_best_score.inlier_number,
 				&models);
 
-			if (models.size() > 0)
+			// Selecting the best model by their scores
+			for (auto &model : models)
+			{
+				inlier_container_idx = (inlier_container_offset + 1) % 2;
+				temp_inner_inliers[inlier_container_idx].clear();
+				current_score = scoring_function->getScore(points_, // All points
+					model, // Best model parameters
+					estimator_, // The estimator
+					settings.threshold, // The inlier-outlier threshold
+					temp_inner_inliers[inlier_container_idx]); // The current inliers
+
+				if (so_far_the_best_score < current_score)
+				{
+					so_far_the_best_model.descriptor = model.descriptor;
+					inlier_container_offset = inlier_container_idx;
+				}
+			}
+
+			if (models.size() == 0)
 				so_far_the_best_model.descriptor = models[0].descriptor;
 		}
 
