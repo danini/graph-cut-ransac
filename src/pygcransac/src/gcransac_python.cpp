@@ -1946,44 +1946,58 @@ int findEssentialMatrix_(
 	}
 
 	// Running bundle adjustment minimizing the pose error on the found inliers
+	const size_t &inlier_number = statistics.inliers.size();
 	if (statistics.inliers.size() > 5)
 	{
+		// The truncated least-squares threshold
+		const double truncated_threshold = 3.0 / 2.0 * threshold / threshold_normalizer; 
+		// The squared least-squares threshold
+		const double squared_truncated_threshold = truncated_threshold * truncated_threshold; 
+
+		// Initializing all weights to be zero
+		std::vector<double> weights(inlier_number, 0.0);
+
+		// Setting a weight for all inliers
+		for (size_t inlier_idx = 0; inlier_idx < inlier_number; ++inlier_idx)
+		{
+			const size_t point_idx = statistics.inliers[inlier_idx];
+			weights[inlier_idx] = 
+				MAX(0, 1.0 - estimator.squaredResidual(normalized_points.row(point_idx), model) / squared_truncated_threshold);
+		}
+
 		std::vector<gcransac::Model> models;
 		estimator::solver::EssentialMatrixBundleAdjustmentSolver bundleOptimizer;
 		bundleOptimizer.estimateModel(
 			normalized_points,
 			&statistics.inliers[0],
 			statistics.inliers.size(),
-			models);
-
-		// The truncated least-squares threshold
-		const double truncated_threshold = 3.0 / 2.0 * threshold / threshold_normalizer; 
-		// The squared least-squares threshold
-		const double squared_truncated_threshold = truncated_threshold * truncated_threshold; 
+			models,
+			&weights[0]);
+			
 		// Scoring function
 		MSACScoringFunction<utils::DefaultEssentialMatrixEstimator> scoring;
 		scoring.initialize(squared_truncated_threshold, normalized_points.rows);
 		// Score of the new model
 		Score score;
 		// Inliers of the new model
-		std::vector<size_t> inliers;
+		std::vector<size_t> current_inliers;
 
 		// Select the best model and update the inliers
 		for (auto &tmp_model : models)
 		{			
-			inliers.clear();
+			current_inliers.clear();
 			score = scoring.getScore(normalized_points, // All points
 				tmp_model, // The current model parameters
 				estimator, // The estimator 
 				squared_truncated_threshold, // The current threshold
-				inliers); // The current inlier set
+				current_inliers); // The current inlier set
 
 			// Check if the updated model is better than the best so far
 			if (statistics.score < score.value)
 			{
 				model.descriptor = tmp_model.descriptor;
 				statistics.score = score.value;
-				statistics.inliers.swap(inliers);
+				statistics.inliers.swap(current_inliers);
 			}
 		}
 	}
@@ -2272,44 +2286,58 @@ int findEssentialMatrixAC_(
 	}
 
 	// Running bundle adjustment minimizing the pose error on the found inliers
+	const size_t &inlier_number = statistics.inliers.size();
 	if (statistics.inliers.size() > 5)
 	{
+		// The truncated least-squares threshold
+		const double truncated_threshold = 3.0 / 2.0 * threshold / threshold_normalizer; 
+		// The squared least-squares threshold
+		const double squared_truncated_threshold = truncated_threshold * truncated_threshold; 
+
+		// Initializing all weights to be zero
+		std::vector<double> weights(inlier_number, 0.0);
+
+		// Setting a weight for all inliers
+		for (size_t inlier_idx = 0; inlier_idx < inlier_number; ++inlier_idx)
+		{
+			const size_t point_idx = statistics.inliers[inlier_idx];
+			weights[inlier_idx] = 
+				MAX(0, 1.0 - estimator.squaredResidual(normalized_points.row(point_idx), model) / squared_truncated_threshold);
+		}
+
 		std::vector<gcransac::Model> models;
 		estimator::solver::EssentialMatrixBundleAdjustmentSolver bundleOptimizer;
 		bundleOptimizer.estimateModel(
 			normalized_points,
 			&statistics.inliers[0],
 			statistics.inliers.size(),
-			models);
-
-		// The truncated least-squares threshold
-		const double truncated_threshold = 3.0 / 2.0 * threshold / threshold_normalizer; 
-		// The squared least-squares threshold
-		const double squared_truncated_threshold = truncated_threshold * truncated_threshold; 
+			models,
+			&weights[0]);
+			
 		// Scoring function
 		MSACScoringFunction<utils::ACBasedEssentialMatrixEstimator> scoring;
 		scoring.initialize(squared_truncated_threshold, normalized_points.rows);
 		// Score of the new model
 		Score score;
 		// Inliers of the new model
-		std::vector<size_t> inliers;
+		std::vector<size_t> current_inliers;
 
 		// Select the best model and update the inliers
 		for (auto &tmp_model : models)
 		{			
-			inliers.clear();
+			current_inliers.clear();
 			score = scoring.getScore(normalized_points, // All points
 				tmp_model, // The current model parameters
 				estimator, // The estimator 
 				squared_truncated_threshold, // The current threshold
-				inliers); // The current inlier set
+				current_inliers); // The current inlier set
 
 			// Check if the updated model is better than the best so far
 			if (statistics.score < score.value)
 			{
 				model.descriptor = tmp_model.descriptor;
 				statistics.score = score.value;
-				statistics.inliers.swap(inliers);
+				statistics.inliers.swap(current_inliers);
 			}
 		}
 	}
@@ -2591,44 +2619,58 @@ int findEssentialMatrixSIFT_(
 	}
 
 	// Running bundle adjustment minimizing the pose error on the found inliers
+	const size_t &inlier_number = statistics.inliers.size();
 	if (statistics.inliers.size() > 5)
 	{
+		// The truncated least-squares threshold
+		const double truncated_threshold = 3.0 / 2.0 * threshold / threshold_normalizer; 
+		// The squared least-squares threshold
+		const double squared_truncated_threshold = truncated_threshold * truncated_threshold; 
+
+		// Initializing all weights to be zero
+		std::vector<double> weights(inlier_number, 0.0);
+
+		// Setting a weight for all inliers
+		for (size_t inlier_idx = 0; inlier_idx < inlier_number; ++inlier_idx)
+		{
+			const size_t point_idx = statistics.inliers[inlier_idx];
+			weights[inlier_idx] = 
+				MAX(0, 1.0 - estimator.squaredResidual(normalized_points.row(point_idx), model) / squared_truncated_threshold);
+		}
+
 		std::vector<gcransac::Model> models;
 		estimator::solver::EssentialMatrixBundleAdjustmentSolver bundleOptimizer;
 		bundleOptimizer.estimateModel(
 			normalized_points,
 			&statistics.inliers[0],
 			statistics.inliers.size(),
-			models);
-
-		// The truncated least-squares threshold
-		const double truncated_threshold = 3.0 / 2.0 * threshold / threshold_normalizer; 
-		// The squared least-squares threshold
-		const double squared_truncated_threshold = truncated_threshold * truncated_threshold; 
+			models,
+			&weights[0]);
+			
 		// Scoring function
 		MSACScoringFunction<utils::SIFTBasedEssentialMatrixEstimator> scoring;
 		scoring.initialize(squared_truncated_threshold, normalized_points.rows);
 		// Score of the new model
 		Score score;
 		// Inliers of the new model
-		std::vector<size_t> inliers;
+		std::vector<size_t> current_inliers;
 
 		// Select the best model and update the inliers
 		for (auto &tmp_model : models)
 		{			
-			inliers.clear();
+			current_inliers.clear();
 			score = scoring.getScore(normalized_points, // All points
 				tmp_model, // The current model parameters
 				estimator, // The estimator 
 				squared_truncated_threshold, // The current threshold
-				inliers); // The current inlier set
+				current_inliers); // The current inlier set
 
 			// Check if the updated model is better than the best so far
 			if (statistics.score < score.value)
 			{
 				model.descriptor = tmp_model.descriptor;
 				statistics.score = score.value;
-				statistics.inliers.swap(inliers);
+				statistics.inliers.swap(current_inliers);
 			}
 		}
 	}
@@ -2915,6 +2957,65 @@ int findPlanarEssentialMatrix_(
 
 		statistics = gcransac.getRansacStatistics();
 	}
+
+	// Running bundle adjustment minimizing the pose error on the found inliers
+	const size_t &inlier_number = statistics.inliers.size();
+	if (statistics.inliers.size() > 5)
+	{
+		// The truncated least-squares threshold
+		const double truncated_threshold = 3.0 / 2.0 * threshold / threshold_normalizer; 
+		// The squared least-squares threshold
+		const double squared_truncated_threshold = truncated_threshold * truncated_threshold; 
+
+		// Initializing all weights to be zero
+		std::vector<double> weights(inlier_number, 0.0);
+
+		// Setting a weight for all inliers
+		for (size_t inlier_idx = 0; inlier_idx < inlier_number; ++inlier_idx)
+		{
+			const size_t point_idx = statistics.inliers[inlier_idx];
+			weights[inlier_idx] = 
+				MAX(0, 1.0 - estimator.squaredResidual(normalized_points.row(point_idx), model) / squared_truncated_threshold);
+		}
+
+		std::vector<gcransac::Model> models;
+		estimator::solver::EssentialMatrixBundleAdjustmentSolver bundleOptimizer;
+		bundleOptimizer.estimateModel(
+			normalized_points,
+			&statistics.inliers[0],
+			statistics.inliers.size(),
+			models,
+			&weights[0]);
+			
+		// Scoring function
+		MSACScoringFunction<utils::DefaultPlanarEssentialMatrixEstimator> scoring;
+		scoring.initialize(squared_truncated_threshold, normalized_points.rows);
+		// Score of the new model
+		Score score;
+		// Inliers of the new model
+		std::vector<size_t> current_inliers;
+
+		// Select the best model and update the inliers
+		for (auto &tmp_model : models)
+		{			
+			current_inliers.clear();
+			score = scoring.getScore(normalized_points, // All points
+				tmp_model, // The current model parameters
+				estimator, // The estimator 
+				squared_truncated_threshold, // The current threshold
+				current_inliers); // The current inlier set
+
+			// Check if the updated model is better than the best so far
+			if (statistics.score < score.value)
+			{
+				model.descriptor = tmp_model.descriptor;
+				statistics.score = score.value;
+				statistics.inliers.swap(current_inliers);
+			}
+		}
+	}
+	else
+		model.descriptor = Eigen::Matrix3d::Identity();
 
 	inliers.resize(num_tents);
 
@@ -3206,6 +3307,65 @@ int findGravityEssentialMatrix_(
 
 		statistics = gcransac.getRansacStatistics();
 	}
+
+	// Running bundle adjustment minimizing the pose error on the found inliers
+	const size_t &inlier_number = statistics.inliers.size();
+	if (statistics.inliers.size() > 5)
+	{
+		// The truncated least-squares threshold
+		const double truncated_threshold = 3.0 / 2.0 * threshold / threshold_normalizer; 
+		// The squared least-squares threshold
+		const double squared_truncated_threshold = truncated_threshold * truncated_threshold; 
+
+		// Initializing all weights to be zero
+		std::vector<double> weights(inlier_number, 0.0);
+
+		// Setting a weight for all inliers
+		for (size_t inlier_idx = 0; inlier_idx < inlier_number; ++inlier_idx)
+		{
+			const size_t point_idx = statistics.inliers[inlier_idx];
+			weights[inlier_idx] = 
+				MAX(0, 1.0 - estimator.squaredResidual(normalized_points.row(point_idx), model) / squared_truncated_threshold);
+		}
+
+		std::vector<gcransac::Model> models;
+		estimator::solver::EssentialMatrixBundleAdjustmentSolver bundleOptimizer;
+		bundleOptimizer.estimateModel(
+			normalized_points,
+			&statistics.inliers[0],
+			statistics.inliers.size(),
+			models,
+			&weights[0]);
+			
+		// Scoring function
+		MSACScoringFunction<utils::DefaultGravityEssentialMatrixEstimator> scoring;
+		scoring.initialize(squared_truncated_threshold, normalized_points.rows);
+		// Score of the new model
+		Score score;
+		// Inliers of the new model
+		std::vector<size_t> current_inliers;
+
+		// Select the best model and update the inliers
+		for (auto &tmp_model : models)
+		{			
+			current_inliers.clear();
+			score = scoring.getScore(normalized_points, // All points
+				tmp_model, // The current model parameters
+				estimator, // The estimator 
+				squared_truncated_threshold, // The current threshold
+				current_inliers); // The current inlier set
+
+			// Check if the updated model is better than the best so far
+			if (statistics.score < score.value)
+			{
+				model.descriptor = tmp_model.descriptor;
+				statistics.score = score.value;
+				statistics.inliers.swap(current_inliers);
+			}
+		}
+	}
+	else
+		model.descriptor = Eigen::Matrix3d::Identity();
 
 	inliers.resize(num_tents);
 
