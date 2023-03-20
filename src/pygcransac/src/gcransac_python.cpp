@@ -1071,6 +1071,65 @@ int findFundamentalMatrix_(
 		statistics = gcransac.getRansacStatistics();
 	}
 
+	// Running bundle adjustment minimizing the pose error on the found inliers
+	const size_t &inlier_number = statistics.inliers.size();
+	if (statistics.inliers.size() > 7)
+	{
+		// The truncated least-squares threshold
+		const double truncated_threshold = 3.0 / 2.0 * threshold; 
+		// The squared least-squares threshold
+		const double squared_truncated_threshold = truncated_threshold * truncated_threshold; 
+
+		// Initializing all weights to be zero
+		std::vector<double> weights(inlier_number, 0.0);
+
+		// Setting a weight for all inliers
+		for (size_t inlier_idx = 0; inlier_idx < inlier_number; ++inlier_idx)
+		{
+			const size_t point_idx = statistics.inliers[inlier_idx];
+			weights[inlier_idx] = 
+				MAX(0, 1.0 - estimator.squaredResidual(points.row(point_idx), model) / squared_truncated_threshold);
+		}
+
+		std::vector<gcransac::Model> models;
+		estimator::solver::FundamentalMatrixBundleAdjustmentSolver bundleOptimizer;
+		bundleOptimizer.estimateModel(
+			points,
+			&statistics.inliers[0],
+			statistics.inliers.size(),
+			models,
+			&weights[0]);
+			
+		// Scoring function
+		MSACScoringFunction<utils::DefaultFundamentalMatrixEstimator> scoring;
+		scoring.initialize(squared_truncated_threshold, points.rows);
+		// Score of the new model
+		Score score;
+		// Inliers of the new model
+		std::vector<size_t> current_inliers;
+
+		// Select the best model and update the inliers
+		for (auto &tmp_model : models)
+		{			
+			current_inliers.clear();
+			score = scoring.getScore(points, // All points
+				tmp_model, // The current model parameters
+				estimator, // The estimator 
+				squared_truncated_threshold, // The current threshold
+				current_inliers); // The current inlier set
+
+			// Check if the updated model is better than the best so far
+			if (statistics.score < score.value)
+			{
+				model.descriptor = tmp_model.descriptor;
+				statistics.score = score.value;
+				statistics.inliers.swap(current_inliers);
+			}
+		}
+	}
+	else
+		model.descriptor = Eigen::Matrix3d::Identity();
+
 	inliers.resize(num_tents);
 
 	const int num_inliers = statistics.inliers.size();
@@ -1925,7 +1984,8 @@ int findEssentialMatrix_(
 	}
 	else
 	{		
-		GCRANSAC<utils::DefaultEssentialMatrixEstimator, AbstractNeighborhood> gcransac;
+		GCRANSAC<utils::DefaultEssentialMatrixEstimator, 
+			AbstractNeighborhood> gcransac;
 		gcransac.settings.threshold = threshold / threshold_normalizer; // The inlier-outlier threshold
 		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
 		gcransac.settings.confidence = conf; // The required confidence in the results
