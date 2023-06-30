@@ -150,7 +150,7 @@ namespace gcransac
 						coefficients(i, 8) = weight;
 					}
 				}
-									
+						
 				Eigen::Matrix<double, 9, 1> f1, f2;
 
 				// For the minimal problem, the matrix is small and, thus, fullPivLu decomposition is significantly
@@ -243,7 +243,11 @@ namespace gcransac
 				
 				// Check if the sum of the polynomical coefficients is close to zero. 
 				// In this case "psolve.realRoots(real_roots)" gets into an infinite loop.
-				if (fabs(c[0]+c[1]+c[2]+c[3]) < 1e-9) 
+				if (fabs(c[0]+c[1]+c[2]+c[3]) < 1e-9 || 
+					fabs(c[0]) < std::numeric_limits<double>::epsilon() ||
+					fabs(c[1]) < std::numeric_limits<double>::epsilon() ||
+					fabs(c[2]) < std::numeric_limits<double>::epsilon() ||
+					fabs(c[3]) < std::numeric_limits<double>::epsilon()) 
 					return false;
 
 				// solve the cubic equation; there can be 1 to 3 roots ...
