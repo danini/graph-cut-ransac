@@ -346,3 +346,12 @@ MigrationBackup/
 
 # Specific to this report
 results/*
+
+# build and pip
+_skbuild
+build/SampleProject
+dist
+.mypy_cache
+*.egg-info
+*.so
+wheelhouse/

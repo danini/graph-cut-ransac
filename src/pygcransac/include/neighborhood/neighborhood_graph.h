@@ -36,6 +36,7 @@
 #include <vector>
 #include <Eigen/Eigen>
 #include "../estimators/estimator.h"
+#include <unordered_map>
 
 namespace gcransac
 {

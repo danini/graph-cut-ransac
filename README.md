@@ -14,6 +14,13 @@ The method is explained in the [Latest developments in RANSAC presentation](http
 
 Experiments on homography, fundamental matrix, essential matrix, and 6D pose estimation are shown in the corresponding [presentation](https://www.youtube.com/watch?v=igRydL72160&feature=youtu.be) from the tutorial RANSAC in 2020.
 
+# Install from PyPI with pip
+There are pre-compiled wheels for Windows and Linux for Python 3.8 - 3.11 that you can install with:
+
+```
+pip install pygcransac
+```
+
 # Installation C++
 
 To build and install C++ only `GraphCutRANSAC`, clone or download this repository and then build the project by CMAKE. 
