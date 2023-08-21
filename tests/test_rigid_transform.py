@@ -2,6 +2,7 @@ import os
 import pygcransac
 import numpy as np
 import pytest
+from test_utils import calculate_error
 
 THIS_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -54,16 +55,6 @@ def tranform_points(corrs, T):
         transformed_corrs[i][:3] = p2[:3]
         transformed_corrs[i][3:] = corrs[i][3:]
     return transformed_corrs
-    
-
-def calculate_error(gt_pose, est_pose):
-    R2R1 = np.dot(gt_pose[:3, :3].T, est_pose[:3, :3])
-    cos_angle = max(-1.0, min(1.0, 0.5 * (R2R1.trace() - 1.0)))
-    
-    err_R = np.arccos(cos_angle) * 180.0 / np.pi
-    err_t = np.linalg.norm(gt_pose[:3, 3] - est_pose[:3, 3])
-    
-    return err_R, err_t
 
 
 @pytest.mark.parametrize("use_sprt", [True, False])

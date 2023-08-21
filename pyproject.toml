@@ -16,8 +16,8 @@ archs = ["auto64"]  # 64-bit only
 build = "cp38-* cp39-* cp310-* cp311-*"  # Only build Python 3.8-3.11 wheels
 skip = ["pp*", "*musllinux*"]  # disable PyPy and musl-based wheels
 manylinux-x86_64-image = "ghcr.io/akaszynski/manylinux2014-centos7-opencv/manylinux2014_x86_64_opencv3:v3.4.5"
-test-requires = "pytest"
-test-command = "pytest {project}/tests"
+test-requires = "pytest opencv-python"
+test-command = "pytest {project}/tests -v"
 
 [tool.cibuildwheel.windows]
 # Use delvewheel on windows
