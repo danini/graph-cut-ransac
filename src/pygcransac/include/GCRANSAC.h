@@ -42,7 +42,6 @@
 #include "preemption/preemption_empty.h"
 #include "inlier_selectors/empty_inlier_selector.h"
 
-
 namespace gcransac
 {
 	template <class _ModelEstimator,
@@ -950,7 +949,7 @@ namespace gcransac
 				model_.descriptor);
 			// Storing the residual divided by the squared threshold 
 			distance_per_threshold.emplace_back(
-				std::clamp(tmp_squared_distance / squared_truncated_threshold, 0.0, 1.0));
+				utils::clamp(tmp_squared_distance / squared_truncated_threshold, 0.0, 1.0));
 			// Calculating the implied unary energy
 			tmp_energy = 1 - distance_per_threshold.back();
 

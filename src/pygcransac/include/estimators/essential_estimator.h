@@ -91,11 +91,11 @@ namespace gcransac
 				non_minimal_solver(std::make_shared<_NonMinimalSolverEngine>()),
 				// The lower bound of the inlier ratio which is required to pass the validity test.
 				// It is clamped to be in interval [0, 1].
-				minimum_inlier_ratio_in_validity_check(std::clamp(minimum_inlier_ratio_in_validity_check_, 0.0, 1.0)),
+				minimum_inlier_ratio_in_validity_check(utils::clamp(minimum_inlier_ratio_in_validity_check_, 0.0, 1.0)),
 				// The ratio of points used when the non-minimal model fitting method returns multiple models.
 				// The selected points are not used for the estimation but for selecting the best model
 				// from the set of estimated ones. 
-				point_ratio_for_selecting_from_multiple_models(std::clamp(point_ratio_for_selecting_from_multiple_models_, 0.0, 1.0))
+				point_ratio_for_selecting_from_multiple_models(utils::clamp(point_ratio_for_selecting_from_multiple_models_, 0.0, 1.0))
 			{}
 			~EssentialMatrixEstimator() {}
 

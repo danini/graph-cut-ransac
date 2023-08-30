@@ -8,6 +8,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+if(CREATE_SAMPLE_PROJECT)
+    add_definitions(-DCREATE_SAMPLE_PROJECT)
+endif()
 
 find_package(OpenCV)
 if (OPENCV_FOUND)
@@ -59,7 +62,7 @@ add_subdirectory(lib/pybind11)
 
 pybind11_add_module(pygcransac ${SOURCE_DIR}/src/bindings.cpp ${SOURCE_DIR}/src/gcransac_python.cpp  ${HDRS_GCRANSAC} ${SRCS_GCRANSAC} )
 target_link_libraries(pygcransac PRIVATE  ${OpenCV_LIBS} Eigen3::Eigen)
-
+install(TARGETS pygcransac DESTINATION .)
 
 add_library(${PROJECT_NAME} STATIC ${HDRS_GCRANSAC} ${SRCS_GCRANSAC})
 
@@ -93,6 +96,3 @@ if (CREATE_SAMPLE_PROJECT)
 
 	add_dependencies(SampleProject ${PROJECT_NAME})
 endif (CREATE_SAMPLE_PROJECT)
-
-
-

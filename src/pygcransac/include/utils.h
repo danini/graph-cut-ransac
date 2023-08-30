@@ -40,14 +40,78 @@
 #include <vector>
 
 #include <opencv2/core/core.hpp>
+
+#ifdef CREATE_SAMPLE_PROJECT
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/features2d.hpp>
+#endif
+
 #include <Eigen/Eigen>
 
 #include "types.h"
 #include "statistics.h"
 
+namespace gcransac
+{
+	namespace utils
+	{
+		void normalizeCorrespondences(const cv::Mat &points_,
+			const Eigen::Matrix3d &intrinsics_src_,
+			const Eigen::Matrix3d &intrinsics_dst_,
+			cv::Mat &normalized_points_);
+
+
+		void normalizeCorrespondences(const cv::Mat &points_,
+			const Eigen::Matrix3d &intrinsics_src_,
+			const Eigen::Matrix3d &intrinsics_dst_,
+			cv::Mat &normalized_points_)
+		{
+			const double *points_ptr = reinterpret_cast<double *>(points_.data);
+			double *normalized_points_ptr = reinterpret_cast<double *>(normalized_points_.data);
+			const Eigen::Matrix3d inverse_intrinsics_src = intrinsics_src_.inverse(),
+				inverse_intrinsics_dst = intrinsics_dst_.inverse();
+
+			// Most likely, this is not the fastest solution, but it does
+			// not affect the speed of Graph-cut RANSAC, so not a crucial part of
+			// this example.
+			double x0, y0, x1, y1;
+			for (auto r = 0; r < points_.rows; ++r)
+			{
+				Eigen::Vector3d point_src,
+					point_dst,
+					normalized_point_src,
+					normalized_point_dst;
+
+				x0 = *(points_ptr++);
+				y0 = *(points_ptr++);
+				x1 = *(points_ptr++);
+				y1 = *(points_ptr++);
+
+				point_src << x0, y0, 1.0; // Homogeneous point in the first image
+				point_dst << x1, y1, 1.0; // Homogeneous point in the second image
+
+				// Normalized homogeneous point in the first image
+				normalized_point_src =
+					inverse_intrinsics_src * point_src;
+				// Normalized homogeneous point in the second image
+				normalized_point_dst =
+					inverse_intrinsics_dst * point_dst;
+
+				// The second four columns contain the normalized coordinates.
+				*(normalized_points_ptr++) = normalized_point_src(0);
+				*(normalized_points_ptr++) = normalized_point_src(1);
+				*(normalized_points_ptr++) = normalized_point_dst(0);
+				*(normalized_points_ptr++) = normalized_point_dst(1);
+
+				for (size_t col = 4; col < points_.cols; ++col)
+					*(normalized_points_ptr++) = *(points_ptr++);
+			}
+		}
+    }
+}
+
+#ifdef CREATE_SAMPLE_PROJECT
 namespace gcransac
 {
 	namespace utils
@@ -403,53 +467,6 @@ namespace gcransac
 				cv::waitKey(0);
 		}
 
-		void normalizeCorrespondences(const cv::Mat &points_,
-			const Eigen::Matrix3d &intrinsics_src_,
-			const Eigen::Matrix3d &intrinsics_dst_,
-			cv::Mat &normalized_points_)
-		{
-			const double *points_ptr = reinterpret_cast<double *>(points_.data);
-			double *normalized_points_ptr = reinterpret_cast<double *>(normalized_points_.data);
-			const Eigen::Matrix3d inverse_intrinsics_src = intrinsics_src_.inverse(),
-				inverse_intrinsics_dst = intrinsics_dst_.inverse();
-
-			// Most likely, this is not the fastest solution, but it does
-			// not affect the speed of Graph-cut RANSAC, so not a crucial part of
-			// this example.
-			double x0, y0, x1, y1;
-			for (auto r = 0; r < points_.rows; ++r)
-			{
-				Eigen::Vector3d point_src,
-					point_dst,
-					normalized_point_src,
-					normalized_point_dst;
-
-				x0 = *(points_ptr++);
-				y0 = *(points_ptr++);
-				x1 = *(points_ptr++);
-				y1 = *(points_ptr++);
-
-				point_src << x0, y0, 1.0; // Homogeneous point in the first image
-				point_dst << x1, y1, 1.0; // Homogeneous point in the second image
-
-				// Normalized homogeneous point in the first image
-				normalized_point_src =
-					inverse_intrinsics_src * point_src;
-				// Normalized homogeneous point in the second image
-				normalized_point_dst =
-					inverse_intrinsics_dst * point_dst;
-
-				// The second four columns contain the normalized coordinates.
-				*(normalized_points_ptr++) = normalized_point_src(0);
-				*(normalized_points_ptr++) = normalized_point_src(1);
-				*(normalized_points_ptr++) = normalized_point_dst(0);
-				*(normalized_points_ptr++) = normalized_point_dst(1);
-
-				for (size_t col = 4; col < points_.cols; ++col)
-					*(normalized_points_ptr++) = *(points_ptr++);
-			}
-		}
-
 		void normalizeImagePoints(const cv::Mat &points_,
 			const Eigen::Matrix3d &intrinsics_,
 			cv::Mat &normalized_points_)
@@ -512,3 +529,4 @@ namespace gcransac
 		}
 	}
 }
+#endif
