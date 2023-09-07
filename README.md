@@ -1,6 +1,8 @@
 # Important news
 
-I am happy to announce that Graph-Cut RANSAC had been included in OpenCV.
+- You can now install 
+
+- I am happy to announce that Graph-Cut RANSAC had been included in OpenCV.
 You can check the documentation at [link](https://docs.opencv.org/4.5.2/d1/df1/md__build_master-contrib_docs-lin64_opencv_doc_tutorials_calib3d_usac.html).
 
 # Graph-Cut RANSAC
@@ -20,6 +22,8 @@ There are pre-compiled wheels for Windows and Linux for Python 3.8 - 3.11 that y
 ```
 pip install pygcransac
 ```
+
+Thanks to [@akaszynski](https://github.com/akaszynski) for his contributions.
 
 # Installation C++
 
