@@ -1,3 +1,6 @@
+# Install things
+pip install numpy
+
 # Build and install and opencv on Windows
 git clone --depth 1 --branch 3.4.5 https://github.com/opencv/opencv.git
 mkdir opencv/build
