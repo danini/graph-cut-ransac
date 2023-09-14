@@ -17,7 +17,7 @@ jobs:
     name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     env:
-      MSVC_TOOLSET_VERSION: "14.0"
+      MSVC_TOOLSET_VERSION: "14"
     strategy:
       fail-fast: false
       matrix:
