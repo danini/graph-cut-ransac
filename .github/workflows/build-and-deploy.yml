@@ -16,6 +16,8 @@ jobs:
   build_wheels:
     name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    env:
+      MSVC_TOOLSET_VERSION: "14.36"
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
@@ -30,7 +32,7 @@ jobs:
         uses: TheMrMilchmann/setup-msvc-dev@v2.0.1
         with:
           arch: x64
-          toolset: 14.36.32532
+          toolset: ${{ env.MSVC_TOOLSET_VERSION }}
 
       - name: Cache OpenCV build
         if: matrix.os == 'windows-latest'
@@ -38,7 +40,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: D:/a/graph-cut-ransac/graph-cut-ransac/opencv
-          key: opencv3-4-5-${{ runner.os }}-${{ hashFiles('scripts/build-opencv.ps1') }}
+          key: opencv3-4-5-${{ runner.os }}-${{ env.MSVC_TOOLSET_VERSION }}-${{ hashFiles('scripts/build-opencv.ps1') }}
 
       - name: Build OpenCV on Windows
         if: matrix.os == 'windows-latest' && steps.cache-opencv.outputs.cache-hit != 'true'
