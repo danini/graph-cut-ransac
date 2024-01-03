@@ -101,7 +101,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write  # this permission is mandatory for trusted publishing
-    # if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
     steps:
 
       - uses: actions/download-artifact@v4
@@ -121,9 +121,9 @@ jobs:
       - name: Upload to Public PyPi
         uses: pypa/gh-action-pypi-publish@release/v1
 
-      # - name: Release
-      #   uses: softprops/action-gh-release@v1
-      #   with:
-      #     generate_release_notes: true
-      #     files: |
-      #       ./**/*.whl
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          generate_release_notes: true
+          files: |
+            ./**/*.whl
