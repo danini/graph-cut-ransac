@@ -62,7 +62,7 @@ jobs:
         shell: pwsh
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.14.1
+        uses: pypa/cibuildwheel@v2.16.2
         env:
           CIBW_ENVIRONMENT_WINDOWS: 'OpenCV_DIR="D:/a/graph-cut-ransac/graph-cut-ransac/opencv/build" Eigen3_DIR="C:/eigen3"'
           CIBW_REPAIR_WHEEL_COMMAND_WINDOWS: "delvewheel repair -w {dest_dir} {wheel} --add-path D:/a/graph-cut-ransac/graph-cut-ransac/opencv/build/bin"
@@ -81,7 +81,9 @@ jobs:
           submodules: 'recursive'
 
       - name: Build
-        run: pipx run build --sdist
+        run: |
+          rm -rf build  # remove conflicting directory
+          pipx run build --sdist
 
       - name: Validate
         run: |
