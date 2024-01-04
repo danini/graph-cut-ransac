@@ -18,7 +18,7 @@ cmake_args += ['-DCREATE_SAMPLE_PROJECT=OFF']  # <-- Disable the sample project
 
 setup(
     name='pygcransac',
-    version='0.2.dev0',
+    version='0.1.1',
     author='Daniel Barath, Dmytro Mishkin',
     author_email='barath.daniel@sztaki.mta.hu',
     description='Graph-Cut RANSAC',
