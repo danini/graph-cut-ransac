@@ -74,7 +74,7 @@ int lm_pnp_impl(const JacobianAccumulator &accum,
 
         CameraPose pose_new;
         Eigen::Matrix3d R = pose->R();
-        pose_new.R = R + R * (a * sw + (1 - b) * sw * sw);
+        pose_new.q = pose_new.rotmat_to_quat(R + R * (a * sw + (1 - b) * sw * sw));
         pose_new.t = pose->t + R * sol.block<3, 1>(3, 0);
         double cost_new = accum.residual(pose_new);
 
@@ -149,7 +149,7 @@ int lm_6dof_impl(const JacobianAccumulator &accum, CameraPose *pose, const Bundl
 
         CameraPose pose_new;
         Eigen::Matrix3d R = pose->R();
-        pose_new.R = R + R * (a * sw + (1 - b) * sw * sw);
+        pose_new.q = pose_new.rotmat_to_quat(R + R * (a * sw + (1 - b) * sw * sw));
         pose_new.t = pose->t + R * sol.block<3, 1>(3, 0);
         double cost_new = accum.residual(pose_new);
 
