@@ -85,6 +85,120 @@ py::tuple findRigidTransform(
 	return py::make_tuple(pose_, inliers_);
 }
 
+py::tuple find6DPoseSIFT(
+	py::array_t<double>  x1y1x2y2z2nxnynza11a12a21a22_,
+	py::array_t<double>  probabilities_,
+	double threshold,
+	double conf,
+	double spatial_coherence_weight,
+	int max_iters,
+	int min_iters,
+	bool use_sprt,
+	double min_inlier_ratio_for_sprt,
+	int sampler,
+	int solver,
+	int neighborhood,
+	double neighborhood_size,
+	int lo_number,
+	double sampler_variance)
+{
+	py::buffer_info buf1 = x1y1x2y2z2nxnynza11a12a21a22_.request();
+	size_t NUM_TENTS = buf1.shape[0];
+	size_t DIM = buf1.shape[1];
+
+	if (DIM != 12)
+		throw std::invalid_argument("x1y1x2y2z2nxnynza11a12a21a22 should be an array with dims [n,12], n>=1");
+	if (NUM_TENTS < 4) 
+		throw std::invalid_argument("x1y1x2y2z2nxnynza11a12a21a22 should be an array with dims [n,12], n>=1");
+
+	double *ptr1 = (double *)buf1.ptr;
+	std::vector<double> x1y1x2y2z2nxnynza11a12a21a22;
+	x1y1x2y2z2nxnynza11a12a21a22.assign(ptr1, ptr1 + buf1.size);
+
+    std::vector<double> probabilities;
+    if (sampler == 3 || sampler == 4)
+    {
+        py::buffer_info buf_prob = probabilities_.request();
+        double* ptr_prob = (double*)buf_prob.ptr;
+        probabilities.assign(ptr_prob, ptr_prob + buf_prob.size);        
+    }
+
+	std::vector<double> pose(12);
+	std::vector<bool> inliers(NUM_TENTS);
+
+	int num_inl; 
+	
+	if (solver == 0)
+		num_inl = find6DPoseSIFTP1P_(
+			x1y1x2y2z2nxnynza11a12a21a22,
+			probabilities,
+			inliers,
+			pose,
+			spatial_coherence_weight,
+			threshold,
+			conf,
+			max_iters,
+			min_iters,
+			use_sprt,
+			min_inlier_ratio_for_sprt,
+			sampler,
+			neighborhood,
+			neighborhood_size,
+			sampler_variance,
+			lo_number);
+	else if (solver == 1)
+		num_inl = find6DPoseSIFTP2P_(
+			x1y1x2y2z2nxnynza11a12a21a22,
+			probabilities,
+			inliers,
+			pose,
+			spatial_coherence_weight,
+			threshold,
+			conf,
+			max_iters,
+			min_iters,
+			use_sprt,
+			min_inlier_ratio_for_sprt,
+			sampler,
+			neighborhood,
+			neighborhood_size,
+			sampler_variance,
+			lo_number);
+	else if (solver == 2)
+		num_inl = find6DPoseACP1P_(
+			x1y1x2y2z2nxnynza11a12a21a22,
+			probabilities,
+			inliers,
+			pose,
+			spatial_coherence_weight,
+			threshold,
+			conf,
+			max_iters,
+			min_iters,
+			use_sprt,
+			min_inlier_ratio_for_sprt,
+			sampler,
+			neighborhood,
+			neighborhood_size,
+			sampler_variance,
+			lo_number);
+	else
+		throw std::invalid_argument("Invalid solver type");
+
+	py::array_t<bool> inliers_ = py::array_t<bool>(NUM_TENTS);
+	py::buffer_info buf3 = inliers_.request();
+	bool *ptr3 = (bool *)buf3.ptr;
+	for (size_t i = 0; i < NUM_TENTS; i++)
+		ptr3[i] = inliers[i];
+	if (num_inl == 0) 
+		return py::make_tuple(pybind11::cast<pybind11::none>(Py_None), inliers_);
+	py::array_t<double> pose_ = py::array_t<double>({ 3,4 });
+	py::buffer_info buf2 = pose_.request();
+	double *ptr2 = (double *)buf2.ptr;
+	for (size_t i = 0; i < 12; i++)
+		ptr2[i] = pose[i];
+	return py::make_tuple(pose_, inliers_);
+}
 
 py::tuple find6DPose(
 	py::array_t<double>  x1y1x2y2z2_,
@@ -951,6 +1065,23 @@ PYBIND11_PLUGIN(pygcransac) {
 		py::arg("use_sprt") = true,
 		py::arg("min_inlier_ratio_for_sprt") = 0.00001,
 		py::arg("sampler") = 1,
+		py::arg("neighborhood") = 0,
+		py::arg("neighborhood_size") = 8.0,
+		py::arg("lo_number") = 50,
+		py::arg("sampler_variance") = 0.1);
+
+	m.def("find6DPoseSIFT", &find6DPoseSIFT, R"doc(some doc)doc",
+        py::arg("correspondences"),
+        py::arg("probabilities"),
+		py::arg("threshold") = 0.001,
+		py::arg("conf") = 0.99,
+		py::arg("spatial_coherence_weight") = 0.975,
+		py::arg("max_iters") = 10000,
+		py::arg("min_iters") = 50,
+		py::arg("use_sprt") = true,
+		py::arg("min_inlier_ratio_for_sprt") = 0.00001,
+		py::arg("sampler") = 1,
+		py::arg("solver") = 0,
 		py::arg("neighborhood") = 0,
 		py::arg("neighborhood_size") = 8.0,
 		py::arg("lo_number") = 50,

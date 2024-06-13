@@ -122,6 +122,7 @@ namespace gcransac
 
 				// If there is no initial model provided estimate one
 				std::vector<Model> temp_models;
+				models_.clear();
 				if (models_.size() == 0)
 				{
 					cv::Mat inlier_image_points(sample_number_, 2, CV_64F),
