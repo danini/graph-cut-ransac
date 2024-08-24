@@ -31,11 +31,6 @@
 #include "estimators/solver_fundamental_matrix_eight_point.h"
 #include "estimators/solver_homography_four_point.h"
 #include "estimators/solver_essential_matrix_five_point_stewenius.h"
-#include "estimators/solver_acp1p_cayley.h"
-#include "estimators/solver_acp1p_query.h"
-#include "estimators/solver_siftp1p.h"
-#include "estimators/solver_siftp2p.h"
-#include "estimators/solver_up2p.h"
 
 #include <ctime>
 #include <sys/types.h>
@@ -361,14 +356,8 @@ int find6DPoseSIFTP1P_(
 		}
 	}
 
-	// The estimator for PnP fitting
-	typedef estimator::PerspectiveNPointEstimator<estimator::solver::SIFTP1PSolver, // The solver used for fitting a model to a minimal sample
-		estimator::solver::PnPBundleAdjustment> // The solver used for fitting a model to a non-minimal sample
-		SIFTP1PEstimator;
-	typedef SIFTP1PEstimator CurrentEstimator;
-
 	// Apply Graph-cut RANSAC
-	CurrentEstimator estimator;
+	utils::SIFTP1PEstimator estimator;
 	Pose6D model;
 
 	// Initialize the samplers	
@@ -439,21 +428,21 @@ int find6DPoseSIFTP1P_(
 	utils::RANSACStatistics statistics;
 	
 	// Initializing the fast inlier selector object
-	inlier_selector::EmptyInlierSelector<CurrentEstimator, 
+	inlier_selector::EmptyInlierSelector<utils::SIFTP1PEstimator, 
 		AbstractNeighborhood> inlier_selector(neighborhood_graph.get());
 
 	if (use_sprt)
 	{
 		// Initializing SPRT test
-		preemption::SPRTPreemptiveVerfication<CurrentEstimator> preemptive_verification(
+		preemption::SPRTPreemptiveVerfication<utils::SIFTP1PEstimator> preemptive_verification(
 			points,
 			estimator,
 			min_inlier_ratio_for_sprt);
 
-		GCRANSAC<CurrentEstimator,
+		GCRANSAC<utils::SIFTP1PEstimator,
 			AbstractNeighborhood,
-			MSACScoringFunction<CurrentEstimator>,
-			preemption::SPRTPreemptiveVerfication<CurrentEstimator>> gcransac;
+			MSACScoringFunction<utils::SIFTP1PEstimator>,
+			preemption::SPRTPreemptiveVerfication<utils::SIFTP1PEstimator>> gcransac;
 		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
 		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
 		gcransac.settings.confidence = conf; // The required confidence in the results
@@ -476,7 +465,7 @@ int find6DPoseSIFTP1P_(
 	}
 	else
 	{
-		GCRANSAC<CurrentEstimator,
+		GCRANSAC<utils::SIFTP1PEstimator,
 			AbstractNeighborhood> gcransac;
 		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
 		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
@@ -607,14 +596,8 @@ int find6DPoseACP1P_(
 		}
 	}
 
-	// The estimator for PnP fitting
-	typedef estimator::PerspectiveNPointEstimator<estimator::solver::P1ACQuerySolver, // The solver used for fitting a model to a minimal sample
-		estimator::solver::PnPBundleAdjustment> // The solver used for fitting a model to a non-minimal sample
-		ACP1PEstimator;
-	typedef ACP1PEstimator CurrentEstimator;
-
 	// Apply Graph-cut RANSAC
-	CurrentEstimator estimator;
+	utils::ACP1PEstimator estimator;
 	Pose6D model;
 
 	// Initialize the samplers	
@@ -685,21 +668,21 @@ int find6DPoseACP1P_(
 	utils::RANSACStatistics statistics;
 	
 	// Initializing the fast inlier selector object
-	inlier_selector::EmptyInlierSelector<CurrentEstimator, 
+	inlier_selector::EmptyInlierSelector<utils::ACP1PEstimator, 
 		AbstractNeighborhood> inlier_selector(neighborhood_graph.get());
 
 	if (use_sprt)
 	{
 		// Initializing SPRT test
-		preemption::SPRTPreemptiveVerfication<CurrentEstimator> preemptive_verification(
+		preemption::SPRTPreemptiveVerfication<utils::ACP1PEstimator> preemptive_verification(
 			points,
 			estimator,
 			min_inlier_ratio_for_sprt);
 
-		GCRANSAC<CurrentEstimator,
+		GCRANSAC<utils::ACP1PEstimator,
 			AbstractNeighborhood,
-			MSACScoringFunction<CurrentEstimator>,
-			preemption::SPRTPreemptiveVerfication<CurrentEstimator>> gcransac;
+			MSACScoringFunction<utils::ACP1PEstimator>,
+			preemption::SPRTPreemptiveVerfication<utils::ACP1PEstimator>> gcransac;
 		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
 		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
 		gcransac.settings.confidence = conf; // The required confidence in the results
@@ -722,7 +705,7 @@ int find6DPoseACP1P_(
 	}
 	else
 	{
-		GCRANSAC<CurrentEstimator,
+		GCRANSAC<utils::ACP1PEstimator,
 			AbstractNeighborhood> gcransac;
 		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
 		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
@@ -853,15 +836,8 @@ int find6DPoseSIFTP2P_(
 		}
 	}
 
-	// The estimator for PnP fitting
-	typedef estimator::PerspectiveNPointEstimator<estimator::solver::SIFTP2PQuerySolver, // The solver used for fitting a model to a minimal sample
-		estimator::solver::PnPBundleAdjustment> // The solver used for fitting a model to a non-minimal sample
-		SIFTP2PEstimator;
-
-	typedef SIFTP2PEstimator CurrentEstimator;
-
 	// Apply Graph-cut RANSAC
-	CurrentEstimator estimator;
+	utils::SIFTP2PEstimator estimator;
 	Pose6D model;
 
 	// Initialize the samplers	
@@ -932,21 +908,21 @@ int find6DPoseSIFTP2P_(
 	utils::RANSACStatistics statistics;
 	
 	// Initializing the fast inlier selector object
-	inlier_selector::EmptyInlierSelector<CurrentEstimator, 
+	inlier_selector::EmptyInlierSelector<utils::SIFTP2PEstimator, 
 		AbstractNeighborhood> inlier_selector(neighborhood_graph.get());
 
 	if (use_sprt)
 	{
 		// Initializing SPRT test
-		preemption::SPRTPreemptiveVerfication<CurrentEstimator> preemptive_verification(
+		preemption::SPRTPreemptiveVerfication<utils::SIFTP2PEstimator> preemptive_verification(
 			points,
 			estimator,
 			min_inlier_ratio_for_sprt);
 
-		GCRANSAC<CurrentEstimator,
+		GCRANSAC<utils::SIFTP2PEstimator,
 			AbstractNeighborhood,
-			MSACScoringFunction<CurrentEstimator>,
-			preemption::SPRTPreemptiveVerfication<CurrentEstimator>> gcransac;
+			MSACScoringFunction<utils::SIFTP2PEstimator>,
+			preemption::SPRTPreemptiveVerfication<utils::SIFTP2PEstimator>> gcransac;
 		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
 		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
 		gcransac.settings.confidence = conf; // The required confidence in the results
@@ -969,7 +945,7 @@ int find6DPoseSIFTP2P_(
 	}
 	else
 	{
-		GCRANSAC<CurrentEstimator,
+		GCRANSAC<utils::SIFTP2PEstimator,
 			AbstractNeighborhood> gcransac;
 		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
 		gcransac.settings.spatial_coherence_weight = spatial_coherence_weight; // The weight of the spatial coherence term
