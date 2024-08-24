@@ -84,7 +84,7 @@ namespace gcransac
 					const double *weights_ = nullptr) const; // The weight for each point
 
 			protected:
-				void createMacaulayMatrix(
+				OLGA_INLINE void createMacaulayMatrix(
 					const double a[20],
 					const double b[20],
 					const double c[20],
@@ -94,11 +94,11 @@ namespace gcransac
 				// Transforms a 3 - vector in a 3x9 matrix such that :
 				// R * v = leftMultiplyMatrix(v) * vec(R)
 				// Where R is a rotation matrix and vec(R) converts R to a 9x1 vector.
-				Eigen::Matrix<double, 3, 9> leftMultiplyMatrix(const Eigen::Vector3d& v) const;
+				OLGA_INLINE Eigen::Matrix<double, 3, 9> leftMultiplyMatrix(const Eigen::Vector3d& v) const;
 
 				// Extracts the coefficients of the Jacobians of the LS cost function (which is
 				// parameterized by the 3 rotation coefficients s1, s2, s3).
-				void extractJacobianCoefficients(
+				OLGA_INLINE void extractJacobianCoefficients(
 					const Eigen::Matrix<double, 9, 9>& D,
 					double f1_coeff[20],
 					double f2_coeff[20],
@@ -268,7 +268,7 @@ namespace gcransac
 			// Transforms a 3 - vector in a 3x9 matrix such that :
 			// R * v = leftMultiplyMatrix(v) * vec(R)
 			// Where R is a rotation matrix and vec(R) converts R to a 9x1 vector.
-			Eigen::Matrix<double, 3, 9> DLSPnP::leftMultiplyMatrix(const Eigen::Vector3d& v) const
+			OLGA_INLINE Eigen::Matrix<double, 3, 9> DLSPnP::leftMultiplyMatrix(const Eigen::Vector3d& v) const
 			{
 				Eigen::Matrix<double, 3, 9> left_mult_mat = Eigen::Matrix<double, 3, 9>::Zero();
 				left_mult_mat.block<1, 3>(0, 0) = v.transpose();
@@ -279,7 +279,7 @@ namespace gcransac
 
 			// Extracts the coefficients of the Jacobians of the LS cost function (which is
 			// parameterized by the 3 rotation coefficients s1, s2, s3).
-			void DLSPnP::extractJacobianCoefficients(
+			OLGA_INLINE void DLSPnP::extractJacobianCoefficients(
 				const Eigen::Matrix<double, 9, 9>& D,
 				double f1_coeff[20],
 				double f2_coeff[20],
@@ -557,7 +557,7 @@ namespace gcransac
 						2 * D(8, 2) - 2 * D(8, 6));                              // s1^3
 			}
 
-			void DLSPnP::createMacaulayMatrix(const double a[20],
+			OLGA_INLINE void DLSPnP::createMacaulayMatrix(const double a[20],
 				const double b[20],
 				const double c[20],
 				const double u[4],

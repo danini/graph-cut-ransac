@@ -79,7 +79,7 @@ namespace gcransac
 				initialized = initialize(container);
 			}
 
-			bool initialize(const cv::Mat * const container_);
+			inline bool initialize(const cv::Mat * const container_);
 			inline const std::vector<size_t> &getNeighbors(size_t point_idx_) const;
 
 			// A function returning the cell sizes
@@ -97,7 +97,7 @@ namespace gcransac
 			size_t filledCellNumber() const { return neighbours.size(); }
 		};
 
-		bool FlannNeighborhoodGraph::initialize(const cv::Mat * const container_)
+		inline bool FlannNeighborhoodGraph::initialize(const cv::Mat * const container_)
 		{
 			// Compute the neighborhood graph
 			// TODO: replace by nanoflann
