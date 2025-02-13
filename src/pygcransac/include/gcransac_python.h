@@ -1,6 +1,115 @@
 #include <vector>
 #include <string>
 
+// A method for estimating a 2D line from a set of 2D points
+int findEllipseOuellet_(
+	// The 2D points in the image
+   std::vector<double>& points,
+   // Output: the found inliers 
+   std::vector<bool>& inliers, 
+   // Output: the found 2d line
+   std::vector<double> &ellipse, 
+   // The image size
+   int w, int h,
+   // The inlier-outlier threshold
+   double threshold, 
+   // The RANSAC confidence. Typical values are 0.95, 0.99.
+   double conf, 
+   // Maximum iteration number. I do not suggest setting it to lower than 1000.
+   int max_iters,
+   // Minimum iteration number. I do not suggest setting it to lower than 50.
+   int min_iters,
+   // The identifier of the used sampler. 
+   // Options: 
+   //	(0) Uniform sampler 
+   // 	(1) PROSAC sampler. The correspondences should be ordered by quality (e.g., SNN ratio) prior to calling this function. 
+   //	(2) Progressive NAPSAC sampler. The correspondences should be ordered by quality (e.g., SNN ratio) prior to calling this function. 
+   int sampler_id,
+   // The number of RANSAC iterations done in the local optimization
+   int lo_number,
+   int nonminimal_solver_type);
+
+int findEllipseCurv_(
+ 	// The 2D points in the image
+	std::vector<double>& points,
+	// Output: the found inliers 
+	std::vector<bool>& inliers, 
+	// Output: the found 2d line
+	std::vector<double> &ellipse, 
+	// The image size
+	int w, int h,
+	// The inlier-outlier threshold
+	double threshold, 
+	// The RANSAC confidence. Typical values are 0.95, 0.99.
+	double conf, 
+	// Maximum iteration number. I do not suggest setting it to lower than 1000.
+	int max_iters,
+	// Minimum iteration number. I do not suggest setting it to lower than 50.
+	int min_iters,
+	// The identifier of the used sampler. 
+	// Options: 
+	//	(0) Uniform sampler 
+	// 	(1) PROSAC sampler. The correspondences should be ordered by quality (e.g., SNN ratio) prior to calling this function. 
+	//	(2) Progressive NAPSAC sampler. The correspondences should be ordered by quality (e.g., SNN ratio) prior to calling this function. 
+	int sampler_id,
+	// The number of RANSAC iterations done in the local optimization
+	int lo_number,
+	int nonminimal_solver_type);
+	
+int findEllipseGrad_(
+	// The 2D points in the image
+   std::vector<double>& points,
+   // Output: the found inliers 
+   std::vector<bool>& inliers, 
+   // Output: the found 2d line
+   std::vector<double> &ellipse, 
+   // The image size
+   int w, int h,
+   // The inlier-outlier threshold
+   double threshold, 
+   // The RANSAC confidence. Typical values are 0.95, 0.99.
+   double conf, 
+   // Maximum iteration number. I do not suggest setting it to lower than 1000.
+   int max_iters,
+   // Minimum iteration number. I do not suggest setting it to lower than 50.
+   int min_iters,
+   // The identifier of the used sampler. 
+   // Options: 
+   //	(0) Uniform sampler 
+   // 	(1) PROSAC sampler. The correspondences should be ordered by quality (e.g., SNN ratio) prior to calling this function. 
+   //	(2) Progressive NAPSAC sampler. The correspondences should be ordered by quality (e.g., SNN ratio) prior to calling this function. 
+   int sampler_id,
+   // The number of RANSAC iterations done in the local optimization
+   int lo_number,
+   int nonminimal_solver_type);
+
+// A method for estimating a 2D line from a set of 2D points
+int findEllipse_(
+ 	// The 2D points in the image
+	std::vector<double>& points,
+	// Output: the found inliers 
+	std::vector<bool>& inliers, 
+	// Output: the found 2d line
+	std::vector<double> &ellipse, 
+	// The image size
+	int w, int h,
+	// The inlier-outlier threshold
+	double threshold, 
+	// The RANSAC confidence. Typical values are 0.95, 0.99.
+	double conf, 
+	// Maximum iteration number. I do not suggest setting it to lower than 1000.
+	int max_iters,
+	// Minimum iteration number. I do not suggest setting it to lower than 50.
+	int min_iters,
+	// The identifier of the used sampler. 
+	// Options: 
+	//	(0) Uniform sampler 
+	// 	(1) PROSAC sampler. The correspondences should be ordered by quality (e.g., SNN ratio) prior to calling this function. 
+	//	(2) Progressive NAPSAC sampler. The correspondences should be ordered by quality (e.g., SNN ratio) prior to calling this function. 
+	int sampler_id,
+	// The number of RANSAC iterations done in the local optimization
+	int lo_number);
+
 // A method for estimating a rigid translation between two point clouds
 int findRigidTransform_(
 	// The 3D-3D point correspondences

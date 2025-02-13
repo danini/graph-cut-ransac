@@ -44,6 +44,700 @@
 using namespace gcransac;
 
 // A method for estimating a 2D line from a set of 2D points
+int findEllipse_(
+ 	// The 2D points in the image
+	std::vector<double>& points,
+	// Output: the found inliers 
+	std::vector<bool>& inliers, 
+	// Output: the found 2d line
+	std::vector<double> &ellipse, 
+	// The image size
+	int w, int h,
+	// The inlier-outlier threshold
+	double threshold, 
+	// The RANSAC confidence. Typical values are 0.95, 0.99.
+	double conf, 
+	// Maximum iteration number. I do not suggest setting it to lower than 1000.
+	int max_iters,
+	// Minimum iteration number. I do not suggest setting it to lower than 50.
+	int min_iters,
+	// The identifier of the used sampler. 
+	// Options: 
+	//	(0) Uniform sampler 
+	// 	(1) PROSAC sampler. The correspondences should be ordered by quality (e.g., SNN ratio) prior to calling this function. 
+	//	(2) Progressive NAPSAC sampler. The correspondences should be ordered by quality (e.g., SNN ratio) prior to calling this function. 
+	int sampler_id,
+	// The number of RANSAC iterations done in the local optimization
+	int lo_number)
+{
+	// The number of points provided
+	const size_t &num_points = points.size() / 2;
+	
+	// The matrix containing the points that will be passed to GC-RANSAC
+	cv::Mat point_matrix(num_points, 2, CV_64F, &points[0]);
+
+	// Initializing the neighborhood structure based on the provided paramereters
+	typedef neighborhood::NeighborhoodGraph<cv::Mat> AbstractNeighborhood;
+	std::unique_ptr<AbstractNeighborhood> neighborhood_graph;
+
+	cv::Mat empty_point_matrix(0, 2, CV_64F);
+
+	neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
+		new neighborhood::GridNeighborhoodGraph<2>(&empty_point_matrix, // The input points
+		{ 0, // The cell size along axis X
+			0 }, // The cell size along axis Y
+		1)); // The cell number along every axis
+
+	// Initializing the line estimator
+	utils::DefaultEllipseEstimator estimator;
+
+	// Initializing the model object
+	Ellipse model;
+
+	// Initialize the samplers
+	// The main sampler is used for sampling in the main RANSAC loop
+	typedef sampler::Sampler<cv::Mat, size_t> AbstractSampler;
+	std::unique_ptr<AbstractSampler> main_sampler;
+	if (sampler_id == 0) // Initializing a RANSAC-like uniformly random sampler
+		main_sampler = std::unique_ptr<AbstractSampler>(new sampler::UniformSampler(&point_matrix));
+	else if (sampler_id == 1)  // Initializing a PROSAC sampler. This requires the points to be ordered according to the quality.
+		main_sampler = std::unique_ptr<AbstractSampler>(new sampler::ProsacSampler(&point_matrix, estimator.sampleSize()));
+	else if (sampler_id == 2) // Initializing a Progressive NAPSAC sampler
+		main_sampler = std::unique_ptr<AbstractSampler>(new sampler::ProgressiveNapsacSampler<4>(&point_matrix,
+			{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
+								// (source_image_width / 16) * (source_image_height / 16)  * (destination_image_width / 16)  (destination_image_height / 16), etc.
+			estimator.sampleSize(), // The size of a minimal sample
+			{ static_cast<double>(w), // The width of the image
+				static_cast<double>(h) },  // The height of the image
+			0.5)); // The length (i.e., 0.5 * <point number> iterations) of fully blending to global sampling 
+	else
+	{
+		fprintf(stderr, "Unknown sampler identifier: %d. The accepted samplers are 0 (uniform sampling), 1 (PROSAC sampling), 2 (P-NAPSAC sampling)\n",
+			sampler_id);
+
+		// It is ugly: the unique_ptr does not check for virtual descructors in the base class.
+		// Therefore, the derived class's objects are not deleted automatically. 
+		// This causes a memory leaking. I hate C++.
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
+		delete neighborhood_graph_ptr;
+
+		return 0;
+	}
+
+ 	// The local optimization sampler is used inside the local optimization
+	sampler::UniformSampler local_optimization_sampler(&point_matrix);
+
+	// Checking if the samplers are initialized successfully.
+	if (!main_sampler->isInitialized() ||
+		!local_optimization_sampler.isInitialized())
+	{
+		AbstractSampler *sampler_ptr = main_sampler.release();
+		delete sampler_ptr;
+
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
+		delete neighborhood_graph_ptr;
+
+		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
+		return 0;
+	}
+
+	utils::RANSACStatistics statistics;
+	
+	// Initializing the fast inlier selector object
+	inlier_selector::EmptyInlierSelector<utils::DefaultEllipseEstimator, 
+		AbstractNeighborhood> inlier_selector(neighborhood_graph.get());
+
+	GCRANSAC<utils::DefaultEllipseEstimator, AbstractNeighborhood> gcransac;
+	gcransac.settings.threshold = threshold; // The inlier-outlier threshold
+	gcransac.settings.confidence = conf; // The required confidence in the results
+	gcransac.settings.max_local_optimization_number = lo_number; // The maximum number of local optimizations
+	gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
+	gcransac.settings.min_iteration_number = min_iters; // The minimum number of iterations
+	gcransac.settings.spatial_coherence_weight = 0.0; // The weight of the spatial coherence term
+
+	// Start GC-RANSAC
+	gcransac.run(point_matrix,
+		estimator,
+		main_sampler.get(),
+		&local_optimization_sampler,
+		neighborhood_graph.get(),
+		model);
+
+	statistics = gcransac.getRansacStatistics();
+
+	ellipse.resize(10);
+
+	for (int i = 0; i < 10; i++) {
+		ellipse[i] = model.descriptor(i);
+	}
+
+	inliers.resize(num_points);
+
+	const int num_inliers = statistics.inliers.size();
+	for (auto pt_idx = 0; pt_idx < num_points; ++pt_idx) {
+		inliers[pt_idx] = 0;
+
+	}
+	for (auto pt_idx = 0; pt_idx < num_inliers; ++pt_idx) {
+		inliers[statistics.inliers[pt_idx]] = 1;
+	}
+
+	// It is ugly: the unique_ptr does not check for virtual descructors in the base class.
+	// Therefore, the derived class's objects are not deleted automatically. 
+	// This causes a memory leaking. I hate C++.
+	AbstractSampler *sampler_ptr = main_sampler.release();
+	delete sampler_ptr;
+
+	AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
+	delete neighborhood_graph_ptr;
+
+	// The number of inliers found
+	return num_inliers;
+}
+
+// A method for estimating a 2D line from a set of 2D points
+int findEllipseCurv_(
+ 	// The 2D points in the image
+	std::vector<double>& points,
+	// Output: the found inliers 
+	std::vector<bool>& inliers, 
+	// Output: the found 2d line
+	std::vector<double> &ellipse, 
+	// The image size
+	int w, int h,
+	// The inlier-outlier threshold
+	double threshold, 
+	// The RANSAC confidence. Typical values are 0.95, 0.99.
+	double conf, 
+	// Maximum iteration number. I do not suggest setting it to lower than 1000.
+	int max_iters,
+	// Minimum iteration number. I do not suggest setting it to lower than 50.
+	int min_iters,
+	// The identifier of the used sampler. 
+	// Options: 
+	//	(0) Uniform sampler 
+	// 	(1) PROSAC sampler. The correspondences should be ordered by quality (e.g., SNN ratio) prior to calling this function. 
+	//	(2) Progressive NAPSAC sampler. The correspondences should be ordered by quality (e.g., SNN ratio) prior to calling this function. 
+	int sampler_id,
+	// The number of RANSAC iterations done in the local optimization
+	int lo_number,
+	int nonminimal_solver_type)
+{
+	// The number of points provided
+	const size_t &num_points = points.size() / 5;
+	
+	// The matrix containing the points that will be passed to GC-RANSAC
+	cv::Mat point_matrix(num_points, 5, CV_64F, &points[0]);
+	
+	// Initializing the neighborhood structure based on the provided paramereters
+	typedef neighborhood::NeighborhoodGraph<cv::Mat> AbstractNeighborhood;
+	std::unique_ptr<AbstractNeighborhood> neighborhood_graph;
+
+	cv::Mat empty_point_matrix(0, 2, CV_64F);
+
+	neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
+		new neighborhood::GridNeighborhoodGraph<2>(&empty_point_matrix, // The input points
+		{ 0, // The cell size along axis X
+			0 }, // The cell size along axis Y
+		1)); // The cell number along every axis
+
+	// Initializing the line estimator
+	utils::CurvatureBasedEllipseEstimator estimator;
+
+	// Initializing the model object
+	Ellipse model;
+
+	// Initialize the samplers
+	// The main sampler is used for sampling in the main RANSAC loop
+	typedef sampler::Sampler<cv::Mat, size_t> AbstractSampler;
+	std::unique_ptr<AbstractSampler> main_sampler;
+	if (sampler_id == 0) // Initializing a RANSAC-like uniformly random sampler
+		main_sampler = std::unique_ptr<AbstractSampler>(new sampler::UniformSampler(&point_matrix));
+	else if (sampler_id == 1)  // Initializing a PROSAC sampler. This requires the points to be ordered according to the quality.
+		main_sampler = std::unique_ptr<AbstractSampler>(new sampler::ProsacSampler(&point_matrix, estimator.sampleSize()));
+	else if (sampler_id == 2) // Initializing a Progressive NAPSAC sampler
+		main_sampler = std::unique_ptr<AbstractSampler>(new sampler::ProgressiveNapsacSampler<4>(&point_matrix,
+			{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
+								// (source_image_width / 16) * (source_image_height / 16)  * (destination_image_width / 16)  (destination_image_height / 16), etc.
+			estimator.sampleSize(), // The size of a minimal sample
+			{ static_cast<double>(w), // The width of the image
+				static_cast<double>(h) },  // The height of the image
+			0.5)); // The length (i.e., 0.5 * <point number> iterations) of fully blending to global sampling 
+	else
+	{
+		fprintf(stderr, "Unknown sampler identifier: %d. The accepted samplers are 0 (uniform sampling), 1 (PROSAC sampling), 2 (P-NAPSAC sampling)\n",
+			sampler_id);
+
+		// It is ugly: the unique_ptr does not check for virtual descructors in the base class.
+		// Therefore, the derived class's objects are not deleted automatically. 
+		// This causes a memory leaking. I hate C++.
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
+		delete neighborhood_graph_ptr;
+
+		return 0;
+	}
+
+ 	// The local optimization sampler is used inside the local optimization
+	sampler::UniformSampler local_optimization_sampler(&point_matrix);
+
+	// Checking if the samplers are initialized successfully.
+	if (!main_sampler->isInitialized() ||
+		!local_optimization_sampler.isInitialized())
+	{
+		AbstractSampler *sampler_ptr = main_sampler.release();
+		delete sampler_ptr;
+
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
+		delete neighborhood_graph_ptr;
+
+		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
+		return 0;
+	}
+
+	utils::RANSACStatistics statistics;
+	
+	if (nonminimal_solver_type == 0)
+	{
+		// Initializing the fast inlier selector object
+		inlier_selector::EmptyInlierSelector<utils::CurvatureBasedEllipseEstimator, 
+			AbstractNeighborhood> inlier_selector(neighborhood_graph.get());
+
+		GCRANSAC<utils::CurvatureBasedEllipseEstimator, AbstractNeighborhood> gcransac;
+		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
+		gcransac.settings.confidence = conf; // The required confidence in the results
+		gcransac.settings.max_local_optimization_number = lo_number; // The maximum number of local optimizations
+		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
+		gcransac.settings.min_iteration_number = min_iters; // The minimum number of iterations
+		gcransac.settings.spatial_coherence_weight = 0.0; // The weight of the spatial coherence term
+
+		// Start GC-RANSAC
+		gcransac.run(point_matrix,
+			estimator,
+			main_sampler.get(),
+			&local_optimization_sampler,
+			neighborhood_graph.get(),
+			model);
+
+		statistics = gcransac.getRansacStatistics();
+	} else	
+	{
+		utils::CurvatureGradientBasedEllipseEstimator estimator;
+
+		// Initializing the fast inlier selector object
+		inlier_selector::EmptyInlierSelector<utils::CurvatureGradientBasedEllipseEstimator, 
+			AbstractNeighborhood> inlier_selector(neighborhood_graph.get());
+
+		GCRANSAC<utils::CurvatureGradientBasedEllipseEstimator, AbstractNeighborhood> gcransac;
+		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
+		gcransac.settings.confidence = conf; // The required confidence in the results
+		gcransac.settings.max_local_optimization_number = lo_number; // The maximum number of local optimizations
+		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
+		gcransac.settings.min_iteration_number = min_iters; // The minimum number of iterations
+		gcransac.settings.spatial_coherence_weight = 0.0; // The weight of the spatial coherence term
+
+		// Start GC-RANSAC
+		gcransac.run(point_matrix,
+			estimator,
+			main_sampler.get(),
+			&local_optimization_sampler,
+			neighborhood_graph.get(),
+			model);
+
+		statistics = gcransac.getRansacStatistics();
+	}
+
+
+	ellipse.resize(11);
+
+	for (int i = 0; i < 11; i++) {
+		ellipse[i] = model.descriptor(i);
+	}
+
+	inliers.resize(num_points);
+
+	const int num_inliers = statistics.inliers.size();
+	for (auto pt_idx = 0; pt_idx < num_points; ++pt_idx) {
+		inliers[pt_idx] = 0;
+
+	}
+	for (auto pt_idx = 0; pt_idx < num_inliers; ++pt_idx) {
+		inliers[statistics.inliers[pt_idx]] = 1;
+	}
+
+	// It is ugly: the unique_ptr does not check for virtual descructors in the base class.
+	// Therefore, the derived class's objects are not deleted automatically. 
+	// This causes a memory leaking. I hate C++.
+	AbstractSampler *sampler_ptr = main_sampler.release();
+	delete sampler_ptr;
+
+	AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
+	delete neighborhood_graph_ptr;
+
+	// The number of inliers found
+	return num_inliers;
+}
+
+// A method for estimating a 2D line from a set of 2D points
+int findEllipseOuellet_(
+	// The 2D points in the image
+   std::vector<double>& points,
+   // Output: the found inliers 
+   std::vector<bool>& inliers, 
+   // Output: the found 2d line
+   std::vector<double> &ellipse, 
+   // The image size
+   int w, int h,
+   // The inlier-outlier threshold
+   double threshold, 
+   // The RANSAC confidence. Typical values are 0.95, 0.99.
+   double conf, 
+   // Maximum iteration number. I do not suggest setting it to lower than 1000.
+   int max_iters,
+   // Minimum iteration number. I do not suggest setting it to lower than 50.
+   int min_iters,
+   // The identifier of the used sampler. 
+   // Options: 
+   //	(0) Uniform sampler 
+   // 	(1) PROSAC sampler. The correspondences should be ordered by quality (e.g., SNN ratio) prior to calling this function. 
+   //	(2) Progressive NAPSAC sampler. The correspondences should be ordered by quality (e.g., SNN ratio) prior to calling this function. 
+   int sampler_id,
+   // The number of RANSAC iterations done in the local optimization
+   int lo_number,
+   int nonminimal_solver_type)
+{
+   // The number of points provided
+   const size_t &num_points = points.size() / 4;
+   
+   // The matrix containing the points that will be passed to GC-RANSAC
+   cv::Mat point_matrix(num_points, 4, CV_64F, &points[0]);
+   
+   // Initializing the neighborhood structure based on the provided paramereters
+   typedef neighborhood::NeighborhoodGraph<cv::Mat> AbstractNeighborhood;
+   std::unique_ptr<AbstractNeighborhood> neighborhood_graph;
+
+   cv::Mat empty_point_matrix(0, 2, CV_64F);
+
+   neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
+	   new neighborhood::GridNeighborhoodGraph<2>(&empty_point_matrix, // The input points
+	   { 0, // The cell size along axis X
+		   0 }, // The cell size along axis Y
+	   1)); // The cell number along every axis
+
+   // Initializing the line estimator	
+   utils::OuelletEllipseEstimator estimator;
+
+   // Initializing the model object
+   Ellipse model;
+
+   // Initialize the samplers
+   // The main sampler is used for sampling in the main RANSAC loop
+   typedef sampler::Sampler<cv::Mat, size_t> AbstractSampler;
+   std::unique_ptr<AbstractSampler> main_sampler;
+   if (sampler_id == 0) // Initializing a RANSAC-like uniformly random sampler
+	   main_sampler = std::unique_ptr<AbstractSampler>(new sampler::UniformSampler(&point_matrix));
+   else if (sampler_id == 1)  // Initializing a PROSAC sampler. This requires the points to be ordered according to the quality.
+	   main_sampler = std::unique_ptr<AbstractSampler>(new sampler::ProsacSampler(&point_matrix, estimator.sampleSize()));
+   else if (sampler_id == 2) // Initializing a Progressive NAPSAC sampler
+	   main_sampler = std::unique_ptr<AbstractSampler>(new sampler::ProgressiveNapsacSampler<4>(&point_matrix,
+		   { 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
+							   // (source_image_width / 16) * (source_image_height / 16)  * (destination_image_width / 16)  (destination_image_height / 16), etc.
+		   estimator.sampleSize(), // The size of a minimal sample
+		   { static_cast<double>(w), // The width of the image
+			   static_cast<double>(h) },  // The height of the image
+		   0.5)); // The length (i.e., 0.5 * <point number> iterations) of fully blending to global sampling 
+   else
+   {
+	   fprintf(stderr, "Unknown sampler identifier: %d. The accepted samplers are 0 (uniform sampling), 1 (PROSAC sampling), 2 (P-NAPSAC sampling)\n",
+		   sampler_id);
+
+	   // It is ugly: the unique_ptr does not check for virtual descructors in the base class.
+	   // Therefore, the derived class's objects are not deleted automatically. 
+	   // This causes a memory leaking. I hate C++.
+	   AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
+	   delete neighborhood_graph_ptr;
+
+	   return 0;
+   }
+
+	// The local optimization sampler is used inside the local optimization
+   sampler::UniformSampler local_optimization_sampler(&point_matrix);
+
+   // Checking if the samplers are initialized successfully.
+   if (!main_sampler->isInitialized() ||
+	   !local_optimization_sampler.isInitialized())
+   {
+	   AbstractSampler *sampler_ptr = main_sampler.release();
+	   delete sampler_ptr;
+
+	   AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
+	   delete neighborhood_graph_ptr;
+
+	   fprintf(stderr, "One of the samplers is not initialized successfully.\n");
+	   return 0;
+   }
+
+   utils::RANSACStatistics statistics;
+   
+   if (nonminimal_solver_type == 0)
+   {
+	   // Initializing the fast inlier selector object
+	   inlier_selector::EmptyInlierSelector<utils::OuelletEllipseEstimator, 
+		   AbstractNeighborhood> inlier_selector(neighborhood_graph.get());
+
+	   GCRANSAC<utils::OuelletEllipseEstimator, AbstractNeighborhood> gcransac;
+	   gcransac.settings.threshold = threshold; // The inlier-outlier threshold
+	   gcransac.settings.confidence = conf; // The required confidence in the results
+	   gcransac.settings.max_local_optimization_number = lo_number; // The maximum number of local optimizations
+	   gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
+	   gcransac.settings.min_iteration_number = min_iters; // The minimum number of iterations
+	   gcransac.settings.spatial_coherence_weight = 0.0; // The weight of the spatial coherence term
+
+	   // Start GC-RANSAC
+	   gcransac.run(point_matrix,
+		   estimator,
+		   main_sampler.get(),
+		   &local_optimization_sampler,
+		   neighborhood_graph.get(),
+		   model);
+	   statistics = gcransac.getRansacStatistics();
+   } else
+   {
+	   utils::OuelletOuelletEllipseEstimator estimator;
+
+	   // Initializing the fast inlier selector object
+	   inlier_selector::EmptyInlierSelector<utils::OuelletOuelletEllipseEstimator, 
+		   AbstractNeighborhood> inlier_selector(neighborhood_graph.get());
+
+	   GCRANSAC<utils::OuelletOuelletEllipseEstimator, AbstractNeighborhood> gcransac;
+	   gcransac.settings.threshold = threshold; // The inlier-outlier threshold
+	   gcransac.settings.confidence = conf; // The required confidence in the results
+	   gcransac.settings.max_local_optimization_number = lo_number; // The maximum number of local optimizations
+	   gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
+	   gcransac.settings.min_iteration_number = min_iters; // The minimum number of iterations
+	   gcransac.settings.spatial_coherence_weight = 0.0; // The weight of the spatial coherence term
+
+	   // Start GC-RANSAC
+	   gcransac.run(point_matrix,
+		   estimator,
+		   main_sampler.get(),
+		   &local_optimization_sampler,
+		   neighborhood_graph.get(),
+		   model);
+	   statistics = gcransac.getRansacStatistics();
+   }
+
+
+   ellipse.resize(11);
+
+   for (int i = 0; i < 11; i++) {
+	   ellipse[i] = model.descriptor(i);
+   }
+
+   inliers.resize(num_points);
+
+   const int num_inliers = statistics.inliers.size();
+   for (auto pt_idx = 0; pt_idx < num_points; ++pt_idx) {
+	   inliers[pt_idx] = 0;
+
+   }
+   for (auto pt_idx = 0; pt_idx < num_inliers; ++pt_idx) {
+	   inliers[statistics.inliers[pt_idx]] = 1;
+   }
+
+   // It is ugly: the unique_ptr does not check for virtual descructors in the base class.
+   // Therefore, the derived class's objects are not deleted automatically. 
+   // This causes a memory leaking. I hate C++.
+   AbstractSampler *sampler_ptr = main_sampler.release();
+   delete sampler_ptr;
+
+   AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
+   delete neighborhood_graph_ptr;
+
+   // The number of inliers found
+   return num_inliers;
+}
+
+// A method for estimating a 2D line from a set of 2D points
+int findEllipseGrad_(
+ 	// The 2D points in the image
+	std::vector<double>& points,
+	// Output: the found inliers 
+	std::vector<bool>& inliers, 
+	// Output: the found 2d line
+	std::vector<double> &ellipse, 
+	// The image size
+	int w, int h,
+	// The inlier-outlier threshold
+	double threshold, 
+	// The RANSAC confidence. Typical values are 0.95, 0.99.
+	double conf, 
+	// Maximum iteration number. I do not suggest setting it to lower than 1000.
+	int max_iters,
+	// Minimum iteration number. I do not suggest setting it to lower than 50.
+	int min_iters,
+	// The identifier of the used sampler. 
+	// Options: 
+	//	(0) Uniform sampler 
+	// 	(1) PROSAC sampler. The correspondences should be ordered by quality (e.g., SNN ratio) prior to calling this function. 
+	//	(2) Progressive NAPSAC sampler. The correspondences should be ordered by quality (e.g., SNN ratio) prior to calling this function. 
+	int sampler_id,
+	// The number of RANSAC iterations done in the local optimization
+	int lo_number,
+	int nonminimal_solver_type)
+{
+	// The number of points provided
+	const size_t &num_points = points.size() / 4;
+	
+	// The matrix containing the points that will be passed to GC-RANSAC
+	cv::Mat point_matrix(num_points, 4, CV_64F, &points[0]);
+	
+	// Initializing the neighborhood structure based on the provided paramereters
+	typedef neighborhood::NeighborhoodGraph<cv::Mat> AbstractNeighborhood;
+	std::unique_ptr<AbstractNeighborhood> neighborhood_graph;
+
+	cv::Mat empty_point_matrix(0, 2, CV_64F);
+
+	neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
+		new neighborhood::GridNeighborhoodGraph<2>(&empty_point_matrix, // The input points
+		{ 0, // The cell size along axis X
+			0 }, // The cell size along axis Y
+		1)); // The cell number along every axis
+
+	// Initializing the line estimator	
+	utils::GradientBasedEllipseEstimator estimator;
+
+	// Initializing the model object
+	Ellipse model;
+
+	// Initialize the samplers
+	// The main sampler is used for sampling in the main RANSAC loop
+	typedef sampler::Sampler<cv::Mat, size_t> AbstractSampler;
+	std::unique_ptr<AbstractSampler> main_sampler;
+	if (sampler_id == 0) // Initializing a RANSAC-like uniformly random sampler
+		main_sampler = std::unique_ptr<AbstractSampler>(new sampler::UniformSampler(&point_matrix));
+	else if (sampler_id == 1)  // Initializing a PROSAC sampler. This requires the points to be ordered according to the quality.
+		main_sampler = std::unique_ptr<AbstractSampler>(new sampler::ProsacSampler(&point_matrix, estimator.sampleSize()));
+	else if (sampler_id == 2) // Initializing a Progressive NAPSAC sampler
+		main_sampler = std::unique_ptr<AbstractSampler>(new sampler::ProgressiveNapsacSampler<4>(&point_matrix,
+			{ 16, 8, 4, 2 },	// The layer of grids. The cells of the finest grid are of dimension 
+								// (source_image_width / 16) * (source_image_height / 16)  * (destination_image_width / 16)  (destination_image_height / 16), etc.
+			estimator.sampleSize(), // The size of a minimal sample
+			{ static_cast<double>(w), // The width of the image
+				static_cast<double>(h) },  // The height of the image
+			0.5)); // The length (i.e., 0.5 * <point number> iterations) of fully blending to global sampling 
+	else
+	{
+		fprintf(stderr, "Unknown sampler identifier: %d. The accepted samplers are 0 (uniform sampling), 1 (PROSAC sampling), 2 (P-NAPSAC sampling)\n",
+			sampler_id);
+
+		// It is ugly: the unique_ptr does not check for virtual descructors in the base class.
+		// Therefore, the derived class's objects are not deleted automatically. 
+		// This causes a memory leaking. I hate C++.
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
+		delete neighborhood_graph_ptr;
+
+		return 0;
+	}
+
+ 	// The local optimization sampler is used inside the local optimization
+	sampler::UniformSampler local_optimization_sampler(&point_matrix);
+
+	// Checking if the samplers are initialized successfully.
+	if (!main_sampler->isInitialized() ||
+		!local_optimization_sampler.isInitialized())
+	{
+		AbstractSampler *sampler_ptr = main_sampler.release();
+		delete sampler_ptr;
+
+		AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
+		delete neighborhood_graph_ptr;
+
+		fprintf(stderr, "One of the samplers is not initialized successfully.\n");
+		return 0;
+	}
+
+	utils::RANSACStatistics statistics;
+	
+	if (nonminimal_solver_type == 0)
+	{
+		// Initializing the fast inlier selector object
+		inlier_selector::EmptyInlierSelector<utils::GradientBasedEllipseEstimator, 
+			AbstractNeighborhood> inlier_selector(neighborhood_graph.get());
+
+		GCRANSAC<utils::GradientBasedEllipseEstimator, AbstractNeighborhood> gcransac;
+		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
+		gcransac.settings.confidence = conf; // The required confidence in the results
+		gcransac.settings.max_local_optimization_number = lo_number; // The maximum number of local optimizations
+		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
+		gcransac.settings.min_iteration_number = min_iters; // The minimum number of iterations
+		gcransac.settings.spatial_coherence_weight = 0.0; // The weight of the spatial coherence term
+
+		// Start GC-RANSAC
+		gcransac.run(point_matrix,
+			estimator,
+			main_sampler.get(),
+			&local_optimization_sampler,
+			neighborhood_graph.get(),
+			model);
+		statistics = gcransac.getRansacStatistics();
+	} else
+	{
+		utils::GradientGradientBasedEllipseEstimator estimator;
+
+		// Initializing the fast inlier selector object
+		inlier_selector::EmptyInlierSelector<utils::GradientGradientBasedEllipseEstimator, 
+			AbstractNeighborhood> inlier_selector(neighborhood_graph.get());
+
+		GCRANSAC<utils::GradientGradientBasedEllipseEstimator, AbstractNeighborhood> gcransac;
+		gcransac.settings.threshold = threshold; // The inlier-outlier threshold
+		gcransac.settings.confidence = conf; // The required confidence in the results
+		gcransac.settings.max_local_optimization_number = lo_number; // The maximum number of local optimizations
+		gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
+		gcransac.settings.min_iteration_number = min_iters; // The minimum number of iterations
+		gcransac.settings.spatial_coherence_weight = 0.0; // The weight of the spatial coherence term
+
+		// Start GC-RANSAC
+		gcransac.run(point_matrix,
+			estimator,
+			main_sampler.get(),
+			&local_optimization_sampler,
+			neighborhood_graph.get(),
+			model);
+		statistics = gcransac.getRansacStatistics();
+	}
+
+
+	ellipse.resize(11);
+
+	for (int i = 0; i < 11; i++) {
+		ellipse[i] = model.descriptor(i);
+	}
+
+	inliers.resize(num_points);
+
+	const int num_inliers = statistics.inliers.size();
+	for (auto pt_idx = 0; pt_idx < num_points; ++pt_idx) {
+		inliers[pt_idx] = 0;
+
+	}
+	for (auto pt_idx = 0; pt_idx < num_inliers; ++pt_idx) {
+		inliers[statistics.inliers[pt_idx]] = 1;
+	}
+
+	// It is ugly: the unique_ptr does not check for virtual descructors in the base class.
+	// Therefore, the derived class's objects are not deleted automatically. 
+	// This causes a memory leaking. I hate C++.
+	AbstractSampler *sampler_ptr = main_sampler.release();
+	delete sampler_ptr;
+
+	AbstractNeighborhood *neighborhood_graph_ptr = neighborhood_graph.release();
+	delete neighborhood_graph_ptr;
+
+	// The number of inliers found
+	return num_inliers;
+}
+
+// A method for estimating a 2D line from a set of 2D points
 int findLine2D_(
  	// The 2D points in the image
 	std::vector<double>& points,

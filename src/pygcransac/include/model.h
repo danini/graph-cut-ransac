@@ -69,6 +69,18 @@ namespace gcransac
 		}
 	};
 
+	class Ellipse : public Model
+	{
+	public:
+		Ellipse() :
+			Model(Eigen::MatrixXd(6, 1))
+		{}
+		Ellipse(const Ellipse& other)
+		{
+			descriptor = other.descriptor;
+		}
+	};
+
 	class Line2D : public Model
 	{
 	public:

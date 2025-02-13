@@ -44,6 +44,7 @@
 #include "estimators/perspective_n_point_estimator.h"
 #include "estimators/rigid_transformation_estimator.h"
 #include "estimators/linear_model_estimator.h"
+#include "estimators/ellipse_estimator.h"
 
 #include "estimators/solver_fundamental_matrix_seven_point.h"
 #include "estimators/solver_fundamental_matrix_eight_point.h"
@@ -69,6 +70,10 @@
 #include "estimators/solver_homography_bundle_adjustment.h"
 #include "estimators/solver_radial_homography_5pc.h"
 #include "estimators/solver_radial_homography_6pc.h"
+#include "estimators/solver_ellipse_point_based.h"
+#include "estimators/solver_ellipse_gradient_based.h"
+#include "estimators/solver_ellipse_curvature_p2n2c1.h"
+#include "estimators/solver_ellipse_oeullet.h"
 
 namespace gcransac
 {
@@ -158,5 +163,41 @@ namespace gcransac
 		typedef estimator::RadialHomographyEstimator<estimator::solver::RadialHomography5PC, // The solver used for fitting a model to a minimal sample
 			estimator::solver::RadialHomography6PC>  // The solver used for fitting a model to a non-minimal sample
 			DefaultRadialHomographyEstimator;
+
+		// The default estimator for 3D plane fitting
+		typedef estimator::EllipseEstimator<estimator::solver::EllipsePointBasedSolver, // The solver used for fitting a model to a minimal sample
+			estimator::solver::EllipsePointBasedSolver>  // The solver used for fitting a model to a non-minimal sample
+			DefaultEllipseEstimator;
+
+		// The default estimator for 3D plane fitting
+		typedef estimator::EllipseEstimator<estimator::solver::EllipseGradientBasedSolver, // The solver used for fitting a model to a minimal sample
+			estimator::solver::EllipsePointBasedSolver>  // The solver used for fitting a model to a non-minimal sample
+			GradientBasedEllipseEstimator;
+
+		// The default estimator for 3D plane fitting
+		typedef estimator::EllipseEstimator<estimator::solver::EllipseOuelletSolver, // The solver used for fitting a model to a minimal sample
+			estimator::solver::EllipsePointBasedSolver>  // The solver used for fitting a model to a non-minimal sample
+			OuelletEllipseEstimator;
+
+		// The default estimator for 3D plane fitting
+		typedef estimator::EllipseEstimator<estimator::solver::EllipseP2N2C1BasedSolver, // The solver used for fitting a model to a minimal sample
+			estimator::solver::EllipsePointBasedSolver>  // The solver used for fitting a model to a non-minimal sample
+			CurvatureBasedEllipseEstimator;
+
+		// The default estimator for 3D plane fitting
+		typedef estimator::EllipseEstimator<estimator::solver::EllipseGradientBasedSolver, // The solver used for fitting a model to a minimal sample
+			estimator::solver::EllipseGradientBasedSolver>  // The solver used for fitting a model to a non-minimal sample
+			GradientGradientBasedEllipseEstimator;
+
+		// The default estimator for 3D plane fitting
+		typedef estimator::EllipseEstimator<estimator::solver::EllipseP2N2C1BasedSolver, // The solver used for fitting a model to a minimal sample
+			estimator::solver::EllipseGradientBasedSolver>  // The solver used for fitting a model to a non-minimal sample
+			CurvatureGradientBasedEllipseEstimator;
+
+		// The default estimator for 3D plane fitting
+		typedef estimator::EllipseEstimator<estimator::solver::EllipseOuelletSolver, // The solver used for fitting a model to a minimal sample
+			estimator::solver::EllipseOuelletSolver>  // The solver used for fitting a model to a non-minimal sample
+			OuelletOuelletEllipseEstimator;
+			
 	}
 }

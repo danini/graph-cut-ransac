@@ -42,6 +42,8 @@
 #include "preemption/preemption_empty.h"
 #include "inlier_selectors/empty_inlier_selector.h"
 
+#include <iostream>
+
 namespace gcransac
 {
 	template <class _ModelEstimator,
@@ -341,6 +343,8 @@ namespace gcransac
 			// Select the so-far-the-best from the estimated models
 			for (auto &model : models)
 			{
+				//std::cout << "Model: " << model.descriptor << std::endl;
+
 				// Do point pre-filtering if needed.
 				if constexpr (_FastInlierSelector::doesSomething())
 				{
@@ -434,6 +438,9 @@ namespace gcransac
 							true); // Flag to decide if the inliers are needed
 				}
 
+				//std::cout << "Current inlier number: " << current_score.inlier_number << std::endl;
+				//return;
+
 				bool is_model_updated = false;
 
 				// Store the model of its score is higher than that of the previous best
@@ -476,11 +483,13 @@ namespace gcransac
 				sample_number,
 				statistics.iteration_number,
 				0.0);
+				
 
 			// Apply local optimziation
 			if (settings.do_local_optimization && // Input flag to decide if local optimization is needed
 				do_local_optimization) // A flag to decide if all the criteria meet to apply local optimization
 			{
+				//std::cout << "BO Inlier number: " << so_far_the_best_score.inlier_number << std::endl;
 				// Increase the number of local optimizations applied
 				++statistics.local_optimization_number;
 
@@ -498,6 +507,7 @@ namespace gcransac
 						point_number, // The number of points
 						sample_number, // The sample size
 						log_probability); // log(1 - confidence)
+				//std::cout << "AO Inlier number: " << so_far_the_best_score.inlier_number<< std::endl;
 			}
 
 			// Apply time limit if there is a required FPS set
@@ -518,7 +528,7 @@ namespace gcransac
 
 		// If the best model has only minimal number of points, the model
 		// is not considered to be found. 
-		if (so_far_the_best_score.inlier_number <= sample_number)
+		if (so_far_the_best_score.inlier_number < sample_number)
 		{
 			end = std::chrono::system_clock::now(); // The current time
 			elapsed_seconds = end - start; // Time elapsed since the algorithm started
@@ -530,6 +540,7 @@ namespace gcransac
 		if (settings.do_local_optimization &&
 			statistics.local_optimization_number == 0)
 		{
+			//std::cout << "BO Inlier number: " << so_far_the_best_score.inlier_number << std::endl;
 			// Increase the number of local optimizations applied
 			++statistics.local_optimization_number;
 
@@ -540,6 +551,7 @@ namespace gcransac
 				so_far_the_best_score, // Best model score
 				estimator_, // Estimator
 				settings.max_local_optimization_number); // Maximum local optimization steps
+			//std::cout << "AO Inlier number: " << so_far_the_best_score.inlier_number<< std::endl;
 		}
 
 		// Recalculate the score if needed (i.e. there is some inconstistency in
@@ -558,6 +570,7 @@ namespace gcransac
 		bool iterative_refitting_applied = false;
 		if (settings.do_final_iterated_least_squares)
 		{
+			//std::cout << "Birls Inlier number: " << so_far_the_best_score.inlier_number<< std::endl;
 			Model model = so_far_the_best_model; // The model which is re-estimated by iteratively re-weighted least-squares
 			bool success = iteratedLeastSquaresFitting(
 				points_, // The input data points
@@ -583,10 +596,12 @@ namespace gcransac
 					inlier_container_offset = inlier_container_idx;
 				}
 			}
+			//std::cout << "Airls Inlier number: " << so_far_the_best_score.inlier_number<< std::endl;
 		}
 		
 		if (!iterative_refitting_applied) // Otherwise, do only one least-squares fitting on all of the inliers
 		{
+			//std::cout << "Bls Inlier number: " << so_far_the_best_score.inlier_number<< std::endl;
 			// Estimate the final model using the full inlier set
 			models.clear();
 			estimator_.estimateModelNonminimal(points_,
@@ -614,6 +629,7 @@ namespace gcransac
 
 			if (models.size() == 0)
 				so_far_the_best_model.descriptor = models[0].descriptor;
+			//std::cout << "Als Inlier number: " << so_far_the_best_score.inlier_number<< std::endl;
 		}
 
 		// Return the inlier set and the estimated model parameters
@@ -624,6 +640,8 @@ namespace gcransac
 		end = std::chrono::system_clock::now(); // The current time
 		elapsed_seconds = end - start; // Time elapsed since the algorithm started
 		statistics.processing_time = elapsed_seconds.count();
+
+		//std::cout << obtained_model_.descriptor << std::endl;
 	}
 
 	template <class _ModelEstimator, class _NeighborhoodGraph, class _ScoringFunction, class _PreemptiveModelVerification, class _FastInlierSelector>
@@ -833,6 +851,10 @@ namespace gcransac
 			// Number of points (i.e. the sample size) used in the inner RANSAC
 			const size_t sample_size = 
 				static_cast<size_t>(MIN(inlier_limit, inliers.size()));
+			//std::cout << inliers.size() << std::endl;
+			//std::cout << trial_number_ << std::endl;
+			//std::cout << sample_size << std::endl;
+			//std::cout << best_model.descriptor << std::endl;
 
 			// Run an inner RANSAC on the inliers coming from the graph-cut algorithm
 			for (auto trial = 0; trial < trial_number_; ++trial)
@@ -867,9 +889,11 @@ namespace gcransac
 					break;
 
 				// Select the best model from the estimated set
+				//std::cout << "Estimate nonminimal" << std::endl;
 				for (auto &model : models)
 				{
 					tmp_inliers.clear();
+					//std::cout << model.descriptor << std::endl;
 
 					// Calculate the score of the current model
 					Score score = scoring_function->getScore(points_, // The input data points
@@ -879,6 +903,8 @@ namespace gcransac
 						tmp_inliers, // The inliers of the estimated model
 						max_score, // The current best model
 						true); // Flag saying that we do not need the inlier set
+						
+					//std::cout << tmp_inliers.size() << std::endl;
 
 					// If this model is better than the previous best, update.
 					if (max_score < score) // Comparing the so-far-the-best model's score and current model's score

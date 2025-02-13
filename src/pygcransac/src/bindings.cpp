@@ -4,7 +4,6 @@
 #include <pybind11/numpy.h>
 #include "gcransac_python.h"
 
-
 namespace py = pybind11;
 
 py::tuple findRigidTransform(
@@ -856,6 +855,154 @@ py::tuple findEssentialMatrix(py::array_t<double>  correspondences_,
     return py::make_tuple(F_,inliers_);
 }
 
+py::tuple findEllipse(py::array_t<double>  data_points_,
+                         int h_, int w_,
+                         double threshold_,
+                         double conf_,
+						 int max_iters_,
+						 int min_iters_,
+						 int sampler_,
+						 int lo_number_,
+						 int solver_)
+{
+    py::buffer_info buf = data_points_.request();
+    size_t NUM_TENTS = buf.shape[0];
+    size_t DIM = buf.shape[1];
+
+    if (solver_ == 0 && DIM != 2) {
+        throw std::invalid_argument( "data_points should be an array with dims [n,2], n>=3" );
+    }
+	
+    if ((solver_ == 1 || solver_ == 3 || solver_ == 5 || solver_ == 6) && DIM != 4) {
+        throw std::invalid_argument( "data_points should be an array with dims [n,4], n>=3" );
+    }
+	
+    if ((solver_ == 2 || solver_ == 4) && DIM != 5) {
+        throw std::invalid_argument( "data_points should be an array with dims [n,5], n>=3" );
+    }
+	
+    if (NUM_TENTS < 3) {
+        throw std::invalid_argument( "correspondences should be an array with dims [n,d], n>=3");
+    }
+
+    double *ptr = (double *) buf.ptr;
+    std::vector<double> points;
+    points.assign(ptr, ptr + buf.size);
+
+    std::vector<double> ellipse(6);
+    std::vector<bool> inliers(NUM_TENTS);
+
+    int num_inl = 0;
+
+	if (solver_ == 0) // Point-based ellipse fitting
+		num_inl = findEllipse_(
+			points,
+			inliers,
+			ellipse,
+			h_, w_,
+			threshold_,
+			conf_,
+			max_iters_,
+			min_iters_,
+			sampler_,
+			lo_number_);
+	else if (solver_ == 1) // Gradient-based ellipse fitting
+		num_inl = findEllipseGrad_(
+			points,
+			inliers,
+			ellipse,
+			h_, w_,
+			threshold_,
+			conf_,
+			max_iters_,
+			min_iters_,
+			sampler_,
+			lo_number_,
+			0);
+	else if (solver_ == 2) // Gradient-based ellipse fitting
+		num_inl = findEllipseCurv_(
+			points,
+			inliers,
+			ellipse,
+			h_, w_,
+			threshold_,
+			conf_,
+			max_iters_,
+			min_iters_,
+			sampler_,
+			lo_number_,
+			0);
+	else if (solver_ == 3) // Gradient-based ellipse fitting
+		num_inl = findEllipseGrad_(
+			points,
+			inliers,
+			ellipse,
+			h_, w_,
+			threshold_,
+			conf_,
+			max_iters_,
+			min_iters_,
+			sampler_,
+			lo_number_,
+			1);
+	else if (solver_ == 4) // Gradient-based ellipse fitting
+		num_inl = findEllipseCurv_(
+			points,
+			inliers,
+			ellipse,
+			h_, w_,
+			threshold_,
+			conf_,
+			max_iters_,
+			min_iters_,
+			sampler_,
+			lo_number_,
+			1);
+	else if (solver_ == 5) // Gradient-based ellipse fitting by the solver of Ouellet
+		num_inl = findEllipseOuellet_(
+			points,
+			inliers,
+			ellipse,
+			h_, w_,
+			threshold_,
+			conf_,
+			max_iters_,
+			min_iters_,
+			sampler_,
+			lo_number_,
+			0);
+	else if (solver_ == 6) // Gradient-based ellipse fitting by the solver of Ouellet
+		num_inl = findEllipseOuellet_(
+			points,
+			inliers,
+			ellipse,
+			h_, w_,
+			threshold_,
+			conf_,
+			max_iters_,
+			min_iters_,
+			sampler_,
+			lo_number_,
+			1);
+
+    py::array_t<bool> inliers_ = py::array_t<bool>(NUM_TENTS);
+    py::buffer_info buf_inlier = inliers_.request();
+    bool *ptr_inlier = (bool *)buf_inlier.ptr;
+    for (size_t i = 0; i < NUM_TENTS; i++)
+        ptr_inlier[i] = inliers[i];
+
+    if (num_inl  == 0){
+        return py::make_tuple(pybind11::cast<pybind11::none>(Py_None),inliers_);
+    }
+    py::array_t<double> ellipse_ = py::array_t<double>({11});
+    py::buffer_info buf_ellipse = ellipse_.request();
+    double *ptr2 = (double *)buf_ellipse.ptr;
+    for (size_t i = 0; i < 11; i++)
+        ptr2[i] = ellipse[i];
+
+    return py::make_tuple(ellipse_, inliers_);
+}
+
 py::tuple findHomography(py::array_t<double>  correspondences_,
                          int h1, int w1, int h2, int w2,
     					 py::array_t<double>  probabilities_,
@@ -996,8 +1143,21 @@ PYBIND11_PLUGIN(pygcransac) {
 		   find6DPose,
 		   findEssentialMatrix,
 		   findRigidTransform,
+		   findEllipse,
 
     )doc");
+	
+	m.def("findEllipse", &findEllipse, R"doc(some doc)doc",
+        py::arg("data_points"),
+		py::arg("h"),
+		py::arg("w"),
+		py::arg("threshold") = 1.0,
+		py::arg("conf") = 0.99,
+		py::arg("max_iters") = 10000,
+		py::arg("min_iters") = 50,
+		py::arg("sampler") = 1,
+		py::arg("lo_number") = 50,
+		py::arg("solver") = 0);
 
 	m.def("findFundamentalMatrix", &findFundamentalMatrix, R"doc(some doc)doc",
         py::arg("correspondences"),
