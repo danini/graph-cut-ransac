@@ -1003,6 +1003,42 @@ py::tuple findEllipse(py::array_t<double>  data_points_,
     return py::make_tuple(ellipse_, inliers_);
 }
 
+py::tuple findEllipsePetr(py::array_t<double>  data_points_)
+{
+    py::buffer_info buf = data_points_.request();
+    size_t NUM_TENTS = buf.shape[0];
+    size_t DIM = buf.shape[1];
+		
+    if (DIM != 5) {
+        throw std::invalid_argument( "data_points should be an array with dims [n,5], n>=2" );
+    }
+	
+    if (NUM_TENTS != 2) {
+        throw std::invalid_argument( "correspondences should be an array with dims [n,5], n>=2");
+    }
+
+    double *ptr = (double *) buf.ptr;
+    std::vector<double> points;
+    points.assign(ptr, ptr + buf.size);
+
+    std::vector<double> ellipse(5 * 11);
+    std::vector<bool> inliers(NUM_TENTS);
+
+    int num_inl = 0;
+
+	num_inl = findEllipsePetr_(
+		points,
+		ellipse);
+
+    py::array_t<double> ellipse_ = py::array_t<double>({ellipse.size()});
+    py::buffer_info buf_ellipse = ellipse_.request();
+    double *ptr2 = (double *)buf_ellipse.ptr;
+		for (size_t i = 0; i < ellipse.size(); i++)
+			ptr2[i] = ellipse[i];
+
+    return py::make_tuple(ellipse_);
+}
+
 py::tuple findHomography(py::array_t<double>  correspondences_,
                          int h1, int w1, int h2, int w2,
     					 py::array_t<double>  probabilities_,
@@ -1146,18 +1182,21 @@ PYBIND11_PLUGIN(pygcransac) {
 		   findEllipse,
 
     )doc");
+
+	m.def("findEllipsePetr", &findEllipsePetr, R"doc(some doc)doc",
+        py::arg("data_points"));
 	
-	m.def("findEllipse", &findEllipse, R"doc(some doc)doc",
-        py::arg("data_points"),
-		py::arg("h"),
-		py::arg("w"),
-		py::arg("threshold") = 1.0,
-		py::arg("conf") = 0.99,
-		py::arg("max_iters") = 10000,
-		py::arg("min_iters") = 50,
-		py::arg("sampler") = 1,
-		py::arg("lo_number") = 50,
-		py::arg("solver") = 0);
+		m.def("findEllipse", &findEllipse, R"doc(some doc)doc",
+			py::arg("data_points"),
+			py::arg("h"),
+			py::arg("w"),
+			py::arg("threshold") = 1.0,
+			py::arg("conf") = 0.99,
+			py::arg("max_iters") = 10000,
+			py::arg("min_iters") = 50,
+			py::arg("sampler") = 1,
+			py::arg("lo_number") = 50,
+			py::arg("solver") = 0);
 
 	m.def("findFundamentalMatrix", &findFundamentalMatrix, R"doc(some doc)doc",
         py::arg("correspondences"),

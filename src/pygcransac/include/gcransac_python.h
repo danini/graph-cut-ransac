@@ -2,6 +2,13 @@
 #include <string>
 
 // A method for estimating a 2D line from a set of 2D points
+int findEllipsePetr_(
+	// The 2D points in the image
+   std::vector<double>& points,
+   // Output: the found 2d line
+   std::vector<double> &ellipse);
+
+// A method for estimating a 2D line from a set of 2D points
 int findEllipseOuellet_(
 	// The 2D points in the image
    std::vector<double>& points,

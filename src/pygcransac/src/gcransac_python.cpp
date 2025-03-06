@@ -41,7 +41,55 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include <iostream>
+
 using namespace gcransac;
+
+// A method for estimating a 2D line from a set of 2D points
+int findEllipsePetr_(
+ 	// The 2D points in the image
+	std::vector<double>& points,
+	// Output: the found 2d line
+	std::vector<double> &ellipse)
+{
+	// The number of points provided
+	const size_t &num_points = points.size() / 2;
+	
+	// The matrix containing the points that will be passed to GC-RANSAC
+	cv::Mat point_matrix(num_points, 2, CV_64F, &points[0]);
+
+	// Initializing the neighborhood structure based on the provided paramereters
+	typedef neighborhood::NeighborhoodGraph<cv::Mat> AbstractNeighborhood;
+	std::unique_ptr<AbstractNeighborhood> neighborhood_graph;
+
+	cv::Mat empty_point_matrix(0, 2, CV_64F);
+
+	neighborhood_graph = std::unique_ptr<AbstractNeighborhood>(
+		new neighborhood::GridNeighborhoodGraph<2>(&empty_point_matrix, // The input points
+		{ 0, // The cell size along axis X
+			0 }, // The cell size along axis Y
+		1)); // The cell number along every axis
+
+	// Initializing the line estimator
+	utils::CurvatureGradientBasedEllipseEstimator estimator;
+
+	// Initializing the model object
+	std::vector<Model> models;
+	std::vector<size_t> sample = {0, 1};
+	estimator.estimateModel(point_matrix,
+		&sample[0],
+		&models); 
+
+	ellipse.resize(models.size() * 11);
+
+	for (int m = 0; m < models.size(); ++m)
+		for (int i = 0; i < 11; i++) {
+			ellipse[m*11 + i] = models[m].descriptor(i);
+		}
+
+	// The number of inliers found
+	return 3;
+}
 
 // A method for estimating a 2D line from a set of 2D points
 int findEllipse_(
@@ -70,6 +118,7 @@ int findEllipse_(
 	// The number of RANSAC iterations done in the local optimization
 	int lo_number)
 {
+	std::cout << 10 << std::endl;
 	// The number of points provided
 	const size_t &num_points = points.size() / 2;
 	
@@ -142,6 +191,7 @@ int findEllipse_(
 	}
 
 	utils::RANSACStatistics statistics;
+	std::cout << 11 << std::endl;
 	
 	// Initializing the fast inlier selector object
 	inlier_selector::EmptyInlierSelector<utils::DefaultEllipseEstimator, 
@@ -164,6 +214,11 @@ int findEllipse_(
 		model);
 
 	statistics = gcransac.getRansacStatistics();
+	std::cout << 12 << std::endl;
+
+	const int num_inliers = statistics.inliers.size();
+	if (num_inliers < 1)
+		return 0;
 
 	ellipse.resize(10);
 
@@ -173,7 +228,6 @@ int findEllipse_(
 
 	inliers.resize(num_points);
 
-	const int num_inliers = statistics.inliers.size();
 	for (auto pt_idx = 0; pt_idx < num_points; ++pt_idx) {
 		inliers[pt_idx] = 0;
 
