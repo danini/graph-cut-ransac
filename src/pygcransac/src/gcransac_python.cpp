@@ -118,7 +118,6 @@ int findEllipse_(
 	// The number of RANSAC iterations done in the local optimization
 	int lo_number)
 {
-	std::cout << 10 << std::endl;
 	// The number of points provided
 	const size_t &num_points = points.size() / 2;
 	
@@ -191,7 +190,6 @@ int findEllipse_(
 	}
 
 	utils::RANSACStatistics statistics;
-	std::cout << 11 << std::endl;
 	
 	// Initializing the fast inlier selector object
 	inlier_selector::EmptyInlierSelector<utils::DefaultEllipseEstimator, 
@@ -214,7 +212,6 @@ int findEllipse_(
 		model);
 
 	statistics = gcransac.getRansacStatistics();
-	std::cout << 12 << std::endl;
 
 	const int num_inliers = statistics.inliers.size();
 	if (num_inliers < 1)
