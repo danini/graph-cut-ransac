@@ -101,7 +101,7 @@ namespace gcransac
 				constexpr size_t minimalSampleSize = sampleSize();
 				if (sample_number_ != minimalSampleSize)
 				{
-					fprintf(stderr, "Method '%s' is used with incorrect sample size (%d instead of %d).\n",
+					fprintf(stderr, "Method '%s' is used with incorrect sample size (%ld instead of %ld).\n",
 						"EssentialMatrixTwoPointsPlanar", sample_number_, minimalSampleSize);
 					return false;
 				}

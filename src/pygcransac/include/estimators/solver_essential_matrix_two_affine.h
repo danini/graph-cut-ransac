@@ -100,7 +100,7 @@ namespace gcransac
 
 				if (sampleNumber_ < sampleSize())
 				{
-					fprintf(stderr, "There are not enough affine correspondences to estimate the essential matrix (%d < %d).\n",
+					fprintf(stderr, "There are not enough affine correspondences to estimate the essential matrix (%ld < %ld).\n",
 						sampleNumber_, sampleSize());
 					return false;
 				}

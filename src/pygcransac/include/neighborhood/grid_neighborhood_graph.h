@@ -171,7 +171,7 @@ namespace gcransac
 				// Checking if the dimension number of the graph and the points are the same. 
 				if (container_->cols != _DimensionNumber)
 				{
-					fprintf(stderr, "The data dimension (%d) does not match with the expected dimension (%d).\n", 
+					fprintf(stderr, "The data dimension (%d) does not match with the expected dimension (%ld).\n",
 						container_->cols, _DimensionNumber);
 					return;
 				}

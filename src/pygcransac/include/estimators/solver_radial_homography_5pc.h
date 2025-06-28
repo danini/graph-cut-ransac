@@ -77,7 +77,7 @@ namespace gcransac
 					return maximumSolutions() > 1;
 				}
 
-				static constexpr char * getName()
+				static constexpr const char * getName()
 				{
 					return "H5l1l2";
 				}

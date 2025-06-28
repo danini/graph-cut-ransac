@@ -119,7 +119,7 @@ namespace gcransac
 			{
 				if (sampleNumber_ < sampleSize())
 				{
-					fprintf(stderr, "There were not enough affine correspondences provided for the solver (%d < 2).\n", sampleNumber_);
+					fprintf(stderr, "There were not enough affine correspondences provided for the solver (%ld < 2).\n", sampleNumber_);
 					return false;
 				}
 

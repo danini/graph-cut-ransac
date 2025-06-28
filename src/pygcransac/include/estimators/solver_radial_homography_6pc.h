@@ -69,7 +69,7 @@ namespace gcransac
 					return true;
 				}
 
-				static constexpr char * getName()
+				static constexpr const char * getName()
 				{
 					return "H6l1l2";
 				}

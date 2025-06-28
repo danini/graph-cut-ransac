@@ -161,8 +161,8 @@ namespace gcransac
 				{
 					fprintf(stderr, "Error when initializing the Progressive NAPSAC sampler. The layers must be in descending order. The current order is \"");
 					for (size_t layer_idx = 0; layer_idx < layer_number - 1; ++layer_idx)
-						fprintf(stderr, "%d ", layer_data[layer_idx]);
-					fprintf(stderr, "%d\"\n", layer_data.back());
+						fprintf(stderr, "%ld ", layer_data[layer_idx]);
+					fprintf(stderr, "%ld\"\n", layer_data.back());
 					return false;
 				}
 

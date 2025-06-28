@@ -195,7 +195,7 @@ namespace gcransac
 				if (descriptor_.cols() != 4 || descriptor_.rows() != 3)
 				{
 					fprintf(stderr, "Error while calculating the residuals. "
-						"The size of the matrix should be 3*4 instead of %d*%d.\n", 
+						"The size of the matrix should be 3*4 instead of %ld*%ld.\n",
 						descriptor_.rows(), descriptor_.cols());
 					return 0.0;
 				}
