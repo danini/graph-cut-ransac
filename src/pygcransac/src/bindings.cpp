@@ -981,9 +981,10 @@ py::tuple findHomography(py::array_t<double>  correspondences_,
 
     return py::make_tuple(H_,inliers_);
 }
-PYBIND11_PLUGIN(pygcransac) {
 
-    py::module m("pygcransac", R"doc(
+PYBIND11_MODULE(pygcransac, m) {
+
+    m.doc() = R"doc(
         Python module
         -----------------------
         .. currentmodule:: pygcransac
@@ -997,7 +998,7 @@ PYBIND11_PLUGIN(pygcransac) {
 		   findEssentialMatrix,
 		   findRigidTransform,
 
-    )doc");
+    )doc";
 
 	m.def("findFundamentalMatrix", &findFundamentalMatrix, R"doc(some doc)doc",
         py::arg("correspondences"),
@@ -1175,6 +1176,4 @@ PYBIND11_PLUGIN(pygcransac) {
 		py::arg("lo_number") = 50,
 		py::arg("sampler_variance") = 0.1,
 		py::arg("solver") = 0);
-
-  return m.ptr();
 }
