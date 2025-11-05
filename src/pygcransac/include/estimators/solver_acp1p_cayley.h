@@ -85,8 +85,8 @@ namespace gcransac
 					const double *weights_ = nullptr) const; // The weight for each point
 
 			protected:
-				void cayley(const Eigen::Vector3d &r, Eigen::Matrix3d &R, double &s ) const;
-				int re3q3(const Eigen::Matrix<double, 3, 10> &coeffs, Eigen::Matrix<double, 3, 8> *solutions, bool try_random_var_change = true) const;
+				OLGA_INLINE void cayley(const Eigen::Vector3d &r, Eigen::Matrix3d &R, double &s ) const;
+				OLGA_INLINE int re3q3(const Eigen::Matrix<double, 3, 10> &coeffs, Eigen::Matrix<double, 3, 8> *solutions, bool try_random_var_change = true) const;
 				inline void refine_3q3(const Eigen::Matrix<double, 3, 10> &coeffs, Eigen::Matrix<double, 3, 8> *solutions, int n_sols) const;
 			};
 			
@@ -159,7 +159,7 @@ namespace gcransac
 				return models_.size();
 			}
 
-			void ACP1PCayleySolver::cayley(const Eigen::Vector3d &r, Eigen::Matrix3d &R, double &s ) const
+			OLGA_INLINE void ACP1PCayleySolver::cayley(const Eigen::Vector3d &r, Eigen::Matrix3d &R, double &s ) const
 			{
 				const double x = r(0);
 				const double y = r(1);
@@ -225,7 +225,7 @@ namespace gcransac
 			* Order of coefficients is:  x^2, xy, xz, y^2, yz, z^2, x, y, z, 1.0;
 			*
 			*/
-			int ACP1PCayleySolver::re3q3(const Eigen::Matrix<double, 3, 10> &coeffs, Eigen::Matrix<double, 3, 8> *solutions, bool try_random_var_change) const {
+			OLGA_INLINE int ACP1PCayleySolver::re3q3(const Eigen::Matrix<double, 3, 10> &coeffs, Eigen::Matrix<double, 3, 8> *solutions, bool try_random_var_change) const {
 
 				Eigen::Matrix<double, 3, 3> Ax, Ay, Az;
 				Ax << coeffs.col(3), coeffs.col(5), coeffs.col(4); // y^2, z^2, yz

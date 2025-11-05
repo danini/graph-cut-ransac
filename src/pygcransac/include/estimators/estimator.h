@@ -34,6 +34,7 @@
 #pragma once
 
 #include <vector>
+#include <opencv2/core/core.hpp>
 #include "GCoptimization.h"
 
 namespace gcransac

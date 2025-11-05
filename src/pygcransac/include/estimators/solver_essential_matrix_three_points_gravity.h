@@ -96,7 +96,7 @@ namespace gcransac
 				Eigen::Matrix3d gravity_source;
 				Eigen::Matrix3d gravity_destination;
 
-				Eigen::MatrixXcd solver_3pt_caliess(const Eigen::VectorXd &data_) const;
+				OLGA_INLINE Eigen::MatrixXcd solver_3pt_caliess(const Eigen::VectorXd &data_) const;
 			};
 
 			OLGA_INLINE bool EssentialMatrixThreePointsGravity::estimateModel(
@@ -185,7 +185,7 @@ namespace gcransac
 				return models_.size() > 0;
 			}
 
-			Eigen::MatrixXcd EssentialMatrixThreePointsGravity::solver_3pt_caliess(const Eigen::VectorXd &data_) const
+			OLGA_INLINE Eigen::MatrixXcd EssentialMatrixThreePointsGravity::solver_3pt_caliess(const Eigen::VectorXd &data_) const
 			{
 				using namespace Eigen;
 
