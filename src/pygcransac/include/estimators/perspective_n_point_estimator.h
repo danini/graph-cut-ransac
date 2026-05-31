@@ -126,6 +126,12 @@ namespace gcransac
 				return false;
 			}
 
+			// The degrees of freedom of the residual.
+			// 2D reprojection error (du^2+dv^2) -> chi^2(2).
+			static constexpr size_t getDegreesOfFreedom() {
+				return 2;
+			}
+
 			// The size of a sample when doing inner RANSAC on a non-minimal sample
 			OLGA_INLINE size_t inlierLimit() const {
 				return 7 * sampleSize();

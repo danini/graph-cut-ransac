@@ -86,6 +86,12 @@ namespace gcransac
 				return true;
 			}
 
+			// The degrees of freedom of the residual.
+			// 2D transfer error (dx^2+dy^2) -> chi^2(2).
+			static constexpr size_t getDegreesOfFreedom() {
+				return 2;
+			}
+
 			static constexpr bool useRadialDistortion()
 			{
 				return true;

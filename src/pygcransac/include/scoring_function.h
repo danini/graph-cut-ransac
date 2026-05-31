@@ -34,10 +34,12 @@
 #pragma once
 
 #include <math.h>
+#include <cmath>
 #include <random>
 #include <unordered_set>
 #include <vector>
 #include "gamma_values.cpp"
+#include "gamma_values_dof1.cpp"
 
 #include <unsupported/Eigen/Polynomials>
 #include <Eigen/Eigen>
@@ -242,6 +244,49 @@ namespace gcransac
 		{
 		}
 
+		// Upper incomplete gamma Γ((DoF-1)/2, x) dispatched by DoF.
+		// Uses precomputed table for DoF=1, closed forms for DoF=2,3, existing table for DoF=4.
+		static OLGA_INLINE double upperIncGamma(size_t x)
+		{
+			constexpr size_t degrees_of_freedom = _Estimator::getDegreesOfFreedom();
+			// The index is computed with precision_of_stored_incomplete_gammas (1e4),
+			// so the gamma argument is x * (1/10000) — the fine-table step. (B2 fix:
+			// matches the index precision to the table spacing, no 10x.)
+			constexpr double step = 1.0 / 10000.0;
+
+			if constexpr (degrees_of_freedom == 1)
+			{
+				// If the sought gamma value is not stored in the lookup, return the closest element
+				if (stored_incomplete_gamma_number_dof1 < x)
+					x = stored_incomplete_gamma_number_dof1;
+				return stored_complete_gamma_values_dof1[x];
+			}
+			else if constexpr (degrees_of_freedom == 2)
+			{
+				// Γ(0.5, t) = √π · erfc(√t)
+				const double t = static_cast<double>(x) * step;
+				return 1.7724538509055159 * std::erfc(std::sqrt(t));
+			}
+			else if constexpr (degrees_of_freedom == 3)
+			{
+				// Γ(1, t) = e^(-t)
+				const double t = static_cast<double>(x) * step;
+				return std::exp(-t);
+			}
+			else if constexpr (degrees_of_freedom == 4)
+			{
+				// If the sought gamma value is not stored in the lookup, return the closest element
+				if (stored_incomplete_gamma_number < x)
+					x = stored_incomplete_gamma_number;
+				return stored_complete_gamma_values[x];
+			}
+			else
+			{
+				static_assert(degrees_of_freedom >= 1 && degrees_of_freedom <= 4,
+					"Unsupported DoF: add a gamma table or closed-form expression for this value");
+			}
+		}
+
 		// Return the score of a model w.r.t. the data points and the threshold
 		OLGA_INLINE Score getScore(const cv::Mat& points_, // The input data points
 			Model& model_, // The current model parameters
@@ -252,17 +297,16 @@ namespace gcransac
 			const bool store_inliers_ = true, // A flag to decide if the inliers should be stored
 			const std::vector<const std::vector<size_t>*> *index_sets = nullptr) const // Index sets to be verified
 		{
-			constexpr size_t _DimensionNumber = 4;
-
 			double increasedThreshold = threshold_;
 
 			// The degrees of freedom of the data from which the model is estimated.
 			// E.g., for models coming from point correspondences (x1,y1,x2,y2), it is 4.
-			constexpr size_t degrees_of_freedom = _DimensionNumber;
+			constexpr size_t degrees_of_freedom = _Estimator::getDegreesOfFreedom();
 			// A 0.99 quantile of the Chi^2-distribution to convert sigma values to residuals
 			constexpr double k =
-				_DimensionNumber == 2 ?
-				3.03 : 3.64;
+				(degrees_of_freedom == 1) ? 2.5758293035489004 :
+				(degrees_of_freedom == 2) ? 3.0348542587702925 :
+				(degrees_of_freedom == 3) ? 3.3682141752187271 : 3.6437211935036444;
 			// A multiplier to convert residual values to sigmas
 			constexpr double threshold_to_sigma_multiplier = 1.0 / k;
 			// Calculating k^2 / 2 which will be used for the estimation and, 
@@ -283,16 +327,29 @@ namespace gcransac
 			static const double C_times_two_ad_dof = C * two_ad_dof;
 			// Calculating the gamma value of (DoF - 1) / 2 which will be used for the estimation and, 
 			// due to being constant, it is better to calculate it a priori.
-			static const double gamma_value = tgamma(dof_minus_one_per_two);
+			// For DoF=1, (DoF-1)/2 = 0 and Gamma(0) is infinite, so use the first finite
+			// DoF=1 table entry E_1(0.001) as the proxy instead of tgamma(0).
+			static const double gamma_value = []() {
+				if constexpr (degrees_of_freedom == 1)
+					return stored_gamma_values_dof1[1];
+				else
+					return std::tgamma(dof_minus_one_per_two);
+			}();
 			// Calculating the upper incomplete gamma value of (DoF - 1) / 2 with k^2 / 2.
-			constexpr double gamma_k = 0.0036572608340910764;
+			constexpr double gamma_k =
+				(degrees_of_freedom == 1) ? 8.7462271161219563e-03 :
+				(degrees_of_freedom == 2) ? 4.2654446820694645e-03 :
+				(degrees_of_freedom == 3) ? 3.4394855607548570e-03 : 3.6112606177586301e-03;
 			// Calculating the lower incomplete gamma value of (DoF - 1) / 2 which will be used for the estimation and, 
 			// due to being constant, it is better to calculate it a priori.
 			static const double gamma_difference = gamma_value - gamma_k;
+			// The weight's noise scale is sigma_max = threshold / k (per DoF); the
+			// inlier-collection cutoff below stays at increasedThreshold = k*sigma_max. (B3 fix.)
+			const double sigma_max = increasedThreshold * threshold_to_sigma_multiplier;
 			// Calculate 2 * \sigma_{max}^2 a priori
-			const double squared_sigma_max_2 = increasedThreshold * increasedThreshold * 2.0;
+			const double squared_sigma_max_2 = sigma_max * sigma_max * 2.0;
 			// Divide C * 2^(DoF - 1) by \sigma_{max} a priori
-			const double one_over_sigma = C_times_two_ad_dof / increasedThreshold;
+			const double one_over_sigma = C_times_two_ad_dof / sigma_max;
 			// Calculate the weight of a point with 0 residual (i.e., fitting perfectly) a priori
 			const double weight_zero = one_over_sigma * gamma_difference;
 
@@ -323,15 +380,11 @@ namespace gcransac
 				{
 					// Calculate the squared residual
 					const double squared_residual = residual * residual;
-					// Get the position of the gamma value in the lookup table
-					size_t x = round(precision_of_stored_gammas * squared_residual / squared_sigma_max_2);
-
-					// If the sought gamma value is not stored in the lookup, return the closest element
-					if (stored_gamma_number < x)
-						x = stored_gamma_number;
+					// Get the position of the gamma value in the fine lookup table (B2 fix)
+					size_t x = round(precision_of_stored_incomplete_gammas * squared_residual / squared_sigma_max_2);
 
 					// Calculate the weight of the point
-					weight = one_over_sigma * (stored_gamma_values[x] - gamma_k);
+					weight = one_over_sigma * (upperIncGamma(x) - gamma_k);
 				}
 				score.value += weight / weight_zero;
 

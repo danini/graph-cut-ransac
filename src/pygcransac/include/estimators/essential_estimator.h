@@ -119,6 +119,12 @@ namespace gcransac
 				return true;
 			}
 
+			// The degrees of freedom of the residual.
+			// Sampson distance from 4D data (x1,y1,x2,y2) -> chi^2(4).
+			static constexpr size_t getDegreesOfFreedom() {
+				return 4;
+			}
+
 			// The size of a sample_ when doing inner RANSAC on a non-minimal sample
 			OLGA_INLINE size_t inlierLimit() const {
 				return 7 * sampleSize();

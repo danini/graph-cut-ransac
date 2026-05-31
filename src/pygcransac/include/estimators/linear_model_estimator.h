@@ -123,6 +123,12 @@ namespace gcransac
 				return true;
 			}
 
+			// The degrees of freedom of the residual.
+			// Point-to-model distance is a 1D scalar -> chi^2(1).
+			static constexpr size_t getDegreesOfFreedom() {
+				return 1;
+			}
+
 			// The size of a sample when doing inner RANSAC on a non-minimal sample
 			OLGA_INLINE size_t inlierLimit() const {
 				return 7 * sampleSize();
