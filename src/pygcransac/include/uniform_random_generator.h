@@ -35,6 +35,8 @@
 
 #include <random>
 #include <algorithm>
+#include <optional>
+#include <cstdint>
 
 namespace gcransac
 {
@@ -47,10 +49,27 @@ namespace gcransac
 			std::mt19937 generator;
 			std::uniform_int_distribution<_ValueType> generate;
 
+			// Process-wide fixed seed for reproducibility. When set (see
+			// setGlobalSeed), every newly constructed generator is seeded
+			// deterministically instead of from std::random_device. Mirrors
+			// the cv::setRNGSeed pattern. Intended for debugging/repeatable runs.
+			inline static std::optional<std::uint64_t> fixed_seed = std::nullopt;
+
 		public:
+			// Make all subsequently-constructed UniformRandomGenerators
+			// deterministic with the given seed (until clearGlobalSeed()).
+			static void setGlobalSeed(std::uint64_t seed) { fixed_seed = seed; }
+			// Restore nondeterministic (std::random_device) seeding.
+			static void clearGlobalSeed() { fixed_seed = std::nullopt; }
+
 			UniformRandomGenerator() {
-				std::random_device rand_dev;
-				generator = std::mt19937(rand_dev());
+				if (fixed_seed.has_value())
+					generator = std::mt19937(static_cast<std::mt19937::result_type>(*fixed_seed));
+				else
+				{
+					std::random_device rand_dev;
+					generator = std::mt19937(rand_dev());
+				}
 			}
 
 			~UniformRandomGenerator() {
