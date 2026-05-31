@@ -199,7 +199,7 @@ namespace gcransac
 				// we address them accordingly.
 				if constexpr (_DimensionNumber == 2) 
 					// 2D line fitting from a minimal sample, i.e., 2 points
-					if (sampleNumber_ == sampleSize())
+					if (sampleNumber_ == sampleSize() && sample_ != nullptr)
 						return estimate2DLine(
 							data_,
 							sample_,
@@ -209,7 +209,7 @@ namespace gcransac
 
 				if constexpr (_DimensionNumber == 3)
 					// 3D plane fitting from a minimal sample, i.e., 3 points
-					if (sampleNumber_ == sampleSize())
+					if (sampleNumber_ == sampleSize() && sample_ != nullptr)
 						return estimate3DPlane(data_,
 							sample_,
 							sampleNumber_,
