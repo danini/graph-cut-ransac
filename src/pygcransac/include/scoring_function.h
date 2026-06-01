@@ -260,6 +260,12 @@ namespace gcransac
 			// E.g., for models coming from point correspondences (x1,y1,x2,y2), it is 4.
 			constexpr size_t degrees_of_freedom = _DimensionNumber;
 			// A 0.99 quantile of the Chi^2-distribution to convert sigma values to residuals
+			// A 0.99 quantile of the Chi^2-distribution to convert sigma values to residuals.
+			// NOTE: these are the existing imprecise literals (k(DoF=4) = 3.64). This PR
+			// keeps them to stay focused on the B2/B3 weight fix; precise per-DoF values
+			// (k = sqrt(chi2_0.99(DoF))) are introduced in the per-estimator-DoF PR (#50).
+			// The gamma table is sized for the precise k (the larger k^2/2), so it works
+			// unchanged with either the imprecise value here or the precise value from #50.
 			constexpr double k =
 				_DimensionNumber == 2 ?
 				3.03 : 3.64;
@@ -289,10 +295,14 @@ namespace gcransac
 			// Calculating the lower incomplete gamma value of (DoF - 1) / 2 which will be used for the estimation and, 
 			// due to being constant, it is better to calculate it a priori.
 			static const double gamma_difference = gamma_value - gamma_k;
+			// The weight's noise scale is sigma_max = threshold / k (the paper
+			// convention, matching MAGSAC++ scoring). The inlier-collection cutoff
+			// in the loop stays at increasedThreshold = k * sigma_max. (B3 fix.)
+			const double sigma_max = increasedThreshold * threshold_to_sigma_multiplier;
 			// Calculate 2 * \sigma_{max}^2 a priori
-			const double squared_sigma_max_2 = increasedThreshold * increasedThreshold * 2.0;
+			const double squared_sigma_max_2 = sigma_max * sigma_max * 2.0;
 			// Divide C * 2^(DoF - 1) by \sigma_{max} a priori
-			const double one_over_sigma = C_times_two_ad_dof / increasedThreshold;
+			const double one_over_sigma = C_times_two_ad_dof / sigma_max;
 			// Calculate the weight of a point with 0 residual (i.e., fitting perfectly) a priori
 			const double weight_zero = one_over_sigma * gamma_difference;
 
@@ -323,15 +333,17 @@ namespace gcransac
 				{
 					// Calculate the squared residual
 					const double squared_residual = residual * residual;
-					// Get the position of the gamma value in the lookup table
-					size_t x = round(precision_of_stored_gammas * squared_residual / squared_sigma_max_2);
+					// Get the position of the gamma value in the lookup table.
+					// Use the fine table (step 1e-4) with its matching precision
+					// constant, so the index maps to the true argument. (B2 fix.)
+					size_t x = round(precision_of_stored_incomplete_gammas * squared_residual / squared_sigma_max_2);
 
 					// If the sought gamma value is not stored in the lookup, return the closest element
-					if (stored_gamma_number < x)
-						x = stored_gamma_number;
+					if (stored_incomplete_gamma_number < x)
+						x = stored_incomplete_gamma_number;
 
 					// Calculate the weight of the point
-					weight = one_over_sigma * (stored_gamma_values[x] - gamma_k);
+					weight = one_over_sigma * (stored_complete_gamma_values[x] - gamma_k);
 				}
 				score.value += weight / weight_zero;
 
