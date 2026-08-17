@@ -39,7 +39,7 @@
 namespace re3q3 {
 
 // Constructs the quotients needed for evaluating the sturm sequence.
-void build_sturm_seq(const double *fvec, double *svec) {
+inline void build_sturm_seq(const double *fvec, double *svec) {
 
     double f[24];
     double *f1 = f;
@@ -117,7 +117,7 @@ inline double get_bounds(const double fvec[45]) {
 }
 
 // Applies Ridder's bracketing method until we get close to root, followed by newton iterations
-void ridders_method_newton(const double fvec[17], double a, double b, double roots[8], int &n_roots, double tol) {
+inline void ridders_method_newton(const double fvec[17], double a, double b, double roots[8], int &n_roots, double tol) {
     double fa = polyval<8>(fvec, a);
     double fb = polyval<8>(fvec, b);
 
@@ -173,7 +173,7 @@ void ridders_method_newton(const double fvec[17], double a, double b, double roo
     roots[n_roots++] = x;
 }
 
-void isolate_roots(const double fvec[17], const double svec[24], double a, double b, int sa, int sb, double roots[8], int &n_roots, double tol, int depth) {
+inline void isolate_roots(const double fvec[17], const double svec[24], double a, double b, int sa, int sb, double roots[8], int &n_roots, double tol, int depth) {
     if (depth > 30)
         return;
 
@@ -189,7 +189,7 @@ void isolate_roots(const double fvec[17], const double svec[24], double a, doubl
     }
 }
 
-int bisect_sturm(double c0, double c1, double c2, double c3, double c4, double c5, double c6, double c7, double c8, double roots[8], double tol) {
+inline int bisect_sturm(double c0, double c1, double c2, double c3, double c4, double c5, double c6, double c7, double c8, double roots[8], double tol) {
     if (c8 == 0.0)
         return 0;
 

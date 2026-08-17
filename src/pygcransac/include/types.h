@@ -69,6 +69,11 @@
 #include "estimators/solver_homography_bundle_adjustment.h"
 #include "estimators/solver_radial_homography_5pc.h"
 #include "estimators/solver_radial_homography_6pc.h"
+#include "estimators/solver_acp1p_cayley.h"
+#include "estimators/solver_acp1p_query.h"
+#include "estimators/solver_siftp1p.h"
+#include "estimators/solver_siftp2p.h"
+#include "estimators/solver_up2p.h"
 
 namespace gcransac
 {
@@ -136,6 +141,18 @@ namespace gcransac
 		typedef estimator::PerspectiveNPointEstimator<estimator::solver::P3PSolver, // The solver used for fitting a model to a minimal sample
 			estimator::solver::PnPBundleAdjustment> // The solver used for fitting a model to a non-minimal sample
 			DefaultPnPEstimator;
+
+		typedef estimator::PerspectiveNPointEstimator<estimator::solver::SIFTP1PSolver, // The solver used for fitting a model to a minimal sample
+			estimator::solver::PnPBundleAdjustment> // The solver used for fitting a model to a non-minimal sample
+			SIFTP1PEstimator;
+
+		typedef estimator::PerspectiveNPointEstimator<estimator::solver::P1ACQuerySolver, // The solver used for fitting a model to a minimal sample
+			estimator::solver::PnPBundleAdjustment> // The solver used for fitting a model to a non-minimal sample
+			ACP1PEstimator;
+
+		typedef estimator::PerspectiveNPointEstimator<estimator::solver::SIFTP2PQuerySolver, // The solver used for fitting a model to a minimal sample
+			estimator::solver::PnPBundleAdjustment> // The solver used for fitting a model to a non-minimal sample
+			SIFTP2PEstimator;
 
 		// The default estimator for PnP fitting
 		typedef estimator::RigidTransformationEstimator<estimator::solver::RigidTransformationSVDBasedSolver, // The solver used for fitting a model to a minimal sample

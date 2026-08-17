@@ -56,13 +56,13 @@ namespace gcransac
 {
 	namespace utils
 	{
-		void normalizeCorrespondences(const cv::Mat &points_,
+		inline void normalizeCorrespondences(const cv::Mat &points_,
 			const Eigen::Matrix3d &intrinsics_src_,
 			const Eigen::Matrix3d &intrinsics_dst_,
 			cv::Mat &normalized_points_);
 
 
-		void normalizeCorrespondences(const cv::Mat &points_,
+		inline void normalizeCorrespondences(const cv::Mat &points_,
 			const Eigen::Matrix3d &intrinsics_src_,
 			const Eigen::Matrix3d &intrinsics_dst_,
 			cv::Mat &normalized_points_)

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.8)
 project(GraphCutRANSAC LANGUAGES CXX)
 
 # indicate if OPENMP should be enabled
-option(CREATE_SAMPLE_PROJECT "Create the Sample Project" ON)
+option(CREATE_SAMPLE_PROJECT "Create the Sample Project" OFF)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -56,11 +56,10 @@ file(GLOB_RECURSE SRCS_GCRANSAC
 	"${SOURCE_DIR}/include/*.cpp"
 )
 
-
 # Generate python module
 add_subdirectory(lib/pybind11)
 
-pybind11_add_module(pygcransac ${SOURCE_DIR}/src/bindings.cpp ${SOURCE_DIR}/src/gcransac_python.cpp  ${HDRS_GCRANSAC} ${SRCS_GCRANSAC} )
+pybind11_add_module(pygcransac ${SOURCE_DIR}/src/bindings.cpp ${HDRS_GCRANSAC} ${SRCS_GCRANSAC})
 target_link_libraries(pygcransac PRIVATE  ${OpenCV_LIBS} Eigen3::Eigen)
 install(TARGETS pygcransac DESTINATION .)
 

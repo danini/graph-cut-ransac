@@ -85,7 +85,7 @@ namespace gcransac
 					const double *weights_ = nullptr) const; // The weight for each point
 
 			protected:
-				void solver(
+				OLGA_INLINE void solver(
 					const double s1[], // sin of angle in first view
 					const double c1[], // cos of angle in first view
 					const double s2[], // sin of angle in second view
@@ -119,11 +119,11 @@ namespace gcransac
 					std::vector<Eigen::Matrix3d> &Rsolns, std::vector<Eigen::Vector3d> &tsolns*/
 				) const;
 
-				int re3q3(const Eigen::Matrix<double, 3, 10> &coeffs, Eigen::Matrix<double, 3, 8> *solutions, bool try_random_var_change = true) const;
-				void refine_3q3(const Eigen::Matrix<double, 3, 10> &coeffs, Eigen::Matrix<double, 3, 8> *solutions, int n_sols) const ;
+				OLGA_INLINE int re3q3(const Eigen::Matrix<double, 3, 10> &coeffs, Eigen::Matrix<double, 3, 8> *solutions, bool try_random_var_change = true) const;
+				OLGA_INLINE void refine_3q3(const Eigen::Matrix<double, 3, 10> &coeffs, Eigen::Matrix<double, 3, 8> *solutions, int n_sols) const ;
 
-				void cayley(const Eigen::Vector3d &r, Eigen::Matrix3d &R, double &s ) const;
-				Eigen::MatrixXd build_constraints(
+				OLGA_INLINE void cayley(const Eigen::Vector3d &r, Eigen::Matrix3d &R, double &s ) const;
+				OLGA_INLINE Eigen::MatrixXd build_constraints(
 					const Eigen::Matrix3d &R_ref,
 					const Eigen::Vector3d &t_ref,
 					const double s1, //sin of angle in first view
@@ -210,7 +210,7 @@ namespace gcransac
 				return models_.size();
 			}
 		
-			Eigen::MatrixXd SIFTP2PQuerySolver::build_constraints(
+			OLGA_INLINE Eigen::MatrixXd SIFTP2PQuerySolver::build_constraints(
 				const Eigen::Matrix3d &R_ref,
 				const Eigen::Vector3d &t_ref,
 				const double s1, //sin of angle in first view
@@ -229,7 +229,7 @@ namespace gcransac
 				return M;
 			}
 			 
-			void SIFTP2PQuerySolver::cayley(const Eigen::Vector3d &r, Eigen::Matrix3d &R, double &s ) const
+			OLGA_INLINE void SIFTP2PQuerySolver::cayley(const Eigen::Vector3d &r, Eigen::Matrix3d &R, double &s ) const
 			{
 				const double x = r(0);
 				const double y = r(1);
@@ -253,7 +253,7 @@ namespace gcransac
 					2*(xz-yw), 2*(xw+yz), ww-xx-yy+zz;
 			}
 
-			void SIFTP2PQuerySolver::solver(
+			OLGA_INLINE void SIFTP2PQuerySolver::solver(
 				const double s1[], // sin of angle in first view
 				const double c1[], // cos of angle in first view
 				const double s2[], // sin of angle in second view
@@ -296,7 +296,7 @@ namespace gcransac
 				}
 			}
 
-			void SIFTP2PQuerySolver::refine_3q3(const Eigen::Matrix<double, 3, 10> &coeffs, Eigen::Matrix<double, 3, 8> *solutions, int n_sols) const 
+			OLGA_INLINE void SIFTP2PQuerySolver::refine_3q3(const Eigen::Matrix<double, 3, 10> &coeffs, Eigen::Matrix<double, 3, 8> *solutions, int n_sols) const 
 			{
 				Eigen::Matrix3d J;
 				Eigen::Vector3d r;
@@ -338,7 +338,7 @@ namespace gcransac
 			* Order of coefficients is:  x^2, xy, xz, y^2, yz, z^2, x, y, z, 1.0;
 			*
 			*/
-			int SIFTP2PQuerySolver::re3q3(const Eigen::Matrix<double, 3, 10> &coeffs, Eigen::Matrix<double, 3, 8> *solutions, bool try_random_var_change) const 
+			OLGA_INLINE int SIFTP2PQuerySolver::re3q3(const Eigen::Matrix<double, 3, 10> &coeffs, Eigen::Matrix<double, 3, 8> *solutions, bool try_random_var_change) const 
 			{
 
 				Eigen::Matrix<double, 3, 3> Ax, Ay, Az;

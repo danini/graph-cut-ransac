@@ -3,6 +3,15 @@
 #include <pybind11/stl_bind.h>
 #include <pybind11/numpy.h>
 #include "gcransac_python.h"
+#include "types.h"
+
+#include "problem_instances/findRigidTransform_t.hpp"
+#include "problem_instances/find6DPose_t.hpp"
+#include "problem_instances/findLine2D_t.hpp"
+#include "problem_instances/findFundamentalMatrix_t.hpp"
+#include "problem_instances/findEssentialMatrix_t.hpp"
+#include "problem_instances/findGravityEssentialMatrix_t.hpp"
+#include "problem_instances/findHomography_t.hpp"
 
 
 namespace py = pybind11;
@@ -24,11 +33,12 @@ py::tuple findRigidTransform(
 	bool use_space_partitioning,
 	double sampler_variance)
 {
+	const size_t RIGID_TRANSFORM_DIM = 6;
 	py::buffer_info buf1 = x1y1z1x2y2z2_.request();
 	size_t NUM_TENTS = buf1.shape[0];
 	size_t DIM = buf1.shape[1];
 
-	if (DIM != 6) {
+	if (DIM != RIGID_TRANSFORM_DIM) {
 		throw std::invalid_argument("x1y1z1x2y2z2 should be an array with dims [n,6], n>=3");
 	}
 	if (NUM_TENTS < 3) {
@@ -50,11 +60,12 @@ py::tuple findRigidTransform(
 	std::vector<double> pose(16);
 	std::vector<bool> inliers(NUM_TENTS);
 
-	int num_inl = findRigidTransform_(
+	int num_inl = findRigidTransform_<utils::DefaultRigidTransformationEstimator>(
 		x1y1z1x2y2z2,
 		probabilities,
 		inliers,
 		pose,
+		RIGID_TRANSFORM_DIM,
 		spatial_coherence_weight,
 		threshold,
 		conf,
@@ -102,11 +113,12 @@ py::tuple find6DPoseSIFT(
 	int lo_number,
 	double sampler_variance)
 {
+	const size_t POSE_6DSIFT_DIM = 12;
 	py::buffer_info buf1 = x1y1x2y2z2nxnynza11a12a21a22_.request();
 	size_t NUM_TENTS = buf1.shape[0];
 	size_t DIM = buf1.shape[1];
 
-	if (DIM != 12)
+	if (DIM != POSE_6DSIFT_DIM)
 		throw std::invalid_argument("x1y1x2y2z2nxnynza11a12a21a22 should be an array with dims [n,12], n>=1");
 	if (NUM_TENTS < 4) 
 		throw std::invalid_argument("x1y1x2y2z2nxnynza11a12a21a22 should be an array with dims [n,12], n>=1");
@@ -129,11 +141,12 @@ py::tuple find6DPoseSIFT(
 	int num_inl; 
 	
 	if (solver == 0)
-		num_inl = find6DPoseSIFTP1P_(
+		num_inl = find6DPose_<utils::SIFTP1PEstimator>(
 			x1y1x2y2z2nxnynza11a12a21a22,
 			probabilities,
 			inliers,
 			pose,
+			POSE_6DSIFT_DIM,
 			spatial_coherence_weight,
 			threshold,
 			conf,
@@ -145,13 +158,15 @@ py::tuple find6DPoseSIFT(
 			neighborhood,
 			neighborhood_size,
 			sampler_variance,
-			lo_number);
+			lo_number,
+			false);
 	else if (solver == 1)
-		num_inl = find6DPoseSIFTP2P_(
+		num_inl = find6DPose_<utils::SIFTP2PEstimator>(
 			x1y1x2y2z2nxnynza11a12a21a22,
 			probabilities,
 			inliers,
 			pose,
+			POSE_6DSIFT_DIM,
 			spatial_coherence_weight,
 			threshold,
 			conf,
@@ -163,13 +178,15 @@ py::tuple find6DPoseSIFT(
 			neighborhood,
 			neighborhood_size,
 			sampler_variance,
-			lo_number);
+			lo_number,
+			false);
 	else if (solver == 2)
-		num_inl = find6DPoseACP1P_(
+		num_inl = find6DPose_<utils::ACP1PEstimator>(
 			x1y1x2y2z2nxnynza11a12a21a22,
 			probabilities,
 			inliers,
 			pose,
+			POSE_6DSIFT_DIM,
 			spatial_coherence_weight,
 			threshold,
 			conf,
@@ -181,7 +198,8 @@ py::tuple find6DPoseSIFT(
 			neighborhood,
 			neighborhood_size,
 			sampler_variance,
-			lo_number);
+			lo_number,
+			false);
 	else
 		throw std::invalid_argument("Invalid solver type");
 
@@ -216,11 +234,12 @@ py::tuple find6DPose(
 	int lo_number,
 	double sampler_variance)
 {
+	const size_t POSE_6D_DIM = 5;
 	py::buffer_info buf1 = x1y1x2y2z2_.request();
 	size_t NUM_TENTS = buf1.shape[0];
 	size_t DIM = buf1.shape[1];
 
-	if (DIM != 5) {
+	if (DIM != POSE_6D_DIM) {
 		throw std::invalid_argument("x1y1x2y2z2 should be an array with dims [n,5], n>=4");
 	}
 	if (NUM_TENTS < 4) {
@@ -242,11 +261,12 @@ py::tuple find6DPose(
 	std::vector<double> pose(12);
 	std::vector<bool> inliers(NUM_TENTS);
 
-	int num_inl = find6DPose_(
+	int num_inl = find6DPose_<utils::DefaultPnPEstimator>(
 		x1y1x2y2z2,
 		probabilities,
 		inliers,
 		pose,
+		POSE_6D_DIM,
 		spatial_coherence_weight,
 		threshold,
 		conf,
@@ -258,7 +278,8 @@ py::tuple find6DPose(
 		neighborhood,
 		neighborhood_size,
 		sampler_variance,
-		lo_number);
+		lo_number,
+		true);
 
 	py::array_t<bool> inliers_ = py::array_t<bool>(NUM_TENTS);
 	py::buffer_info buf3 = inliers_.request();
@@ -294,14 +315,15 @@ py::tuple findFundamentalMatrix(
 	double sampler_variance,
 	int solver)
 {
+	const size_t FUND_MAT_DIM = 4, FUND_MAT_SIFT_DIM = 8;
 	py::buffer_info buf1 = correspondences_.request();
 	size_t NUM_TENTS = buf1.shape[0];
 	size_t DIM = buf1.shape[1];
 
-    if (solver == 0 && DIM != 4) {
+    if (solver == 0 && DIM != FUND_MAT_DIM) {
         throw std::invalid_argument( "correspondences should be an array with dims [n,4], n>=7" );
     }
-    if (solver > 0 && DIM != 8) {
+    if (solver > 0 && DIM != FUND_MAT_SIFT_DIM) {
         throw std::invalid_argument( "SIFT or affine correspondences should be an array with dims [n,8], n>=7" );
     }
 	if (NUM_TENTS < 7) {
@@ -326,12 +348,13 @@ py::tuple findFundamentalMatrix(
 	int num_inl = 0; 
 	
 	if (solver == 0) // Point correspondence-based fundamental matrix estimation
-		num_inl = findFundamentalMatrix_(
+		num_inl = findFundamentalMatrix_<utils::DefaultFundamentalMatrixEstimator>(
 			correspondences,
 			probabilities,
 			inliers,
 			F,
 			h1, w1, h2, w2,
+			FUND_MAT_DIM,
 			spatial_coherence_weight,
 			threshold,
 			conf,
@@ -343,14 +366,16 @@ py::tuple findFundamentalMatrix(
 			neighborhood,
 			neighborhood_size,
 			sampler_variance,
-			lo_number);
+			lo_number,
+			false);
 	else if (solver == 1) // SIFT correspondence-based fundamental matrix estimation
-		num_inl = findFundamentalMatrixSIFT_(
+		num_inl = findFundamentalMatrix_<utils::SIFTBasedFundamentalMatrixEstimator>(
 			correspondences,
 			probabilities,
 			inliers,
 			F,
 			h1, w1, h2, w2,
+			FUND_MAT_SIFT_DIM,
 			spatial_coherence_weight,
 			threshold,
 			conf,
@@ -362,14 +387,16 @@ py::tuple findFundamentalMatrix(
 			neighborhood,
 			neighborhood_size,
 			sampler_variance,
-			lo_number);
+			lo_number,
+			true);
 	else if (solver == 2) // Affine correspondence-based fundamental matrix estimation
-		num_inl = findFundamentalMatrixAC_(
+		num_inl = findFundamentalMatrix_<utils::ACBasedFundamentalMatrixEstimator>(
 			correspondences,
 			probabilities,
 			inliers,
 			F,
 			h1, w1, h2, w2,
+			FUND_MAT_SIFT_DIM,
 			spatial_coherence_weight,
 			threshold,
 			conf,
@@ -381,7 +408,8 @@ py::tuple findFundamentalMatrix(
 			neighborhood,
 			neighborhood_size,
 			sampler_variance,
-			lo_number);
+			lo_number,
+			true);
 
 	py::array_t<bool> inliers_ = py::array_t<bool>(NUM_TENTS);
 	py::buffer_info buf3 = inliers_.request();
@@ -415,11 +443,12 @@ py::tuple findLine2D(py::array_t<double>  x1y1_,
 	int lo_number,
 	double neighborhood_size)
 {
+	const size_t LINED2D_DIM = 2;
 	py::buffer_info buf1 = x1y1_.request();
 	size_t NUM_TENTS = buf1.shape[0];
 	size_t DIM = buf1.shape[1];
 
-	if (DIM != 2) {
+	if (DIM != LINED2D_DIM) {
 		throw std::invalid_argument("x1y1 should be an array with dims [n,2], n>=2");
 	}
 	if (NUM_TENTS < 2) {
@@ -441,11 +470,12 @@ py::tuple findLine2D(py::array_t<double>  x1y1_,
 	std::vector<double> linemodel(3);
 	std::vector<bool> inliers(NUM_TENTS);
 
-	int num_inl = findLine2D_(x1y1,
+	int num_inl = findLine2D_<utils::Default2DLineEstimator>(x1y1,
 		probabilities,
 		inliers,
 		linemodel,
 		w1, h1,
+		LINED2D_DIM,
 		threshold,
 		conf,
 		max_iters,
@@ -494,11 +524,12 @@ py::tuple findGravityEssentialMatrix(
 	int lo_number,
 	double neighborhood_size)
 {
+	const size_t GRAVITY_ESS_MAT_DIM = 4;
     py::buffer_info buf1 = correspondences_.request();
     size_t NUM_TENTS = buf1.shape[0];
     size_t DIM = buf1.shape[1];
 
-    if (DIM != 4) {
+    if (DIM != GRAVITY_ESS_MAT_DIM) {
         throw std::invalid_argument( "correspondences should be an array with dims [n,4], n>=5" );
     }
     if (NUM_TENTS < 3) {
@@ -570,14 +601,16 @@ py::tuple findGravityEssentialMatrix(
     std::vector<double> E(9);
     std::vector<bool> inliers(NUM_TENTS);
 
-    int num_inl = findGravityEssentialMatrix_(
+    int num_inl = findGravityEssentialMatrix_<utils::DefaultGravityEssentialMatrixEstimator>(
 							corrs,
 							gravity_source,
 							gravity_destination,
 							probabilities,
                            	inliers,
-                           	E, K1, K2,
+                           	E, 
+							K1, K2,
                            	h1, w1, h2, w2,
+							GRAVITY_ESS_MAT_DIM,
 						   	spatial_coherence_weight,
                            	threshold,
 						   	conf,
@@ -625,11 +658,12 @@ py::tuple findPlanarEssentialMatrix(
 	int lo_number,
 	double neighborhood_size)
 {
+	const size_t PLANAR_ESS_MAT_DIM = 4;
     py::buffer_info buf1 = correspondences_.request();
     size_t NUM_TENTS = buf1.shape[0];
     size_t DIM = buf1.shape[1];
 
-    if (DIM != 4) {
+    if (DIM != PLANAR_ESS_MAT_DIM) {
         throw std::invalid_argument( "correspondences should be an array with dims [n,4], n>=5" );
     }
     if (NUM_TENTS < 3) {
@@ -673,15 +707,17 @@ py::tuple findPlanarEssentialMatrix(
     std::vector<double> F(9);
     std::vector<bool> inliers(NUM_TENTS);
 
-    int num_inl = findPlanarEssentialMatrix_(
+    int num_inl = findEssentialMatrix_<utils::DefaultPlanarEssentialMatrixEstimator>(
 							corrs,
 							probabilities,
-                           	inliers,
-                           	F, K1, K2,
-                           	h1, w1, h2, w2,
+							inliers,
+							F, 
+							K1, K2,
+							h1, w1, h2, w2,
+							PLANAR_ESS_MAT_DIM,
 						   	spatial_coherence_weight,
-                           	threshold,
-						   	conf,
+							threshold,
+							conf,
 						   	max_iters,
 							min_iters,
 						   	use_sprt,
@@ -689,7 +725,9 @@ py::tuple findPlanarEssentialMatrix(
 							sampler,
 							neighborhood,
 							neighborhood_size,
-							lo_number);
+							0.1,
+							lo_number,
+							false);
 
     py::array_t<bool> inliers_ = py::array_t<bool>(NUM_TENTS);
     py::buffer_info buf3 = inliers_.request();
@@ -726,14 +764,15 @@ py::tuple findEssentialMatrix(py::array_t<double>  correspondences_,
 								double sampler_variance,
 								int solver)
 {
+	const size_t ESS_MAT_DIM = 4, ESS_MAT_SIFT_DIM = 8;
     py::buffer_info buf1 = correspondences_.request();
     size_t NUM_TENTS = buf1.shape[0];
     size_t DIM = buf1.shape[1];
 
-    if (solver == 0 && DIM != 4) {
+    if (solver == 0 && DIM != ESS_MAT_DIM) {
         throw std::invalid_argument( "correspondences should be an array with dims [n,4], n>=5" );
     }
-    if (solver > 0 && DIM != 8) {
+    if (solver > 0 && DIM != ESS_MAT_SIFT_DIM) {
         throw std::invalid_argument( "SIFT or affine correspondences should be an array with dims [n,8], n>=5" );
     }
     if (NUM_TENTS < 5) {
@@ -780,13 +819,14 @@ py::tuple findEssentialMatrix(py::array_t<double>  correspondences_,
 	int num_inl = 0;
 
 	if (solver == 0) // Point correspondence-based fundamental matrix estimation
-		num_inl = findEssentialMatrix_(
+		num_inl = findEssentialMatrix_<utils::DefaultEssentialMatrixEstimator>(
 			correspondences,
 			probabilities,
 			inliers,
 			F,
 			K1, K2,
 			h1, w1, h2, w2,
+			ESS_MAT_DIM,
 			spatial_coherence_weight,
 			threshold,
 			conf,
@@ -798,15 +838,17 @@ py::tuple findEssentialMatrix(py::array_t<double>  correspondences_,
 			neighborhood,
 			neighborhood_size,
 			sampler_variance,
-			lo_number);
+			lo_number,
+			true);
 	else if (solver == 1) // SIFT correspondence-based fundamental matrix estimation
-		num_inl = findEssentialMatrixSIFT_(
+		num_inl = findEssentialMatrix_<utils::SIFTBasedEssentialMatrixEstimator>(
 			correspondences,
 			probabilities,
 			inliers,
 			F,
 			K1, K2,
 			h1, w1, h2, w2,
+			ESS_MAT_SIFT_DIM,
 			spatial_coherence_weight,
 			threshold,
 			conf,
@@ -818,15 +860,17 @@ py::tuple findEssentialMatrix(py::array_t<double>  correspondences_,
 			neighborhood,
 			neighborhood_size,
 			sampler_variance,
-			lo_number);
+			lo_number,
+			true);
 	else if (solver == 2) // Affine correspondence-based fundamental matrix estimation
-		num_inl = findEssentialMatrixAC_(
+		num_inl = findEssentialMatrix_<utils::ACBasedEssentialMatrixEstimator>(
 			correspondences,
 			probabilities,
 			inliers,
 			F,
 			K1, K2,
 			h1, w1, h2, w2,
+			ESS_MAT_SIFT_DIM,
 			spatial_coherence_weight,
 			threshold,
 			conf,
@@ -838,7 +882,8 @@ py::tuple findEssentialMatrix(py::array_t<double>  correspondences_,
 			neighborhood,
 			neighborhood_size,
 			sampler_variance,
-			lo_number);
+			lo_number,
+			true);
 
     py::array_t<bool> inliers_ = py::array_t<bool>(NUM_TENTS);
     py::buffer_info buf3 = inliers_.request();
@@ -874,14 +919,15 @@ py::tuple findHomography(py::array_t<double>  correspondences_,
 							double sampler_variance,
 							int solver)
 {
+	const size_t HOMOGRAPHY_DIM = 4, HOMOGRAPHY_SIFT_DIM = 8;
     py::buffer_info buf1 = correspondences_.request();
     size_t NUM_TENTS = buf1.shape[0];
     size_t DIM = buf1.shape[1];
 
-    if (solver == 0 && DIM != 4) {
+    if (solver == 0 && DIM != HOMOGRAPHY_DIM) {
         throw std::invalid_argument( "correspondences should be an array with dims [n,4], n>=4" );
     }
-    if (solver > 0 && DIM != 8) {
+    if (solver > 0 && DIM != HOMOGRAPHY_SIFT_DIM) {
         throw std::invalid_argument( "SIFT or affine correspondences should be an array with dims [n,8], n>=4" );
     }
     if (NUM_TENTS < 4) {
@@ -906,12 +952,13 @@ py::tuple findHomography(py::array_t<double>  correspondences_,
     int num_inl = 0;
 					
 	if (solver == 0) // Point correspondence-based fundamental matrix estimation
-		num_inl = findHomography_(
+		num_inl = findHomography_t_<utils::DefaultHomographyEstimator>(
 			correspondences,
 			probabilities,
 			inliers,
 			H,
 			h1, w1, h2, w2,
+			HOMOGRAPHY_DIM,
 			spatial_coherence_weight,
 			threshold,
 			conf,
@@ -926,12 +973,13 @@ py::tuple findHomography(py::array_t<double>  correspondences_,
 			sampler_variance,
 			lo_number);
 	else if (solver == 1) // SIFT correspondence-based fundamental matrix estimation
-		num_inl = findHomographySIFT_(
+		num_inl = findHomography_t_<utils::SIFTBasedHomographyEstimator>(
 			correspondences,
 			probabilities,
 			inliers,
 			H,
 			h1, w1, h2, w2,
+			HOMOGRAPHY_SIFT_DIM,
 			spatial_coherence_weight,
 			threshold,
 			conf,
@@ -942,15 +990,17 @@ py::tuple findHomography(py::array_t<double>  correspondences_,
 			sampler,
 			neighborhood,
 			neighborhood_size,
+			use_space_partitioning,
 			sampler_variance,
 			lo_number);
 	else if (solver == 2) // Affine correspondence-based fundamental matrix estimation
-		num_inl = findHomographyAC_(
+		num_inl = findHomography_t_<utils::ACBasedHomographyEstimator>(
 			correspondences,
 			probabilities,
 			inliers,
 			H,
 			h1, w1, h2, w2,
+			HOMOGRAPHY_SIFT_DIM,
 			spatial_coherence_weight,
 			threshold,
 			conf,
@@ -961,6 +1011,7 @@ py::tuple findHomography(py::array_t<double>  correspondences_,
 			sampler,
 			neighborhood,
 			neighborhood_size,
+			use_space_partitioning,
 			sampler_variance,
 			lo_number);
 
@@ -1172,7 +1223,7 @@ PYBIND11_MODULE(pygcransac, m) {
 		py::arg("sampler") = 1,
 		py::arg("neighborhood") = 0,
 		py::arg("neighborhood_size") = 4.0,
-		py::arg("use_space_partitioning") = true,
+		py::arg("use_space_partitioning") = false,
 		py::arg("lo_number") = 50,
 		py::arg("sampler_variance") = 0.1,
 		py::arg("solver") = 0);

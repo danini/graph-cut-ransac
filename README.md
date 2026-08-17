@@ -27,10 +27,12 @@ Thanks to [@akaszynski](https://github.com/akaszynski) for his contributions.
 
 To build and install C++ only `GraphCutRANSAC`, clone or download this repository and then build the project by CMAKE. 
 ```shell
-$ git clone https://github.com/danini/graph-cut-ransac
-$ cd build
-$ cmake ..
-$ make
+sudo apt install libopencv-dev libeigen3-dev
+git clone https://github.com/danini/graph-cut-ransac
+git submodule update --init --recursive
+cd build
+cmake ..
+make
 ```
 
 # Install Python package and compile C++
