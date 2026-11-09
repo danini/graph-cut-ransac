@@ -611,9 +611,6 @@ namespace gcransac
 					inlier_container_offset = inlier_container_idx;
 				}
 			}
-
-			if (models.size() == 0)
-				so_far_the_best_model.descriptor = models[0].descriptor;
 		}
 
 		// Return the inlier set and the estimated model parameters
