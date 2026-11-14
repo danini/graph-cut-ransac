@@ -29,7 +29,7 @@ class CameraJacobianAccumulator
             Eigen::Vector2d x;
             Eigen::Vector3d X;
             size_t rowIdx = 0;
-            for (size_t i = 0; i < correspondences->rows; ++i) 
+            for (size_t i = 0; i < sample_size; ++i) 
             {
                 if (sample == nullptr)
                     rowIdx = i;
@@ -53,7 +53,7 @@ class CameraJacobianAccumulator
                 const double r0 = p(0) - x(0);
                 const double r1 = p(1) - x(1);
                 const double r_squared = r0 * r0 + r1 * r1;
-                cost += weights[i] * loss_fn.loss(r_squared);
+                cost += (weights == nullptr ? 1.0 : weights[i]) * loss_fn.loss(r_squared);
             }
             return cost;
         }
@@ -73,7 +73,7 @@ class CameraJacobianAccumulator
             Eigen::Vector2d x;
             Eigen::Vector3d X;
             size_t rowIdx = 0;
-            for (size_t i = 0; i < correspondences->rows; ++i) 
+            for (size_t i = 0; i < sample_size; ++i) 
             {
                 if (sample == nullptr)
                     rowIdx = i;
@@ -101,7 +101,7 @@ class CameraJacobianAccumulator
                 // Setup residual
                 Eigen::Vector2d r = zp - x;
                 const double r_squared = r.squaredNorm();
-                const double weight = weights[i] * loss_fn.weight(r_squared);
+                const double weight = (weights == nullptr ? 1.0 : weights[i]) * loss_fn.weight(r_squared);
 
                 if (weight == 0.0) {
                     continue;
