@@ -54,12 +54,14 @@ namespace gcransac
 			inline static thread_local std::optional<std::uint64_t> next_seed;
 
 		public:
-			// The generators created afterwards in this thread are seeded with
+			// Seeds the generators created afterwards in the calling thread with
 			// seed, seed + 1, seed + 2, ... instead of from std::random_device,
-			// until clearGlobalSeed(). Distinct seeds keep the generators of one
-			// sampler (P-NAPSAC has three) from producing the same stream.
+			// until clearGlobalSeed(). Generators created in other threads aren't
+			// affected (the seed is thread_local). Distinct seeds keep the
+			// generators of one sampler (P-NAPSAC has three) from producing the
+			// same stream.
 			static void setGlobalSeed(std::uint64_t seed) { next_seed = seed; }
-			// Seeds the generators created afterwards in this thread from
+			// Seeds the generators created afterwards in the calling thread from
 			// std::random_device again.
 			static void clearGlobalSeed() { next_seed.reset(); }
 
