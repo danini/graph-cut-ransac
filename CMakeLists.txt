@@ -64,6 +64,14 @@ pybind11_add_module(pygcransac ${SOURCE_DIR}/src/bindings.cpp ${SOURCE_DIR}/src/
 target_link_libraries(pygcransac PRIVATE  ${OpenCV_LIBS} Eigen3::Eigen)
 install(TARGETS pygcransac DESTINATION .)
 
+# Test of MAGSACScoringFunction's weights, not built by default:
+#   cmake --build <build> --target test_magsac_scoring && <build>/test_magsac_scoring
+add_executable(test_magsac_scoring EXCLUDE_FROM_ALL tests/cpp/test_magsac_scoring.cpp)
+target_link_libraries(test_magsac_scoring ${OpenCV_LIBS} Eigen3::Eigen)
+if (OPENMP_FOUND)
+	target_link_libraries(test_magsac_scoring OpenMP::OpenMP_CXX)
+endif (OPENMP_FOUND)
+
 add_library(${PROJECT_NAME} STATIC ${HDRS_GCRANSAC} ${SRCS_GCRANSAC})
 
 target_link_libraries(${PROJECT_NAME} 
