@@ -73,6 +73,14 @@ target_link_libraries(${PROJECT_NAME}
 target_link_libraries (${PROJECT_NAME}
 	Eigen3::Eigen)
 
+# Regression test of LinearModelSolver (#57), not built by default:
+#   cmake --build <build> --target test_linear_model_solver && <build>/test_linear_model_solver
+add_executable(test_linear_model_solver EXCLUDE_FROM_ALL tests/cpp/test_linear_model_solver.cpp)
+target_link_libraries(test_linear_model_solver ${PROJECT_NAME} ${OpenCV_LIBS} Eigen3::Eigen)
+if (OPENMP_FOUND)
+	target_link_libraries(test_linear_model_solver OpenMP::OpenMP_CXX)
+endif (OPENMP_FOUND)
+
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 
 
