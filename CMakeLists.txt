@@ -75,6 +75,13 @@ target_link_libraries (${PROJECT_NAME}
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 
+# Test of ProsacSampler (no sample repeats a point), not built by default:
+#   cmake --build <build> --target test_prosac_sampler && <build>/test_prosac_sampler
+add_executable(test_prosac_sampler EXCLUDE_FROM_ALL tests/cpp/test_prosac_sampler.cpp)
+target_link_libraries(test_prosac_sampler ${OpenCV_LIBS} Eigen3::Eigen)
+if (OPENMP_FOUND)
+	target_link_libraries(test_prosac_sampler OpenMP::OpenMP_CXX)
+endif (OPENMP_FOUND)
 
 	
 # ==============================================================================

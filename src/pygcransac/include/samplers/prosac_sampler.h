@@ -114,7 +114,7 @@ namespace gcransac
 				largest_sample_size = sample_size; // largest set sampled in PROSAC
 				subset_size = sample_size; // The size of the current sampling pool		
 				random_generator->resetGenerator(0,
-					subset_size - 1);
+					subset_size - 2); // The last point of the subset is always used
 			}
 			
 			void update(
@@ -169,7 +169,7 @@ namespace gcransac
 				// Initialize the random generator
 				random_generator = std::make_unique<utils::UniformRandomGenerator<size_t>>();
 				random_generator->resetGenerator(0,
-					subset_size - 1);
+					subset_size - 2); // The last point of the subset is always used
 				return true;
 			}
 
