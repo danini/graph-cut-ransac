@@ -77,6 +77,15 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 
 
 	
+# Test of the weights of the bundle adjustments (read by point, not by position in the sample), not built by default:
+#   cmake --build <build> --target test_weights_by_point && <build>/test_weights_by_point
+add_executable(test_weights_by_point EXCLUDE_FROM_ALL tests/cpp/test_weights_by_point.cpp)
+target_link_libraries(test_weights_by_point ${PROJECT_NAME} ${OpenCV_LIBS} Eigen3::Eigen)
+if (OPENMP_FOUND)
+	target_link_libraries(test_weights_by_point OpenMP::OpenMP_CXX)
+endif (OPENMP_FOUND)
+set_target_properties(test_weights_by_point PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+
 # ==============================================================================
 # Structure: Applications
 # ==============================================================================
