@@ -232,7 +232,7 @@ class HomographyJacobianAccumulator {
             if (weights == nullptr)
                 cost += loss_fn.loss(r2);
             else
-                cost += weights[k] * loss_fn.loss(r2);
+                cost += weights[point_idx] * loss_fn.loss(r2);
         }
         return cost;
     }
@@ -267,7 +267,7 @@ class HomographyJacobianAccumulator {
             // Compute weight from robust loss function (used in the IRLS)
             double weight = loss_fn.weight(r2) / sample_size;
             if (weights != nullptr)
-                weight = weights[k] * weight;
+                weight = weights[point_idx] * weight;
 
             if(weight == 0.0)
                 continue;
@@ -339,7 +339,7 @@ class RelativePoseJacobianAccumulator {
             if (weights == nullptr)
                 cost += loss_fn.loss(r2);
             else
-                cost += weights[k] * loss_fn.loss(r2);
+                cost += weights[point_idx] * loss_fn.loss(r2);
         }
 
         return cost;
@@ -413,7 +413,7 @@ class RelativePoseJacobianAccumulator {
             // Compute weight from robust loss function (used in the IRLS)
             double weight = loss_fn.weight(r * r) / sample_size;
             if (weights != nullptr)
-                weight = weights[k] * weight;
+                weight = weights[point_idx] * weight;
 
             if(weight == 0.0)
                 continue;
@@ -525,7 +525,7 @@ class FundamentalJacobianAccumulator {
             if (weights == nullptr)
                 cost += loss_fn.loss(r2);
             else
-                cost += weights[k] * loss_fn.loss(r2);
+                cost += weights[point_idx] * loss_fn.loss(r2);
         }
 
         return cost;
@@ -574,7 +574,7 @@ class FundamentalJacobianAccumulator {
             
             // Multiplying by the provided weights if they are available 
             if (weights != nullptr)
-                weight = weights[k] * weight;
+                weight = weights[point_idx] * weight;
             if (weight == 0.0)
                 continue;
 

@@ -1838,14 +1838,14 @@ int findFundamentalMatrix_(
 		// The squared least-squares threshold
 		const double squared_truncated_threshold = truncated_threshold * truncated_threshold; 
 
-		// Initializing all weights to be zero
-		std::vector<double> weights(inlier_number, 0.0);
+		// One weight per point, as the solvers index them, zero for the outliers
+		std::vector<double> weights(points.rows, 0.0);
 
 		// Setting a weight for all inliers
 		for (size_t inlier_idx = 0; inlier_idx < inlier_number; ++inlier_idx)
 		{
 			const size_t point_idx = statistics.inliers[inlier_idx];
-			weights[inlier_idx] = 
+			weights[point_idx] = 
 				MAX(0, 1.0 - estimator.squaredResidual(points.row(point_idx), model) / squared_truncated_threshold);
 		}
 
@@ -2772,14 +2772,14 @@ int findEssentialMatrix_(
 		// The squared least-squares threshold
 		const double squared_truncated_threshold = truncated_threshold * truncated_threshold; 
 
-		// Initializing all weights to be zero
-		std::vector<double> weights(inlier_number, 0.0);
+		// One weight per point, as the solvers index them, zero for the outliers
+		std::vector<double> weights(normalized_points.rows, 0.0);
 
 		// Setting a weight for all inliers
 		for (size_t inlier_idx = 0; inlier_idx < inlier_number; ++inlier_idx)
 		{
 			const size_t point_idx = statistics.inliers[inlier_idx];
-			weights[inlier_idx] = 
+			weights[point_idx] = 
 				MAX(0, 1.0 - estimator.squaredResidual(normalized_points.row(point_idx), model) / squared_truncated_threshold);
 		}
 
@@ -3112,14 +3112,14 @@ int findEssentialMatrixAC_(
 		// The squared least-squares threshold
 		const double squared_truncated_threshold = truncated_threshold * truncated_threshold; 
 
-		// Initializing all weights to be zero
-		std::vector<double> weights(inlier_number, 0.0);
+		// One weight per point, as the solvers index them, zero for the outliers
+		std::vector<double> weights(normalized_points.rows, 0.0);
 
 		// Setting a weight for all inliers
 		for (size_t inlier_idx = 0; inlier_idx < inlier_number; ++inlier_idx)
 		{
 			const size_t point_idx = statistics.inliers[inlier_idx];
-			weights[inlier_idx] = 
+			weights[point_idx] = 
 				MAX(0, 1.0 - estimator.squaredResidual(normalized_points.row(point_idx), model) / squared_truncated_threshold);
 		}
 
@@ -3445,14 +3445,14 @@ int findEssentialMatrixSIFT_(
 		// The squared least-squares threshold
 		const double squared_truncated_threshold = truncated_threshold * truncated_threshold; 
 
-		// Initializing all weights to be zero
-		std::vector<double> weights(inlier_number, 0.0);
+		// One weight per point, as the solvers index them, zero for the outliers
+		std::vector<double> weights(normalized_points.rows, 0.0);
 
 		// Setting a weight for all inliers
 		for (size_t inlier_idx = 0; inlier_idx < inlier_number; ++inlier_idx)
 		{
 			const size_t point_idx = statistics.inliers[inlier_idx];
-			weights[inlier_idx] = 
+			weights[point_idx] = 
 				MAX(0, 1.0 - estimator.squaredResidual(normalized_points.row(point_idx), model) / squared_truncated_threshold);
 		}
 
@@ -3785,14 +3785,14 @@ int findPlanarEssentialMatrix_(
 		// The squared least-squares threshold
 		const double squared_truncated_threshold = truncated_threshold * truncated_threshold; 
 
-		// Initializing all weights to be zero
-		std::vector<double> weights(inlier_number, 0.0);
+		// One weight per point, as the solvers index them, zero for the outliers
+		std::vector<double> weights(normalized_points.rows, 0.0);
 
 		// Setting a weight for all inliers
 		for (size_t inlier_idx = 0; inlier_idx < inlier_number; ++inlier_idx)
 		{
 			const size_t point_idx = statistics.inliers[inlier_idx];
-			weights[inlier_idx] = 
+			weights[point_idx] = 
 				MAX(0, 1.0 - estimator.squaredResidual(normalized_points.row(point_idx), model) / squared_truncated_threshold);
 		}
 
@@ -4135,14 +4135,14 @@ int findGravityEssentialMatrix_(
 		// The squared least-squares threshold
 		const double squared_truncated_threshold = truncated_threshold * truncated_threshold; 
 
-		// Initializing all weights to be zero
-		std::vector<double> weights(inlier_number, 0.0);
+		// One weight per point, as the solvers index them, zero for the outliers
+		std::vector<double> weights(normalized_points.rows, 0.0);
 
 		// Setting a weight for all inliers
 		for (size_t inlier_idx = 0; inlier_idx < inlier_number; ++inlier_idx)
 		{
 			const size_t point_idx = statistics.inliers[inlier_idx];
-			weights[inlier_idx] = 
+			weights[point_idx] = 
 				MAX(0, 1.0 - estimator.squaredResidual(normalized_points.row(point_idx), model) / squared_truncated_threshold);
 		}
 
