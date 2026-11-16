@@ -76,6 +76,11 @@ namespace gcransac
 				std::vector<Model>* model,
 				const double *weights_ = nullptr) const = 0;
 
+			// How estimateModelNonminimal reads its weights. If false, by point: weights_[sample_[k]] is the weight
+			// of point sample_[k]. If true, by position in the sample: weights_[k] is the weight of point sample_[k],
+			// as in the estimators that copy and normalize the sample before fitting it (the name is MAGSAC's).
+			static constexpr bool doesNormalizationForNonMinimalFitting() { return false; }
+
 			// Given a model and a data point, calculate the error. Users should implement
 			// this function appropriately for the task being solved.
 			OLGA_INLINE virtual double residual(const Datum& data, const Model& model) const = 0;

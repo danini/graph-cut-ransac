@@ -110,6 +110,11 @@ namespace gcransac
 				return true;
 			}
 
+			// estimateModelNonminimal reads the weights by position in the sample: weights_[k] is the weight of point sample_[k]
+			static constexpr bool doesNormalizationForNonMinimalFitting() {
+				return true;
+			}
+
 			// The size of a minimal sample_ required for the estimation
 			static constexpr size_t maximumMinimalSolutions() {
 				return _MinimalSolverEngine::maximumSolutions();
