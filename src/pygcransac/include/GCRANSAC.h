@@ -677,9 +677,12 @@ namespace gcransac
 					&models, // The estimated model parameters
 					weights.get()); // The weights used in the weighted least-squares fitting
 
-				// Setting the weights back to 0.
-				for (const size_t &inlier_idx : inliers_)
-					weights[inlier_idx] = 0;
+				// Setting the weights back to 0, where they were stored.
+				for (size_t inlier_idx = 0; inlier_idx < inliers_.size(); ++inlier_idx)
+					if constexpr (_ModelEstimator::doesNormalizationForNonMinimalFitting())
+						weights[inlier_idx] = 0;
+					else
+						weights[inliers_[inlier_idx]] = 0;
 			}
 			else
 			{
