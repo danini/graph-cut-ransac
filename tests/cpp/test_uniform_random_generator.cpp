@@ -49,18 +49,25 @@ int main()
 	check(stream(a.getGenerator()) == stream(a2.getGenerator()) &&
 		stream(b.getGenerator()) == stream(b2.getGenerator()), "the same seed gives the same generators");
 
-	// P-NAPSAC: its own generator doesn't repeat the stream of the seed, which its first nested
-	// PROSAC sampler gets
+	// Consecutive seeds don't share streams: the second generator of seed 42 isn't the first of seed 43
+	Generator::setGlobalSeed(43);
+	Generator first43;
+	check(stream(b.getGenerator()) != stream(first43.getGenerator()), "consecutive seeds give distinct streams");
+
+	// P-NAPSAC: its own generator doesn't repeat the stream of its first nested PROSAC sampler,
+	// the first generator created after the seed
 	cv::Mat points(100, 4, CV_64F);
 	cv::randu(points, 0, 100);
 	const std::vector<size_t> layers = { 16, 8, 4, 2 };
 	const std::vector<double> sizes = { 100, 100, 100, 100 };
 	Generator::setGlobalSeed(7);
+	Generator first7;
+	Generator::setGlobalSeed(7);
 	ProgressiveNapsac sampler(&points, layers, 4, sizes);
 	Generator::setGlobalSeed(7);
 	ProgressiveNapsac sampler2(&points, layers, 4, sizes);
 	check(sampler.isInitialized(), "P-NAPSAC is initialized");
-	check(sampler.ownStream() != stream(std::mt19937(7)), "P-NAPSAC's generators get distinct seeds");
+	check(sampler.ownStream() != stream(first7.getGenerator()), "P-NAPSAC's generators get distinct seeds");
 	check(sampler.ownStream() == sampler2.ownStream(), "the same seed gives the same P-NAPSAC generator");
 
 	// Without a seed, generators are seeded from std::random_device again

@@ -49,25 +49,32 @@ namespace gcransac
 			std::mt19937 generator;
 			std::uniform_int_distribution<_ValueType> generate;
 
-			// The seed of the next generator created in this thread, if any (see
-			// setGlobalSeed).
-			inline static thread_local std::optional<std::uint64_t> next_seed;
+			// The seed set by setGlobalSeed, if any, and the number of generators
+			// created since in this thread.
+			inline static thread_local std::optional<std::uint64_t> global_seed;
+			inline static thread_local std::uint64_t generator_count = 0;
 
 		public:
-			// Seeds the generators created afterwards in the calling thread with
-			// seed, seed + 1, seed + 2, ... instead of from std::random_device,
-			// until clearGlobalSeed(). Generators created in other threads aren't
-			// affected (the seed is thread_local). Distinct seeds keep the
-			// generators of one sampler (P-NAPSAC has three) from producing the
-			// same stream.
-			static void setGlobalSeed(std::uint64_t seed) { next_seed = seed; }
+			// Seeds the generators created afterwards in the calling thread from
+			// seed and their creation index (std::seed_seq), instead of from
+			// std::random_device, until clearGlobalSeed(). Generators created in
+			// other threads aren't affected (the seed is thread_local). Each
+			// generator of a run gets its own stream (P-NAPSAC has three), and the
+			// runs of different seeds don't share streams.
+			static void setGlobalSeed(std::uint64_t seed) { global_seed = seed; generator_count = 0; }
 			// Seeds the generators created afterwards in the calling thread from
 			// std::random_device again.
-			static void clearGlobalSeed() { next_seed.reset(); }
+			static void clearGlobalSeed() { global_seed.reset(); }
 
 			UniformRandomGenerator() {
-				if (next_seed)
-					generator = std::mt19937(static_cast<std::mt19937::result_type>((*next_seed)++));
+				if (global_seed)
+				{
+					const std::uint64_t index = generator_count++;
+					std::seed_seq seeds{
+						static_cast<std::uint32_t>(*global_seed), static_cast<std::uint32_t>(*global_seed >> 32),
+						static_cast<std::uint32_t>(index), static_cast<std::uint32_t>(index >> 32) };
+					generator = std::mt19937(seeds);
+				}
 				else
 				{
 					std::random_device rand_dev;
