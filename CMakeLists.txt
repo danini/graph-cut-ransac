@@ -70,6 +70,15 @@ target_link_libraries(${PROJECT_NAME}
 	${OpenCV_LIBS}
 )
 
+# Test of the weights of the PnP bundle adjustment (read by point, not by position in the sample), not built by default:
+#   cmake --build <build> --target test_pnp_weights && <build>/test_pnp_weights
+add_executable(test_pnp_weights EXCLUDE_FROM_ALL tests/cpp/test_pnp_weights.cpp)
+target_link_libraries(test_pnp_weights ${PROJECT_NAME} ${OpenCV_LIBS} Eigen3::Eigen)
+if (OPENMP_FOUND)
+	target_link_libraries(test_pnp_weights OpenMP::OpenMP_CXX)
+endif (OPENMP_FOUND)
+set_target_properties(test_pnp_weights PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+
 target_link_libraries (${PROJECT_NAME}
 	Eigen3::Eigen)
 

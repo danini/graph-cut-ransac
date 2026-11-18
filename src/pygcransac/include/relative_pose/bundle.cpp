@@ -590,6 +590,7 @@ int refine_pnp(
         correspondences_, 
         sample_, 
         sample_size_, 
+        camera, 
         loss_fn, 
         weights);
 
@@ -615,7 +616,7 @@ int refine_pnp(
             camera,                                                                       \
             pose,                                                                       \
             opt,                                                                       \
-            weights);                                                                      \
+            weights);
         SWITCH_LOSS_FUNCTIONS
     default:
         return -1;
@@ -643,7 +644,7 @@ int refine_pnp(
             camera,                                                                                   \
             pose,                                                                                   \
             opt,                                                                                   \
-            weights);                                     \
+            weights);
         SWITCH_CAMERA_MODELS
 #undef SWITCH_CAMERA_MODEL_CASE
     default:
