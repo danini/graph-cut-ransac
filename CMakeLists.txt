@@ -3,6 +3,7 @@ project(GraphCutRANSAC LANGUAGES CXX)
 
 # indicate if OPENMP should be enabled
 option(CREATE_SAMPLE_PROJECT "Create the Sample Project" ON)
+option(BUILD_TESTS "Build the C++ tests (run them with ctest)" OFF)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -96,3 +97,13 @@ if (CREATE_SAMPLE_PROJECT)
 
 	add_dependencies(SampleProject ${PROJECT_NAME})
 endif (CREATE_SAMPLE_PROJECT)
+
+# ==============================================================================
+# Structure: C++ tests
+# ==============================================================================
+if (BUILD_TESTS)
+	enable_testing()
+	add_executable(test_uniform_random_generator tests/cpp/test_uniform_random_generator.cpp)
+	target_link_libraries(test_uniform_random_generator ${OpenCV_LIBS} Eigen3::Eigen)
+	add_test(NAME test_uniform_random_generator COMMAND test_uniform_random_generator)
+endif (BUILD_TESTS)
