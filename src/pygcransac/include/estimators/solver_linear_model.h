@@ -172,7 +172,7 @@ namespace gcransac
 					& y2 = point2Ptr[1];
 
 				// The line's normal
-				double nx = y1 - x2,
+				double nx = y1 - y2,
 					ny = x2 - x1;
 				// Normalizing the line number is important to keep the residual calculation as fast as possible
 				double magnitude = std::sqrt(nx * nx + ny * ny);
