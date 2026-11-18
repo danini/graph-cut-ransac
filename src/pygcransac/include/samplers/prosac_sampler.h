@@ -87,6 +87,20 @@ namespace gcransac
 					}
 			}
 
+			// Sets the range of the first sample, after initialize() or reset(): all
+			// points if PROSAC acts like RANSAC from the start
+			// (ransac_convergence_iterations == 0), otherwise the current subset
+			// except its last point, which sample() always adds.
+			inline void resetFirstRange()
+			{
+				if (kth_sample_number > ransac_convergence_iterations)
+					random_generator->resetGenerator(0,
+						point_number - 1);
+				else
+					random_generator->resetGenerator(0,
+						subset_size - 2);
+			}
+
 		public:
 			explicit ProsacSampler(const cv::Mat * const container_,
 				const size_t sample_size_,
@@ -113,8 +127,7 @@ namespace gcransac
 				kth_sample_number = 1;
 				largest_sample_size = sample_size; // largest set sampled in PROSAC
 				subset_size = sample_size; // The size of the current sampling pool		
-				random_generator->resetGenerator(0,
-					subset_size - 1);
+				resetFirstRange();
 			}
 			
 			void update(
@@ -168,8 +181,7 @@ namespace gcransac
 
 				// Initialize the random generator
 				random_generator = std::make_unique<utils::UniformRandomGenerator<size_t>>();
-				random_generator->resetGenerator(0,
-					subset_size - 1);
+				resetFirstRange();
 				return true;
 			}
 
