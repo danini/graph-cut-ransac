@@ -66,6 +66,15 @@ install(TARGETS pygcransac DESTINATION .)
 
 add_library(${PROJECT_NAME} STATIC ${HDRS_GCRANSAC} ${SRCS_GCRANSAC})
 
+# Test of the weights of the final iterated least squares, not built by default:
+#   cmake --build <build> --target test_ilsq_weights && <build>/test_ilsq_weights
+add_executable(test_ilsq_weights EXCLUDE_FROM_ALL tests/cpp/test_ilsq_weights.cpp)
+target_link_libraries(test_ilsq_weights ${PROJECT_NAME} ${OpenCV_LIBS} Eigen3::Eigen)
+if (OPENMP_FOUND)
+	target_link_libraries(test_ilsq_weights OpenMP::OpenMP_CXX)
+endif (OPENMP_FOUND)
+set_target_properties(test_ilsq_weights PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+
 target_link_libraries(${PROJECT_NAME} 
 	${OpenCV_LIBS}
 )

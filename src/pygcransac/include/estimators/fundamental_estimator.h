@@ -153,6 +153,11 @@ namespace gcransac
 				return true;
 			}
 
+			// estimateModelNonminimal reads the weights by position in the sample: weights_[k] is the weight of point sample_[k]
+			static constexpr bool doesNormalizationForNonMinimalFitting() {
+				return true;
+			}
+
 			// The size of a sample when doing inner RANSAC on a non-minimal sample
 			OLGA_INLINE size_t inlierLimit() const {
 				return 7 * sampleSize();

@@ -123,6 +123,11 @@ namespace gcransac
 				return true;
 			}
 
+			// The sample is copied and normalized, so weights would be read by position (the solver ignores them)
+			static constexpr bool doesNormalizationForNonMinimalFitting() {
+				return true;
+			}
+
 			// The size of a sample when doing inner RANSAC on a non-minimal sample
 			OLGA_INLINE size_t inlierLimit() const {
 				return 7 * sampleSize();

@@ -662,9 +662,12 @@ namespace gcransac
 					// The squares residual of the current inlier
 					const double squared_residual = estimator_.squaredResidual(points_.row(point_idx), model_);
 
-					// Calculate the Tukey bisquare weights
+					// Calculate the Tukey bisquare weights, stored as the estimator reads them
 					const double weight = MAX(0.0, 1.0 - squared_residual / squared_truncated_threshold);
-					weights[point_idx] = weight * weight;
+					if constexpr (_ModelEstimator::doesNormalizationForNonMinimalFitting())
+						weights[inlier_idx] = weight * weight;
+					else
+						weights[point_idx] = weight * weight;
 				}
 
 				// Estimate the model from the current inlier set
@@ -674,9 +677,12 @@ namespace gcransac
 					&models, // The estimated model parameters
 					weights.get()); // The weights used in the weighted least-squares fitting
 
-				// Setting the weights back to 0.
-				for (const size_t &inlier_idx : inliers_)
-					weights[inlier_idx] = 0;
+				// Setting the weights back to 0, where they were stored.
+				for (size_t inlier_idx = 0; inlier_idx < inliers_.size(); ++inlier_idx)
+					if constexpr (_ModelEstimator::doesNormalizationForNonMinimalFitting())
+						weights[inlier_idx] = 0;
+					else
+						weights[inliers_[inlier_idx]] = 0;
 			}
 			else
 			{
